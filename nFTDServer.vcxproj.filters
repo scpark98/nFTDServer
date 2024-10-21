@@ -1,0 +1,252 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{40f89237-66c7-4f1f-9e06-6c91bd237d25}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\VtListCtrlEx">
+      <UniqueIdentifier>{5bc61e4c-8e46-4940-84fe-c318c674cd94}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\SCMenuBar">
+      <UniqueIdentifier>{2467b52b-8237-44da-aac9-6389ec6a299c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="nFTDServer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="nFTDServerDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="framework.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="nFTDServerManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="nFTDServerSocket.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="nFTDProtocol.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="nFTDFileManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="nFTDFileTransferDialog.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CButton\SCSystemButtons\SCSystemButtons.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.h">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\list_data.h">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\VtListCtrlEx.h">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\EditCell.h">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CMenu\SCMenuBar\SCMenuBar.h">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CMenu\SCMenuBar\SCMenuButton.h">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CMenu\SCMenuBar\SCMenu.h">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\ResizeCtrl.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\colors.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\ControlSplitter.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\Functions.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\GdiplusBitmap.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\MemoryDC.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CButton\GdiButton\GdiButton.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CProgressCtrl\MacProgressCtrl\MacProgressCtrl.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CStatic\PathCtrl\PathCtrl.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CStatic\SCStatic\SCStatic.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListBox\SCListBox\SCListBox.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\log\SCLog\SCLog.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CDialog\SCProgressDlg\SCProgressDlg.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CTreeCtrl\SCTreeCtrl\SCTreeCtrl.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\system\ShellImageList\ShellImageList.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\ui\theme\theme.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\ui\theme\ThemeLib.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CWnd\WndShadow\WndShadow.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="nFTDServer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="nFTDServerDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="pch.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="nFTDServerManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="nFTDServerSocket.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="nFTDFileManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="nFTDFileTransferDialog.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CButton\SCSystemButtons\SCSystemButtons.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\list_data.cpp">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\VtListCtrlEx.cpp">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\EditCell.cpp">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.cpp">
+      <Filter>Common\VtListCtrlEx</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CMenu\SCMenuBar\SCMenuBar.cpp">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CMenu\SCMenuBar\SCMenuButton.cpp">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CMenu\SCMenuBar\SCMenu.cpp">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\ResizeCtrl.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\colors.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\ControlSplitter.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\Functions.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\GdiplusBitmap.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CButton\GdiButton\GdiButton.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CProgressCtrl\MacProgressCtrl\MacProgressCtrl.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CStatic\PathCtrl\PathCtrl.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CStatic\SCStatic\SCStatic.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListBox\SCListBox\SCListBox.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\log\SCLog\SCLog.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CDialog\SCProgressDlg\SCProgressDlg.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CTreeCtrl\SCTreeCtrl\SCTreeCtrl.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\system\ShellImageList\ShellImageList.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\ui\theme\theme.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CWnd\WndShadow\WndShadow.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="nFTDServer.rc">
+      <Filter>리소스 파일</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\nFTDServer.rc2">
+      <Filter>리소스 파일</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\nFTDServer.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="readme.txt" />
+  </ItemGroup>
+</Project>
