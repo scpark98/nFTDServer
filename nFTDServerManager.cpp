@@ -324,6 +324,12 @@ void CnFTDServerManager::close_socket()
 
 void CnFTDServerManager::DriveList(std::deque<CString>* dq)
 {
+	//DriveList를 구할 때 내 PC의 Label, 바탕화면 경로, 문서 경로도 함께 구한다.
+	//순서 중요!
+	dq->push_back(GetRemoteMyPCLabel());
+	dq->push_back(GetRemoteDesktopPath());	// 리모트의 내 문서 경로를 얻어서 저장
+	dq->push_back(GetRemoteDocumentPath());	// 리모트의 내 문서 경로를 얻어서 저장
+
 	UINT DriveType;
 	TCHAR DriveName[MAX_PATH] = { 0, };
 
@@ -506,6 +512,8 @@ void CnFTDServerManager::refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CStrin
 		{
 			continue;
 		}
+
+		//폴더이면 추가
 		if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 		{
 			pShellTreeCtrl->insert_folder(&FindFileData);
@@ -924,4 +932,91 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 		dq->push_back(data);
 		TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
 	}
+
+	return true;
+}
+
+bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq)
+{
+	msg ret;
+
+	//명령 전송
+	ret.type = nFTD_FolderList_All;
+	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return false;
+	}
+
+	USHORT length = _tcslen(path) * 2;
+
+	//path 길이 전송
+	if (!m_socket.m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return false;
+	}
+
+	//path 전송
+	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return false;
+	}
+
+	LPTSTR file_path[MAX_PATH] = { 0, };
+	WIN32_FIND_DATA data;
+
+	while (true)
+	{
+		ZeroMemory(&data, sizeof(data));
+
+		if (!m_socket.m_sock.RecvExact((LPSTR)&data, sizeof(WIN32_FIND_DATA), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-1 : %d "), GetLastError());
+			return false;
+		}
+
+		if (_tcslen(data.cFileName) == 0)
+			break;
+
+		dq->push_back(data);
+		TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
+	}
+
+	return true;
+}
+
+CString CnFTDServerManager::GetRemoteMyPCLabel()
+{
+	WIN32_FIND_DATA data;
+	if (m_socket.GetMyPCLabel(&data))
+	{
+		return data.cFileName;
+	}
+
+	return _T("");
+}
+
+CString CnFTDServerManager::GetRemoteDesktopPath()
+{
+	WIN32_FIND_DATA data;
+	if (m_socket.GetDesktopPath(&data))
+	{
+		return data.cFileName;
+	}
+	
+	return _T("");
+}
+
+
+CString CnFTDServerManager::GetRemoteDocumentPath()
+{
+	WIN32_FIND_DATA data;
+	if (m_socket.GetDocumentPath(&data))
+	{
+		return data.cFileName;
+	}
+
+	return _T("");
 }

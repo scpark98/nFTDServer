@@ -90,6 +90,8 @@ BOOL CnFTDServerSocket::Connection()
 
 			if (bRet)
 				break;
+			else
+				m_sock.CloseSocket();
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		}
@@ -671,6 +673,34 @@ BOOL CnFTDServerSocket::CurrentPath(DWORD nBufferLength, LPTSTR lpCurrentPath)
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return FALSE;
 	}
+
+	return TRUE;
+}
+
+BOOL CnFTDServerSocket::GetMyPCLabel(WIN32_FIND_DATA* pFileInfo)
+{
+	msg ret;
+	msgFileInfo msgFindFileData;
+	memset(&msgFindFileData, 0, sizeof(msgFileInfo));
+
+	ret.type = nFTD_MyPC_Label;
+	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return FALSE;
+	}
+	if (!m_sock.RecvExact((LPSTR)&msgFindFileData, sz_msgFileInfo, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return FALSE;
+	}
+	if (!m_sock.RecvExact((LPSTR)pFileInfo->cFileName, msgFindFileData.length, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return FALSE;
+	}
+
+	pFileInfo->cFileName[msgFindFileData.length / 2] = '\0';
 
 	return TRUE;
 }

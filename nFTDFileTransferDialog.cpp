@@ -38,6 +38,7 @@ void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CDialogEx)
 	ON_BN_CLICKED(IDOK, &CnFTDFileTransferDialog::OnBnClickedOk)
 	ON_BN_CLICKED(IDCANCEL, &CnFTDFileTransferDialog::OnBnClickedCancel)
+	ON_BN_CLICKED(IDC_BUTTON_CANCEL, &CnFTDFileTransferDialog::OnBnClickedButtonCancel)
 END_MESSAGE_MAP()
 
 
@@ -55,16 +56,17 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 	CDialogEx::OnCancel();
 }
 
-BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerManager, CVtListCtrlEx* pShellListCtrl,
-			ULARGE_INTEGER* pulRemainDiskSpace,	DWORD dwSide, BOOL isAutoClose, LPCTSTR lpszStartPath)
+BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerManager, std::deque<WIN32_FIND_DATA>* filelist,
+			ULARGE_INTEGER* pulRemainDiskSpace,	DWORD dwSide, CString from, CString to, BOOL isAutoClose, LPCTSTR lpszStartPath)
 {
-	if (pShellListCtrl->get_selected_items() == 0)
-		return FALSE;
+	m_filelist.clear();
+	m_filelist.assign(filelist->begin(), filelist->end());
 
 	m_dwSide = dwSide;
-	m_pFileList = pShellListCtrl;
+	//m_pFileList = pShellListCtrl;
+	m_transfer_from = from;
+	m_transfer_to = to;
 	m_pServerManager = pServerManager;
-
 
 	return TRUE;
 }
@@ -108,6 +110,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	init_list();
 
 	std::thread th(&CnFTDFileTransferDialog::thread_transfer, this);
+	th.detach();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.
@@ -115,6 +118,24 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 void CnFTDFileTransferDialog::thread_transfer()
 {
+	int i;
+
+	//폴더 항목은 하위의 모든 파일목록을 찾아서 대체시킨다.
+	for (i = 0; i < m_filelist.size(); i++)
+	{
+		if (m_filelist[i].dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
+		{
+			std::deque<WIN32_FIND_DATA> dq;
+			find_all_files(m_filelist[i].cFileName, &dq, _T(""), false, true);
+			m_filelist.insert(m_filelist.begin() + i, dq.begin(), dq.end());
+			i = i + dq.size() + 1;
+		}
+	}
+
+	for (i = 0; i < m_filelist.size(); i++)
+		TRACE(_T("src[%3d] = %s\n"), i, m_filelist[i].cFileName);
+
+	/*
 	if (!m_pServerManager->DataConnect())
 	{
 		AfxMessageBox(_T("m_pServerManager->DataConnect() fail."));
@@ -126,5 +147,11 @@ void CnFTDFileTransferDialog::thread_transfer()
 	{
 		return;
 	}
+	*/
+}
 
+
+void CnFTDFileTransferDialog::OnBnClickedButtonCancel()
+{
+	CDialogEx::OnCancel();
 }

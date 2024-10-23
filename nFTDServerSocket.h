@@ -55,6 +55,7 @@ public:
 	BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
 	void SetFileWriteMode(DWORD dwWrite);
 
+	BOOL GetMyPCLabel(WIN32_FIND_DATA* pFileInfo);
 	BOOL GetDesktopPath(WIN32_FIND_DATA* pFileInfo);
 	BOOL GetDocumentPath(WIN32_FIND_DATA* pFileInfo);
 

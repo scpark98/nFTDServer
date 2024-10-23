@@ -28,21 +28,23 @@ public:
 	};
 	void	init_list();
 
-	BOOL	FileTransferInitalize(CnFTDServerManager* pServerManager, CVtListCtrlEx* pShellListCtrl,
-								  ULARGE_INTEGER* pulRemainDiskSpace, DWORD dwSide, BOOL isAutoClose, LPCTSTR lpszStartPath = NULL);
+	BOOL	FileTransferInitalize(CnFTDServerManager* pServerManager, std::deque<WIN32_FIND_DATA> *filelist,
+								  ULARGE_INTEGER* pulRemainDiskSpace, DWORD dwSide, CString from, CString to, BOOL isAutoClose, LPCTSTR lpszStartPath = NULL);
 
 	void	thread_transfer();
 
 	DWORD				m_dwSide;
-	CVtListCtrlEx*		m_pFileList;
+	//CVtListCtrlEx*		m_pFileList;
 	CnFTDServerManager* m_pServerManager;
 	LPTSTR				m_lpInitPath;
-	CString				m_strStartPath;
+	CString				m_transfer_from;
+	CString				m_transfer_to;
 
 	ProgressData		m_ProgressData;
 
 	CString				m_ReceivedSize, m_TotalSize;
 
+	std::deque<WIN32_FIND_DATA>	m_filelist;
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
@@ -63,4 +65,5 @@ public:
 	CVtListCtrlEx m_XFileList;
 	virtual BOOL OnInitDialog();
 	CListCtrl m_ListQueue;
+	afx_msg void OnBnClickedButtonCancel();
 };

@@ -41,7 +41,8 @@ public:
 	CString				m_title = _T("FileTransfer (not connected)");
 
 	//Shell의 imagelist 및 shell과 관계된 멤버 제공
-	CShellImageList		m_ShellImageList;
+	CShellImageList		m_shell_imagelist_local;
+	CShellImageList		m_shell_imagelist_remote;
 	void				init_treectrl();
 	void				init_listctrl();
 	void				init_pathctrl();
@@ -60,6 +61,9 @@ public:
 	ULARGE_INTEGER		m_ulServerDiskSpace;
 
 	CString				m_remoteCurrentPath;
+	//CString				m_remoteMyPCLabel;		//"내 PC"가 기본값이지만 사용자가 변경할 수 있고 OS 버전마다 다르다.
+	//CString				m_remoteDocumentPath;
+	//CString				m_remoteDesktopPath;
 	BOOL				ChangeDirectory(CString path, DWORD dwSide);
 	void				SetDefaultPathToDesktop(int type);
 
@@ -128,4 +132,5 @@ public:
 	CSCStatic m_static_count_remote;
 	CMacProgressCtrl m_progress_space_local;
 	CMacProgressCtrl m_progress_space_remote;
+	afx_msg void OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult);
 };

@@ -28,6 +28,7 @@ public:
 
 	//scpark add
 	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq);
+	bool	get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq);
 
 	//이전 코드 함수명 : GetFileList(CShellTreeCtrl* pShellTreeCtrl)
 	//tree에서 해당 path folder의 sub folder 목록을 refresh한다.
@@ -40,6 +41,10 @@ public:
 	bool	Rename(LPCTSTR lpOldName, LPCTSTR lpNewName, DWORD dwSide);
 	bool	Delete(CVtListCtrlEx* pShellListCtrl, DWORD dwSide);
 	bool	CurrentPath(DWORD dwPathLength, LPTSTR lpPath, DWORD dwSide);
+
+	CString GetRemoteMyPCLabel();
+	CString GetRemoteDesktopPath();
+	CString GetRemoteDocumentPath();
 
 	BOOL	FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath);
 	BOOL	FileTransfer(HWND hWnd, CVtListCtrlEx& XList, INT iIndex, LPCTSTR lpFrom, LPCTSTR lpTo, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, DWORD dwSide);

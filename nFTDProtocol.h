@@ -40,7 +40,9 @@
 //scpark add 
 enum FTD_PROTOCOL
 {
-	nFTD_FileList_All = 40,		//remote의 파일목록
+	nFTD_MyPC_Label = 40,
+	nFTD_FileList_All,		//remote의 파일목록
+	nFTD_FolderList_All,	//nFTD_FileList_All을 이용할수도 있지만 파일이 많을 경우는 패킷 송수신 양이 커지므로 별도 정의.
 };
 
 //scpark mwj 20240508 양방향 파일전송 오류 수정을 위해 추가

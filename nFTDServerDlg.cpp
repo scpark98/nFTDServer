@@ -101,6 +101,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CDialogEx)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_LOCAL, &CnFTDServerDlg::OnTvnSelchangedTreeLocal)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_REMOTE, &CnFTDServerDlg::OnTvnSelchangedTreeRemote)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMDblclkListRemote)
+	ON_NOTIFY(NM_DBLCLK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMDblclkListLocal)
 END_MESSAGE_MAP()
 
 
@@ -159,12 +160,15 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	m_splitter_left.SetType(CControlSplitter::CS_VERT);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_TREE_LOCAL);
+	m_splitter_left.AddToTopOrLeftCtrls(IDC_PROGRESS_SPACE_LOCAL);
 	m_splitter_left.AddToBottomOrRightCtrls(IDC_LIST_LOCAL);
 
 	m_splitter_right.SetType(CControlSplitter::CS_VERT);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_TREE_REMOTE);
+	m_splitter_right.AddToTopOrLeftCtrls(IDC_PROGRESS_SPACE_REMOTE);
 	m_splitter_right.AddToBottomOrRightCtrls(IDC_LIST_REMOTE);
 
+	//중앙 splitter
 	m_splitter_center.SetType(CControlSplitter::CS_VERT);
 	m_splitter_center.AddToTopOrLeftCtrls(IDC_PATH_LOCAL);
 	m_splitter_center.AddToTopOrLeftCtrls(IDC_LIST_LOCAL);
@@ -204,7 +208,9 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//	ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
 
 	//shellimagelist를 초기화 한 후 트리, 리스트에서 공통으로 사용한다.
-	m_ShellImageList.Initialize();
+	m_shell_imagelist_local.Initialize();
+	m_shell_imagelist_remote.Initialize();
+
 	init_treectrl();
 	init_listctrl();
 	init_pathctrl();
@@ -224,31 +230,31 @@ BOOL CnFTDServerDlg::OnInitDialog()
 void CnFTDServerDlg::init_treectrl()
 {
 	m_tree_local.set_use_drag_and_drop(true);
-	m_tree_local.set_as_shell_treectrl(&m_ShellImageList, true);
+	m_tree_local.set_as_shell_treectrl(&m_shell_imagelist_local, true);
 	//m_tree_local.add_drag_images(IDB_DRAG_ONE_FILE, IDB_DRAG_MULTI_FILES);
 	m_tree_local.set_path(_T("c:\\"));
 
-	m_tree_remote.set_as_shell_treectrl(&m_ShellImageList, false);
+	m_tree_remote.set_as_shell_treectrl(&m_shell_imagelist_remote, false);
 }
 
 void CnFTDServerDlg::init_listctrl()
 {
-	m_list_local.set_as_shell_listctrl(&m_ShellImageList, true);
+	m_list_local.set_as_shell_listctrl(&m_shell_imagelist_local, true);
 	m_list_local.use_drag_and_drop(true);
 	m_list_local.load_column_width(&theApp, _T("shell list0"));
 	m_list_local.set_path(_T("d:\\"));
 	//m_list_local.add_drag_images(IDB_DRAG_ONE_FILE, IDB_DRAG_MULTI_FILES);
 
-	m_list_remote.set_as_shell_listctrl(&m_ShellImageList, false);
+	m_list_remote.set_as_shell_listctrl(&m_shell_imagelist_remote, false);
 	m_list_remote.use_drag_and_drop(true);
 }
 
 void CnFTDServerDlg::init_pathctrl()
 {
-	m_path_local.set_shell_imagelist(&m_ShellImageList);
+	m_path_local.set_shell_imagelist(&m_shell_imagelist_local);
 	m_path_local.set_path(_T("d:\\"));
 
-	m_path_remote.set_shell_imagelist(&m_ShellImageList);
+	m_path_remote.set_shell_imagelist(&m_shell_imagelist_remote);
 	m_path_remote.set_is_local_device(false);
 }
 
@@ -637,6 +643,10 @@ void CnFTDServerDlg::InitServerManager()
 {
 	logWrite(_T("Begin"));
 
+	std::deque<CString> drive_list;
+	m_ServerManager.DriveList(&drive_list);
+	m_shell_imagelist_remote.set_drive_list(&drive_list);
+
 	//m_ulServerDiskSpace.QuadPart = m_ServerManager.Refresh(&m_listServerFile, &m_barTextServer, m_ServerManager.m_SERVERSIDE);
 	//logWrite(_T("Server Refresh"));
 	//m_ulClientDiskSpace.QuadPart = m_ServerManager.Refresh(&m_listClientFile, &m_barTextClient, m_ServerManager.m_CLIENTSIDE);
@@ -650,7 +660,6 @@ void CnFTDServerDlg::InitServerManager()
 	//logWrite(_T("refresh_tree ok"));
 
 	//m_ServerManager.GetDesktopPath(&m_treeClient);	// 리모트의 바탕 화면 경로를 얻어서 저장
-	//m_ServerManager.GetDocumentPath(&m_treeClient);	// 리모트의 내 문서 경로를 얻어서 저장
 	//logWrite(_T("Get Client Path"));
 }
 
@@ -905,23 +914,38 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_folder_list)
 	{
+		int i;
 		CString path = *(CString*)lParam;
 
 		//path가 "내 PC"이면 DriveList()를, 그렇지 않으면 refresh_tree_folder()를 호출한다.
-		if (path == m_tree_remote.m_pShellImageList->get_shell_known_string_by_csidl(CSIDL_DRIVES))
+		if (path == get_system_label(CSIDL_DRIVES))
 		{
 			std::deque<CString> drive_list;
 			m_ServerManager.DriveList(&drive_list);
+			m_shell_imagelist_remote.set_drive_list(&drive_list);
 
-			for (int i = 0; i < drive_list.size(); i++)
+			for (i = 3; i < drive_list.size(); i++)
 			{
 				m_tree_remote.insert_drive(drive_list[i]);
-				m_path_remote.add_remote_drive_volume(drive_list[i]);
+				//m_path_remote.add_remote_drive_volume(drive_list[i]);
 			}
 		}
 		else
 		{
-			m_ServerManager.refresh_tree_folder(&m_tree_remote, path);
+			//if (path == get_system_label(CSIDL_PERSONAL) + _T("\\"))
+			//	path = m_remoteDocumentPath;
+			//else if (path == get_system_label(CSIDL_DESKTOP) + _T("\\"))
+			//	path = m_remoteDesktopPath;
+			//m_ServerManager.refresh_tree_folder(&m_tree_remote, path);
+			std::deque<WIN32_FIND_DATA> dq;
+			m_ServerManager.get_folderlist(path, &dq);
+
+			for (i = 0; i < dq.size(); i++)
+			{
+				std::deque<WIN32_FIND_DATA> dq_sub_folder;
+				m_ServerManager.get_folderlist(path + _T("\\") + CString(dq[i].cFileName), &dq_sub_folder);
+				m_tree_remote.insert_folder(&dq[i], dq_sub_folder.size() > 0);
+			}
 		}
 	}
 
@@ -933,7 +957,14 @@ void CnFTDServerDlg::OnTvnSelchangedTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	ChangeDirectory(m_tree_local.get_fullpath(), SERVER_SIDE);
+	//ChangeDirectory()를 써서 local이든 remote이든 공통으로 처리하면 좋지만
+	//tree가 변경된 경우는 path와 listctrl만 refresh한다든지 여러가지 부가적인 처리가 필요하여
+	//local인 경우는 직접 처리한다.
+	//ChangeDirectory(m_tree_local.get_fullpath(), SERVER_SIDE);
+	CString path = m_tree_local.get_fullpath();
+
+	m_list_local.set_path(path);
+	m_path_local.set_path(path);
 
 	*pResult = 0;
 }
@@ -943,11 +974,56 @@ void CnFTDServerDlg::OnTvnSelchangedTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	ChangeDirectory(m_tree_remote.get_fullpath(), CLIENT_SIDE);
+	CString path = m_tree_remote.get_fullpath(NULL);
+
+	//remote의 바탕화면, 내 PC는 그 경로가 고정이지만 MyDocuments는 사용자가 이를 변경할 수 있으므로 별도 처리해야 한다.
+	//내 문서의 기본 레이블인 "문서"를 리턴하면 이를 m_remoteDocumentPath로 변경하여 사용한다.
+
+	//내 PC
+	if (path == get_system_label(CSIDL_DRIVES))
+		path = m_shell_imagelist_remote.get_drive_list()->at(0);
+	//바탕화면
+	else if (path == get_system_label(CSIDL_DESKTOP))
+		path = m_shell_imagelist_remote.get_drive_list()->at(1);
+	//문서 폴더
+	else if (path == get_system_label(CSIDL_PERSONAL))
+		path = m_shell_imagelist_remote.get_drive_list()->at(2);
+
+	ChangeDirectory(path, CLIENT_SIDE);
 
 	*pResult = 0;
 }
 
+void CnFTDServerDlg::OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	int index = pNMItemActivate->iItem;
+
+	CString path = m_list_local.get_path();
+	CString new_path;
+
+	if (path == get_system_label(CSIDL_DRIVES))
+	{
+		new_path = convert_special_folder_to_real_path(m_list_local.get_text(index, CVtListCtrlEx::col_filename),
+			m_shell_imagelist_local.get_csidl_map());
+		m_list_local.set_path(new_path);
+		m_path_local.set_path(new_path);
+		m_tree_local.set_path(new_path);
+	}
+	else
+	{
+		new_path = m_list_local.get_path() + _T("\\") + m_list_local.get_text(index, CVtListCtrlEx::col_filename);
+		if (PathIsDirectory(new_path))
+		{
+			m_list_local.set_path(new_path);
+			m_path_local.set_path(new_path);
+			m_tree_local.set_path(new_path);
+		}
+	}
+
+	*pResult = 0;
+}
 
 void CnFTDServerDlg::OnNMDblclkListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
@@ -955,7 +1031,7 @@ void CnFTDServerDlg::OnNMDblclkListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	int index = pNMItemActivate->iItem;
 
-	//is file? just return.
+	//is a file? just return? transfer?
 	if (m_list_remote.get_text(index, CVtListCtrlEx::col_filesize).IsEmpty() == false)
 		return;
 
@@ -977,9 +1053,9 @@ BOOL CnFTDServerDlg::ChangeDirectory(CString path, DWORD dwSide)
 	if (dwSide == SERVER_SIDE)
 	{
 		if (_tchdir(path) == 0)
-			return TRUE;
+			return true;
 		else
-			return FALSE;
+			return false;
 	}
 	else
 	{
@@ -995,8 +1071,9 @@ BOOL CnFTDServerDlg::ChangeDirectory(CString path, DWORD dwSide)
 			}
 		}
 
-		result = m_ServerManager.ChangeDirectory(path, m_dwSide, false);
-		if (result)
+
+		//result = m_ServerManager.ChangeDirectory(path, m_dwSide, false);
+		if (true)//result)
 		{
 			m_remoteCurrentPath = path; // 리모트 경로 저장
 			SaveRemoteLastPath();
@@ -1008,10 +1085,22 @@ BOOL CnFTDServerDlg::ChangeDirectory(CString path, DWORD dwSide)
 			//m_ServerManager.refresh_list(&dq, false);
 			m_ServerManager.get_filelist(path, &dq);
 
+			//dq[i]의 cFileName은 전체경로가 아닌 파일 또는 폴더명만 리턴되므로 add_file()할 때에는 전체경로로 넣어줘야 한다.
+			//단, path가 "내 PC"인 경우는 처리하지 않는다.
+			CString filename;
+			CString fullpath;
+			bool is_disk_list = (path == get_system_label(CSIDL_DRIVES));
 			for (i = 0; i < dq.size(); i++)
+			{
+				if (!is_disk_list)
+				{
+					fullpath.Format(_T("%s%s%s"), path, (path.Right(1) == '\\' ? _T("") : _T("\\")), dq[i].cFileName);
+					_stprintf(dq[i].cFileName, _T("%s"), fullpath);
+				}
 				m_list_remote.add_file(&dq[i]);
+			}
 
-			m_list_remote.display_list();
+			m_list_remote.display_list(path);
 
 			//path ctrl 갱신. dq에서 파일들을 제외하고 폴더 목록을 넘겨준다.
 			std::deque<CString> folder_list;
@@ -1078,9 +1167,15 @@ void CnFTDServerDlg::set_color_theme(int theme)
 	m_static_count_remote.set_color(m_theme.cr_text, m_theme.cr_back);
 }
 
-//보내기 버튼, 받기 버튼, drag&drop으로 전송을 시작한다.
+//보내기 버튼 or 받기 버튼 or drag&drop으로 전송을 시작한다.
 void CnFTDServerDlg::FileTransfer(DWORD target)
 {
+	if (m_transfer_from.size() == 0)
+	{
+		AfxMessageBox(_T("선택된 파일이 없습니다."));
+		return;
+	}
+
 	//l to l, l to r, r to l, r to l 4가지 모두 나눠서 처리?? 우선 ltr, rtl 2가지만 고려한다.
 	if (m_dwSide == SERVER_SIDE && target == SERVER_SIDE)
 	{
@@ -1091,12 +1186,28 @@ void CnFTDServerDlg::FileTransfer(DWORD target)
 		return;
 	}
 
-	std::deque<WIN32_FIND_DATA> dq;
-	m_ServerManager.get_filelist(m_transfer_to, &dq);
+	std::deque<WIN32_FIND_DATA> filelist;
 
-	return;
-	//m_tarnsfer_from 에 채워진 리스트에서 폴더들인 경우는 다시 파일로 재구성해서 넣어줘야 한다.
-	//rebuild_transfer_from_list();
+	//전송할 파일목록을 filelist에 채운다.
+	//이 목록을 CnFTDFileTransferDialog에 전달하고
+	//그 dlg의 thread에서 전체 파일 목록을 재구성한 후 순차적으로 전송을 시작한다.
+	//추후에는 multithread로 파일을 전송하는 방법 또한 생각해야 한다.
+	for (int i = 0; i < m_transfer_from.size(); i++)
+	{
+		WIN32_FIND_DATA data;
+		HANDLE hFind = FindFirstFile(m_transfer_from[i], &data);
+		filelist.push_back(data);
+		FindClose(hFind);
+	}
+	/*
+	if (m_dwSide == SERVER_SIDE)
+	{
+	}
+	else
+	{
+		m_ServerManager.get_filelist(m_transfer_to, &filelist);
+	}
+	*/
 
 	CnFTDFileTransferDialog m_FileTransferDlg;
 
@@ -1116,7 +1227,8 @@ void CnFTDServerDlg::FileTransfer(DWORD target)
 		pulDiskSpace = &m_ulServerDiskSpace;
 	}
 
-	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, pListFile, pulDiskSpace, m_dwSide, false))
+	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &filelist, pulDiskSpace,
+												m_dwSide, get_part(m_transfer_from[0], fn_folder), m_transfer_to, false))
 	{
 		m_FileTransferDlg.DoModal();
 	}
