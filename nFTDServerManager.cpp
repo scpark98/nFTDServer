@@ -324,12 +324,6 @@ void CnFTDServerManager::close_socket()
 
 void CnFTDServerManager::DriveList(std::deque<CString>* dq)
 {
-	//DriveList를 구할 때 내 PC의 Label, 바탕화면 경로, 문서 경로도 함께 구한다.
-	//순서 중요!
-	dq->push_back(GetRemoteMyPCLabel());
-	dq->push_back(GetRemoteDesktopPath());	// 리모트의 내 문서 경로를 얻어서 저장
-	dq->push_back(GetRemoteDocumentPath());	// 리모트의 내 문서 경로를 얻어서 저장
-
 	UINT DriveType;
 	TCHAR DriveName[MAX_PATH] = { 0, };
 
@@ -555,7 +549,7 @@ void CnFTDServerManager::KeepDataConnection()
 	}
 }
 
-bool CnFTDServerManager::ChangeDirectory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket)
+bool CnFTDServerManager::change_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket)
 {
 	logWrite(_T("Path : %s"), lpPath);
 
@@ -572,12 +566,12 @@ bool CnFTDServerManager::ChangeDirectory(LPCTSTR lpPath, DWORD dwSide, bool bDat
 	{
 		if (!bDataSocket)
 		{
-			if (!(bRet = m_socket.ChangeDirectory(lpPath)))
+			if (!(bRet = m_socket.change_directory(lpPath)))
 				KeepConnection();
 		}
 		else
 		{
-			if (!(bRet = m_DataSocket.ChangeDirectory(lpPath)))
+			if (!(bRet = m_DataSocket.change_directory(lpPath)))
 				KeepDataConnection();
 		}
 	}
@@ -648,7 +642,7 @@ void CnFTDServerManager::ChangeDrvComboBox(CDrvComboBox* pDrvComboBox, DWORD dwS
 			}
 		}
 
-		ChangeDirectory(Drive, NULL, dwSide);
+		change_directory(Drive, NULL, dwSide);
 		while (pDrvComboBox->DeleteFolder(0)) {}
 		pDrvComboBox->SetCurSelection(pDrvComboBox->GetCurSel());
 	}
@@ -656,7 +650,7 @@ void CnFTDServerManager::ChangeDrvComboBox(CDrvComboBox* pDrvComboBox, DWORD dwS
 	{	// Folder
 		while (pDrvComboBox->DeleteFolder(pDrvComboBox->GetDepth(pDrvComboBox->GetCurSel())))
 		{
-			ChangeDirectory(_T(".."), NULL, dwSide);
+			change_directory(_T(".."), NULL, dwSide);
 		}
 	}
 }
@@ -673,33 +667,37 @@ bool CnFTDServerManager::CurrentPath(DWORD dwPathLength, LPTSTR lpPath, DWORD dw
 	return false;
 }
 
-bool CnFTDServerManager::CreateDirectory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket)
+bool CnFTDServerManager::create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket)
 {
 	if (dwSide == SERVER_SIDE)
-		return true;// m_FileManager.CreateDirectory(lpPath);
-
-	if (!bDataSocket)
 	{
-		if (m_socket.CreateDirectory(lpPath))
-		{
-			return true;
-		}
-		else
-		{
-			KeepConnection();
-			return false;
-		}
+		return make_full_directory(lpPath);
 	}
 	else
 	{
-		if (m_DataSocket.CreateDirectory(lpPath))
+		if (!bDataSocket)
 		{
-			return true;
+			if (m_socket.create_directory(lpPath))
+			{
+				return true;
+			}
+			else
+			{
+				KeepConnection();
+				return false;
+			}
 		}
 		else
 		{
-			KeepDataConnection();
-			return false;
+			if (m_DataSocket.create_directory(lpPath))
+			{
+				return true;
+			}
+			else
+			{
+				KeepDataConnection();
+				return false;
+			}
 		}
 	}
 
@@ -729,7 +727,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 
 
 	if (!strStartPath.IsEmpty())
-		ChangeDirectory(strStartPath, dwSide, TRUE);
+		change_directory(strStartPath, dwSide, TRUE);
 
 	TCHAR temp2[20];
 
@@ -789,7 +787,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 		// 상위폴더로
 		while (CurrentDepth != _tstoi(pDepthList->GetItemText(i, 0)))
 		{
-			ChangeDirectory(_T(".."), dwSide, TRUE);
+			change_directory(_T(".."), dwSide, TRUE);
 			CurrentDepth--;
 
 			for (int j = To.GetLength() - 1; j > To.Find(_T("\\")); j--)
@@ -805,7 +803,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 		if (pXList->GetItemText(i, 1).GetLength() == 0)
 		{
 			// change directory
-			if (!ChangeDirectory(pXList->GetItemText(i, 0), dwSide, TRUE))
+			if (!change_directory(pXList->GetItemText(i, 0), dwSide, TRUE))
 				continue;
 
 			// get path
@@ -878,7 +876,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 
 	while (CurrentDepth != 0)
 	{
-		ChangeDirectory(_T(".."), dwSide, TRUE);
+		change_directory(_T(".."), dwSide, TRUE);
 		CurrentDepth--;
 	}
 	return TRUE;
@@ -936,7 +934,7 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 	return true;
 }
 
-bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq)
+bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath)
 {
 	msg ret;
 
@@ -984,18 +982,37 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 		TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
 	}
 
+	//client에서 넘어올 때 폴더목록이 fullpath로 넘어오므로 path길이만큼 앞에서 잘라준다.
+	if (dq->size() > 0 && !fullpath)
+	{
+		CString sPath = GetParentDirectory(CString(dq->at(0).cFileName));
+		int folder_length = sPath.GetLength() + 1;
+
+		for (int i = 0; i < dq->size(); i++)
+		{
+			TCHAR* p = (data.cFileName);
+			p += folder_length;
+			_tcscpy(data.cFileName, p);
+		}
+	}
+
 	return true;
 }
 
-CString CnFTDServerManager::GetRemoteMyPCLabel()
+bool CnFTDServerManager::get_remote_system_label(std::map<int, CString> *map)
 {
-	WIN32_FIND_DATA data;
-	if (m_socket.GetMyPCLabel(&data))
-	{
-		return data.cFileName;
-	}
+	if (m_socket.get_remote_system_label(map))
+		return true;
 
-	return _T("");
+	return false;
+}
+
+bool CnFTDServerManager::get_remote_system_path(std::map<int, CString>* map)
+{
+	if (m_socket.get_remote_system_path(map))
+		return true;
+
+	return false;
 }
 
 CString CnFTDServerManager::GetRemoteDesktopPath()

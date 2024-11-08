@@ -28,21 +28,22 @@ public:
 
 	//scpark add
 	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq);
-	bool	get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq);
+	bool	get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath);
 
 	//이전 코드 함수명 : GetFileList(CShellTreeCtrl* pShellTreeCtrl)
 	//tree에서 해당 path folder의 sub folder 목록을 refresh한다.
 	//선택할 때가 아니라 폴더를 처음 펼칠 때, 새로고침 할 때 사용된다.
 	void	refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CString path);
 
-	bool	ChangeDirectory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
-	bool	CreateDirectory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
+	bool	change_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
+	bool	create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
 	//void	ChangeDrvComboBox(CDrvComboBox* pDrvComboBox, DWORD dwSide);
 	bool	Rename(LPCTSTR lpOldName, LPCTSTR lpNewName, DWORD dwSide);
 	bool	Delete(CVtListCtrlEx* pShellListCtrl, DWORD dwSide);
 	bool	CurrentPath(DWORD dwPathLength, LPTSTR lpPath, DWORD dwSide);
 
-	CString GetRemoteMyPCLabel();
+	bool	get_remote_system_label(std::map<int, CString> *map);
+	bool	get_remote_system_path(std::map<int, CString>* map);
 	CString GetRemoteDesktopPath();
 	CString GetRemoteDocumentPath();
 
@@ -68,13 +69,13 @@ public:
 	BOOL m_isP2PConnection;
 	int m_nClientOSType;
 
-private :
-	void KeepConnection();
-	void KeepDataConnection();
-
 	CnFTDServerSocket m_socket;
 	CnFTDServerSocket m_DataSocket;
 	CnFTDFileManager m_FileManager;
+
+private :
+	void KeepConnection();
+	void KeepDataConnection();
 
 	BOOL m_bDataClose;
 	BOOL m_isStatisticsMode;

@@ -17,7 +17,6 @@
 
 #include "nFTDServerManager.h"
 
-#define	TITLEBAR_HEIGHT		32
 
 // CnFTDServerDlg 대화 상자
 class CnFTDServerDlg : public CDialogEx
@@ -40,9 +39,6 @@ public:
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 	CString				m_title = _T("FileTransfer (not connected)");
 
-	//Shell의 imagelist 및 shell과 관계된 멤버 제공
-	CShellImageList		m_shell_imagelist_local;
-	CShellImageList		m_shell_imagelist_remote;
 	void				init_treectrl();
 	void				init_listctrl();
 	void				init_pathctrl();
@@ -51,10 +47,12 @@ public:
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
 
-	CVtListCtrlEx* m_pDropListCtrl;
+	CVtListCtrlEx*		m_pDropListCtrl;
 
 	CnFTDServerManager	m_ServerManager;
-	DWORD				m_dwSide = SERVER_SIDE;
+	//l to l, r to r도 처리해야 하므로 src, dst가 어디인지 구분해야 한다.
+	int					m_srcSide = SERVER_SIDE;
+	int					m_dstSide = CLIENT_SIDE;
 	bool				m_bViewerMode;
 
 	ULARGE_INTEGER		m_ulClientDiskSpace;
@@ -64,7 +62,7 @@ public:
 	//CString				m_remoteMyPCLabel;		//"내 PC"가 기본값이지만 사용자가 변경할 수 있고 OS 버전마다 다르다.
 	//CString				m_remoteDocumentPath;
 	//CString				m_remoteDesktopPath;
-	BOOL				ChangeDirectory(CString path, DWORD dwSide);
+	BOOL				change_directory(CString path, DWORD dwSide);
 	void				SetDefaultPathToDesktop(int type);
 
 	CString				GetLocalLastPath();
@@ -81,9 +79,10 @@ public:
 	void				InitServerManager();
 
 	//전송시작 버튼 또는 drag&drop으로 전송을 시작한다.
-	std::deque<CString> m_transfer_from;
+	std::deque<CString> m_transfer_list;
+	CString				m_transfer_from;
 	CString				m_transfer_to;
-	void				FileTransfer(DWORD target);
+	void				file_transfer();
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME

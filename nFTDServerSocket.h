@@ -3,7 +3,12 @@
 #include "nFTDProtocol.h"
 #include "blastsock.h"
 
+#include "../../Common/CStatic/SCStatic/SCStatic.h"
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
+
+//전송상황을 nFTDFileTransferDialog로 보내기 위한 메시지. 속도 저하되므로 사용 안함.
+//static const UINT Message_CnFTDServerSocket = ::RegisterWindowMessage(_T("MessageString_CnFTDServerSocket"));
 
 #define CONNECTION_CONNECT	0	
 #define CONNECTION_LISTEN	1
@@ -17,6 +22,12 @@
 #define WRITE_IGNORE		0x00000400
 #define WRITE_ALL			0x00001000
 
+enum TRANSFER_RESULT
+{
+	transfer_result_cancel = -1,
+	transfer_result_fail,
+	transfer_result_success,
+};
 
 class CnFTDServerSocket
 {
@@ -34,12 +45,12 @@ public:
 	void SetConnection(DWORD dwConnection);
 
 
-	BOOL CreateDirectory(LPCTSTR lpPathName);
+	BOOL create_directory(LPCTSTR lpPathName);
 	BOOL ExecuteFile(LPCTSTR lpDirName);
 	BOOL Rename(LPCTSTR lpOldName, LPCTSTR lpNewName);
-	BOOL DeleteDirectory(LPCTSTR lpPath);
-	BOOL DeleteFile(LPCTSTR lpPathName);
-	BOOL ChangeDirectory(LPCTSTR lpDirName);
+	BOOL delete_directory(LPCTSTR lpPath);
+	BOOL delete_file(LPCTSTR lpPathName);
+	BOOL change_directory(LPCTSTR lpDirName);
 	BOOL TotalSpace(PULARGE_INTEGER lpTotalNumberOfFreeBytes);
 	BOOL RemainSpace(PULARGE_INTEGER lpTotalNumberOfRemainBytes);
 	BOOL CurrentPath(DWORD nBufferLength, LPTSTR lpCurrentPath);
@@ -53,13 +64,20 @@ public:
 
 	BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
 	BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
+	int send_file(int index, WIN32_FIND_DATA from, LPCTSTR to);
+	int recv_file(int index, WIN32_FIND_DATA from, LPCTSTR to);
 	void SetFileWriteMode(DWORD dwWrite);
 
-	BOOL GetMyPCLabel(WIN32_FIND_DATA* pFileInfo);
+	BOOL get_remote_system_label(std::map<int, CString> *map);
+	BOOL get_remote_system_path(std::map<int, CString>* map);
 	BOOL GetDesktopPath(WIN32_FIND_DATA* pFileInfo);
 	BOOL GetDocumentPath(WIN32_FIND_DATA* pFileInfo);
 
 	blastsock m_sock;
+	//void	set_transfer_dialog_handle(HWND hWnd) { m_hTransferDialog = hWnd; }
+	void	set_ui_controls(CMacProgressCtrl* pProgress, CVtListCtrlEx* pListCtrl, CSCStatic* pStaticSpeed, CSCStatic* pStaticIndex);
+	void	set_transfer_pause(bool pause = true) { m_transfer_pause = pause; }
+	void	set_transfer_stop(bool stop = true) { m_transfer_stop = stop; }
 
 protected :
 	LONGLONG FileTime_to_POSIX(FILETIME ft);
@@ -71,5 +89,16 @@ protected :
 	USHORT m_port;
 	int m_iServerNum;
 	BOOL m_bIsN2NConnectionTiming;
+
+	bool	m_transfer_pause = false;
+	bool	m_transfer_stop = false;
+
+	//UI 표시를 위한 컨트롤들
+	//HWND m_hTransferDialog = NULL;
+	CSCStatic *m_static_message = NULL;
+	CMacProgressCtrl *m_progress = NULL;
+	CSCStatic *m_static_speed = NULL;
+	CSCStatic *m_static_index = NULL;
+	CVtListCtrlEx *m_list = NULL;
 };
 

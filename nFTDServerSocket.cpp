@@ -2,6 +2,7 @@
 #include "nFTDServerSocket.h"
 #include <mstcpip.h>
 
+#include <map>
 #include <thread>
 
 extern HMODULE g_hRes;
@@ -379,7 +380,7 @@ BOOL CnFTDServerSocket::NextDriveList(PUINT pDriveType, LPTSTR lpDriveName)
 	return TRUE;
 }
 
-BOOL CnFTDServerSocket::CreateDirectory(LPCTSTR lpPathName)
+BOOL CnFTDServerSocket::create_directory(LPCTSTR lpPathName)
 {
 	msgString1 str1;
 	msg ret;
@@ -453,7 +454,7 @@ BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)
 	}
 }
 
-BOOL CnFTDServerSocket::DeleteDirectory(LPCTSTR lpPath)
+BOOL CnFTDServerSocket::delete_directory(LPCTSTR lpPath)
 {
 	msgString1 str1;
 	msg ret;
@@ -487,7 +488,7 @@ BOOL CnFTDServerSocket::DeleteDirectory(LPCTSTR lpPath)
 	}
 }
 
-BOOL CnFTDServerSocket::DeleteFile(LPCTSTR lpPathName)
+BOOL CnFTDServerSocket::delete_file(LPCTSTR lpPathName)
 {
 	msgString1 str1;
 	msg ret;
@@ -521,7 +522,7 @@ BOOL CnFTDServerSocket::DeleteFile(LPCTSTR lpPathName)
 	}
 }
 
-BOOL CnFTDServerSocket::ChangeDirectory(LPCTSTR lpDirName)
+BOOL CnFTDServerSocket::change_directory(LPCTSTR lpDirName)
 {
 	msgString1 str1;
 	msg ret;
@@ -677,30 +678,98 @@ BOOL CnFTDServerSocket::CurrentPath(DWORD nBufferLength, LPTSTR lpCurrentPath)
 	return TRUE;
 }
 
-BOOL CnFTDServerSocket::GetMyPCLabel(WIN32_FIND_DATA* pFileInfo)
+BOOL CnFTDServerSocket::get_remote_system_label(std::map<int, CString>* map)
 {
-	msg ret;
-	msgFileInfo msgFindFileData;
-	memset(&msgFindFileData, 0, sizeof(msgFileInfo));
+	map->clear();
 
-	ret.type = nFTD_MyPC_Label;
+	msg ret;
+	ret.type = nFTD_get_system_label;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
 		return FALSE;
 	}
-	if (!m_sock.RecvExact((LPSTR)&msgFindFileData, sz_msgFileInfo, BLASTSOCK_BUFFER))
+
+	while (true)
 	{
-		logWriteE(_T("CODE-2 : %d"), GetLastError());
-		return FALSE;
+		int csidl = -1;
+		int len = 0;
+		TCHAR label[MAX_PATH] = { 0, };
+
+		//csidl을 받고
+		if (!m_sock.RecvExact((LPSTR)&csidl, sizeof(int), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-1 : %d "), GetLastError());
+			return false;
+		}
+
+		//-1이 넘어오면 끝신호.
+		if (csidl < 0)
+			break;
+
+		//실제 레이블의 길이를 받고
+		if (!m_sock.RecvExact((LPSTR)&len, sizeof(int), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-2 : %d "), GetLastError());
+			return false;
+		}
+
+		if (!m_sock.RecvExact((LPSTR)&label, len, BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-2 : %d "), GetLastError());
+			return false;
+		}
+
+		map->insert(std::pair<int, CString>(csidl, label));
 	}
-	if (!m_sock.RecvExact((LPSTR)pFileInfo->cFileName, msgFindFileData.length, BLASTSOCK_BUFFER))
+
+	return TRUE;
+}
+
+BOOL CnFTDServerSocket::get_remote_system_path(std::map<int, CString>* map)
+{
+	map->clear();
+
+	msg ret;
+	ret.type = nFTD_get_system_path;
+	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
-		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
 		return FALSE;
 	}
 
-	pFileInfo->cFileName[msgFindFileData.length / 2] = '\0';
+	while (true)
+	{
+		int csidl = -1;
+		int len = 0;
+		TCHAR path[MAX_PATH] = { 0, };
+
+		//csidl을 받고
+		if (!m_sock.RecvExact((LPSTR)&csidl, sizeof(int), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-1 : %d "), GetLastError());
+			return false;
+		}
+
+		//-1이 넘어오면 끝신호.
+		if (csidl < 0)
+			break;
+
+		//실제 경로의 길이를 받고
+		if (!m_sock.RecvExact((LPSTR)&len, sizeof(int), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-2 : %d "), GetLastError());
+			return false;
+		}
+
+		if (!m_sock.RecvExact((LPSTR)&path, len, BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-2 : %d "), GetLastError());
+			return false;
+		}
+
+		map->insert(std::pair<int, CString>(csidl, path));
+	}
 
 	return TRUE;
 }
@@ -766,3 +835,155 @@ void CnFTDServerSocket::SetFileWriteMode(DWORD dwWrite)
 	m_dwWrite = dwWrite;
 }
 
+int CnFTDServerSocket::send_file(int index, WIN32_FIND_DATA from, LPCTSTR to)
+{
+	msg			ret;
+	msgString1	str1;
+	HANDLE		hFile;
+	ULARGE_INTEGER	filesize;
+	
+	hFile = CreateFile(from.cFileName, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return transfer_result_fail;
+	}
+
+	filesize.LowPart = from.nFileSizeLow;
+	filesize.HighPart = from.nFileSizeHigh;
+
+	// send file information
+	str1.type = nFTD_FileTransfer;
+	str1.length = _tcslen(to) * 2;
+
+	//파일전송 명령 및 대상 fullpath 길이 전달
+	if (!m_sock.SendExact((LPSTR)&str1, sz_msgString1, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return transfer_result_fail;
+	}
+
+	//fullpath 전달
+	if (!m_sock.SendExact((LPSTR)(to), str1.length, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-4 : %d"), GetLastError());
+		return transfer_result_fail;
+	}
+
+
+	//파일크기 전달
+	if (!m_sock.SendExact((LPSTR)&filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-4 : %d"), GetLastError());
+		return transfer_result_fail;
+	}
+
+
+	//수신측에서 파일 생성 및
+	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-7 : %d"), GetLastError());
+		return transfer_result_fail;
+	}
+
+	if (ret.type == nFTD_ERROR)
+	{
+		logWriteE(_T("Receive Error"));
+		CloseHandle(hFile);
+		return transfer_result_fail;
+	}
+	else if (ret.type == nFTD_FileExist)
+	{
+	}
+
+	//실제 전송 시작
+#define BUFFER_SIZE 40960
+
+	DWORD		dwBytesRead;
+	LPSTR		packet[BUFFER_SIZE] = { 0, };
+	ULONGLONG	sent_size = 0;
+	int nCompareSpeed = 0;
+
+	if (g_FT_mode != FT_MODE_AP2P)
+		nCompareSpeed = 0;
+
+	logWrite(_T("nCompareSpeed = %d"), nCompareSpeed);
+
+	m_transfer_pause = false;
+	m_transfer_stop = false;
+
+	do
+	{
+		while (m_transfer_pause)
+			Wait(1000);
+
+		if (m_transfer_stop)
+		{
+			CloseHandle(hFile);
+			return transfer_result_cancel;
+		}
+
+		ReadFile(hFile, packet, BUFFER_SIZE, &dwBytesRead, NULL);
+		if (dwBytesRead == 0)
+			break;
+
+#ifdef MOBILE_FILETRANSFER
+		if (!m_sock.SendExact(packet, dwBytesRead, BLASTSOCK_BUFFER))
+		{
+			CloseHandle(hFile);
+			return transfer_result_fail;
+		}
+#else
+		//if (osType == OS_MAC)
+		//{
+		//	if (!m_sock.SendExact(packet, dwBytesRead, BLASTSOCK_BUFFER))
+		//	{
+		//		delete[] packet;
+		//		delete[] packet2;
+		//		CloseHandle(hFile);
+		//		return FALSE;
+		//	}
+		//}
+		//else
+		{
+			// 20170404 : 파일전송 도중 파일길이 늘어나면 파일 섞일 가능성이 있다.
+			//            사전에 약속한길이만큼만 보내준다.
+			ULARGE_INTEGER remainSize;
+			remainSize.QuadPart = filesize.QuadPart - sent_size;
+			if (remainSize.QuadPart < dwBytesRead)
+			{
+				dwBytesRead = remainSize.QuadPart;
+			}
+
+			if (!m_sock.SendExact((char*)&packet, dwBytesRead))
+			{
+				CloseHandle(hFile);
+				return transfer_result_fail;
+			}
+		}
+
+		sent_size += dwBytesRead;
+		//::SendMessage(m_hTransferDialog, Message_CnFTDServerSocket, index, sent_size * 100 / filesize.QuadPart);
+		double percent = (double)sent_size * 100.0 / (double)filesize.QuadPart;
+		m_list->set_text(index, 2, d2S(percent));
+		TRACE(_T("dwBytesRead = %d, sent_size = %u, %d%%\n"), dwBytesRead, sent_size, (int)percent);
+#endif
+	} while (sent_size < filesize.QuadPart);
+
+	CloseHandle(hFile);
+
+	return transfer_result_success;
+}
+
+int CnFTDServerSocket::recv_file(int index, WIN32_FIND_DATA from, LPCTSTR to)
+{
+	return 0;
+}
+
+void CnFTDServerSocket::set_ui_controls(CMacProgressCtrl* pProgress, CVtListCtrlEx* pListCtrl, CSCStatic* pStaticSpeed, CSCStatic* pStaticIndex)
+{
+	m_progress = pProgress;
+	m_list = pListCtrl;
+	m_static_speed = pStaticSpeed;
+	m_static_index = pStaticIndex;
+}

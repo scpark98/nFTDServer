@@ -10,6 +10,9 @@
 
 #include "resource.h"		// 주 기호입니다.
 
+#include "../../Common/system/ShellImageList/ShellImageList.h"
+
+#define	TITLEBAR_HEIGHT		32
 
 // CnFTDServerApp:
 // 이 클래스의 구현에 대해서는 nFTDServer.cpp을(를) 참조하세요.
@@ -19,6 +22,9 @@ class CnFTDServerApp : public CWinApp
 {
 public:
 	CnFTDServerApp();
+
+	//Shell의 imagelist 및 shell과 관계된 멤버 제공
+	CShellImageList		m_shell_imagelist;
 
 // 재정의입니다.
 public:

@@ -36,6 +36,7 @@ CnFTDServerApp::CnFTDServerApp()
 
 CnFTDServerApp theApp;
 RSAKey g_rsakey;
+HMODULE g_hRes;
 
 
 // CnFTDServerApp 초기화
@@ -76,7 +77,11 @@ BOOL CnFTDServerApp::InitInstance()
 	gLog.set(_T("..\\bin\\Log"));
 	logWrite(_T("\n==================== Program Start ===================="));
 
+	g_hRes = AfxGetInstanceHandle();
 	SocketsInitializer socketsInitializer;
+
+	//shellimagelist를 초기화 한 후 트리, 리스트에서 공통으로 사용한다.
+	m_shell_imagelist.Initialize();
 
 	// rsa 키 생성
 	neturoCrypto crypt;

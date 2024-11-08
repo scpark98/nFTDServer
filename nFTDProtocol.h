@@ -40,7 +40,8 @@
 //scpark add 
 enum FTD_PROTOCOL
 {
-	nFTD_MyPC_Label = 40,
+	nFTD_get_system_label = 40,		//내 PC, 바탕 화면, 문서 등의 레이블 요청.
+	nFTD_get_system_path,			//바탕 화면, 문서 등의 절대 경로 요청.
 	nFTD_FileList_All,		//remote의 파일목록
 	nFTD_FolderList_All,	//nFTD_FileList_All을 이용할수도 있지만 파일이 많을 경우는 패킷 송수신 양이 커지므로 별도 정의.
 };
