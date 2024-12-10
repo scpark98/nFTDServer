@@ -37,6 +37,7 @@
 #define IDD_FILETRANSFER                130
 #define IDS_CLOSE_AFTER_TRANSFER        131
 #define IDS_FOLDER                      132
+#define IDD_MESSAGE                     132
 #define IDS_PATH                        133
 #define IDS_DEVICE_NAME                 134
 #define IDS_TRANSFER                    135
@@ -114,9 +115,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        132
+#define _APS_NEXT_RESOURCE_VALUE        134
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1019
+#define _APS_NEXT_CONTROL_VALUE         1020
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

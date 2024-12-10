@@ -193,8 +193,8 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 
 	//for test
-	//while (get_process_running_count(_T("nFTDClient.exe")) > 0)
-	//	KillProcess(_T("nFTDClient.exe"));
+	while (get_process_running_count(_T("nFTDClient.exe")) > 0)
+		kill_process_by_fullpath(_T("nFTDClient.exe"));
 
 	m_progress_space_local.SetColor(RGB(36, 160, 212), RGB(230, 230, 230));
 	m_progress_space_local.draw_border();
@@ -205,8 +205,8 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_progress_space_remote.SetPos(70);
 
 	CString my_ip = get_my_ip();
-	//if (my_ip == CString(__targv[4]))
-	//	ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
+	if (my_ip == CString(__targv[4]))
+		ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
 
 
 	init_treectrl();
@@ -230,7 +230,7 @@ void CnFTDServerDlg::init_treectrl()
 	m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
 	//m_tree_local.add_drag_images(IDB_DRAG_ONE_FILE, IDB_DRAG_MULTI_FILES);
-	m_tree_local.set_path(_T("c:\\"));
+	//m_tree_local.set_path(_T("c:\\"));
 
 	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false);
 }
@@ -238,19 +238,19 @@ void CnFTDServerDlg::init_treectrl()
 void CnFTDServerDlg::init_listctrl()
 {
 	m_list_local.set_as_shell_listctrl(&theApp.m_shell_imagelist, true);
-	m_list_local.use_drag_and_drop(true);
+	m_list_local.set_use_drag_and_drop(true);
 	m_list_local.load_column_width(&theApp, _T("shell list0"));
-	m_list_local.set_path(_T("d:\\"));
+	//m_list_local.set_path(_T("d:\\"));
 	//m_list_local.add_drag_images(IDB_DRAG_ONE_FILE, IDB_DRAG_MULTI_FILES);
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false);
-	m_list_remote.use_drag_and_drop(true);
+	m_list_remote.set_use_drag_and_drop(true);
 }
 
 void CnFTDServerDlg::init_pathctrl()
 {
 	m_path_local.set_shell_imagelist(&theApp.m_shell_imagelist);
-	m_path_local.set_path(_T("d:\\"));
+	//m_path_local.set_path(_T("d:\\"));
 
 	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist);
 	m_path_remote.set_is_local_device(false);
@@ -262,7 +262,7 @@ void CnFTDServerDlg::init_shadow()
 	m_shadow.Create(GetSafeHwnd());
 	m_shadow.SetSize(14);	// -19 ~ 19
 	m_shadow.SetSharpness(19);	// 0 ~ 19
-	m_shadow.SetDarkness(254);	// 0 ~ 254
+	m_shadow.SetDarkness(14);	// 0 ~ 254
 	m_shadow.SetPosition(0, 0);	// -19 ~ 19
 	m_shadow.SetColor(RGB(0, 0, 0));
 }
@@ -399,7 +399,8 @@ void CnFTDServerDlg::OnBnClickedOk()
 void CnFTDServerDlg::OnBnClickedCancel()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	KillProcess(_T("nFTDClient.exe"));
+	kill_process_by_fullpath(get_exe_directory() + _T("\\nFTDClient.exe"));
+	SaveLocalLastPath();
 
 	CDialogEx::OnCancel();
 }
@@ -620,11 +621,24 @@ void CnFTDServerDlg::initialize()
 {
 	InitServerManager();		// Server Manager 설정
 
-	CString remotePath = GetRemoteLastPath();
-	if (remotePath != _T(""))
+	CString path = convert_special_folder_to_real_path(GetLocalLastPath());
+	if (path.IsEmpty() || !PathFileExists(path))
+		path = get_known_folder(CSIDL_DRIVES);
+
+	logWrite(_T("local last path = %s"), path);
+	change_directory(path, SERVER_SIDE);
+
+	path = GetRemoteLastPath();
+	//if (path.IsEmpty() || !PathFileExists(path))
+	//	path = get_known_folder(CSIDL_DRIVES);
+
+	//logWrite(_T("remote last path = %s"), path);
+	//change_directory(path, CLIENT_SIDE);
+
+	if (path != _T(""))
 	{
-		logWrite(_T("RemotePath : %s"), remotePath);
-		if (!change_directory(remotePath, CLIENT_SIDE))
+		logWrite(_T("RemotePath : %s"), path);
+		if (!change_directory(path, CLIENT_SIDE))
 		{
 			SetDefaultPathToDesktop(1); // 실패 시 바탕화면으로 설정
 		}
@@ -863,7 +877,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			}
 			else
 			{
-				m_transfer_list.push_back(m_remoteCurrentPath + pDragListCtrl->get_path(dq[i]));
+				m_transfer_list.push_back(pDragListCtrl->get_path(dq[i]));
 			}
 			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CVtListCtrlEx::col_filename), m_transfer_list.back());
 		}
@@ -948,7 +962,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			if (dq.size() > 0)
 			{
 				path = GetParentDirectory(CString(dq[0].cFileName));
-				int folder_length = path.GetLength() + 1;
+				//"C:\\" 인 경우와 "C:\\Windows" 인 경우는 처리가 달라야 한다.
+				int folder_length = path.GetLength() + (path.Right(1) == '\\' ? 0 : 1);
 
 				for (i = 0; i < dq.size(); i++)
 				{
@@ -974,10 +989,10 @@ void CnFTDServerDlg::OnTvnSelchangedTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+
 	//change_directory()를 써서 local이든 remote이든 공통으로 처리하면 좋지만
 	//tree가 변경된 경우는 path와 listctrl만 refresh한다든지 여러가지 부가적인 처리가 필요하여
 	//local인 경우는 직접 처리한다.
-	//change_directory(m_tree_local.get_fullpath(), SERVER_SIDE);
 	CString path = m_tree_local.get_fullpath();
 
 	m_list_local.set_path(path);
@@ -1068,10 +1083,12 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 
 	if (dwSide == SERVER_SIDE)
 	{
-		if (_tchdir(path) == 0)
-			return true;
-		else
-			return false;
+		m_path_local.set_path(path);
+		m_tree_local.set_path(path);
+		m_list_local.set_path(path);
+
+		//if (_tchdir(path) == 0)
+		return true;
 	}
 	else
 	{
@@ -1112,7 +1129,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 				//	fullpath.Format(_T("%s%s%s"), path, (path.Right(1) == '\\' ? _T("") : _T("\\")), dq[i].cFileName);
 				//	_stprintf(dq[i].cFileName, _T("%s"), fullpath);
 				//}
-				m_list_remote.add_file(&dq[i]);
+				m_list_remote.add_file(&dq[i], true);
 			}
 
 			m_list_remote.display_list(path);
@@ -1129,6 +1146,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 
 			m_static_count_remote.set_textf(-1, _T("%d개 항목"), dq.size());
 		}
+
+		result = TRUE;
 	}
 
 	return result;
@@ -1162,7 +1181,7 @@ void CnFTDServerDlg::SaveLocalLastPath()
 #ifdef ANYSUPPORT
 	return;
 #endif
-	WritePrivateProfileString(_T("LOCAL"), _T("LAST_PATH"), m_tree_local.get_fullpath(), get_exe_directory() + _T("\\filetransfer.ini"));
+	WritePrivateProfileString(_T("LOCAL"), _T("LAST_PATH"), m_list_local.get_path(), get_exe_directory() + _T("\\filetransfer.ini"));
 }
 
 void CnFTDServerDlg::set_color_theme(int theme)
@@ -1210,11 +1229,23 @@ void CnFTDServerDlg::file_transfer()
 	for (int i = 0; i < m_transfer_list.size(); i++)
 	{
 		WIN32_FIND_DATA data;
-		HANDLE hFind = FindFirstFile(m_transfer_list[i], &data);
-		//data.cFileName은 폴더명 또는 파일명만 저장되므로 fullpath로 변경해서 넘겨줘야 한다.
-		_tcscpy(data.cFileName, m_transfer_list[i]);
+		memset(&data, 0, sizeof(data));
+
+		//로컬인 경우는 FindFirstFile()에 그 경로를 주면 WIN32_FIND_DATA 형식을 구할 수 있다.
+		if (m_srcSide == SERVER_SIDE)
+		{
+			HANDLE hFind = FindFirstFile(m_transfer_list[i], &data);
+			FindClose(hFind);
+			//FindFirstFile()로 구한 data.cFileName은 폴더명 또는 파일명만 저장되므로 fullpath로 변경해서 넘겨줘야 한다.
+			_tcscpy(data.cFileName, m_transfer_list[i]);
+		}
+		//remote인 경우는 m_list_remote의 m_cur_folder, m_cur_file 목록에서 찾아서 그 정보를 채워야 한다.
+		else
+		{
+			m_list_remote.get_remote_file_info(m_transfer_list[i], &data);
+		}
+
 		filelist.push_back(data);
-		FindClose(hFind);
 	}
 
 	CnFTDFileTransferDialog m_FileTransferDlg;
@@ -1232,12 +1263,16 @@ void CnFTDServerDlg::file_transfer()
 	{
 		pListFile = &m_list_remote;
 		pulDiskSpace = &m_ulServerDiskSpace;
+		m_transfer_from = convert_special_folder_to_real_path(m_remoteCurrentPath, m_list_remote.get_shell_imagelist());
 	}
 
 	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &filelist, pulDiskSpace,
 												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, false))
 	{
 		m_FileTransferDlg.DoModal();
+		
+		//전송이 모두 끝나면 해당 폴더를 refresh해준다.
+		change_directory(m_transfer_to, CLIENT_SIDE);
 	}
 	else
 	{

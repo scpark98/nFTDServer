@@ -5,9 +5,12 @@
 #include "../../Common/colors.h"
 #include "../../Common/CStatic/SCStatic/SCStatic.h"
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
-#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
+#include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
+//#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 #include "../../Common/ResizeCtrl.h"
 #include "../../Common/CWnd/WndShadow/WndShadow.h"
+#include "../../Common/CButton/SCSystemButtons/SCSystemButtons.h"
+
 
 // CnFTDFileTransferDialog 대화 상자
 
@@ -39,6 +42,7 @@ public:
 
 protected:
 	CResizeCtrl			m_resize;
+	CSCSystemButtons	m_sys_buttons;
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
@@ -76,9 +80,7 @@ public:
 	afx_msg void OnBnClickedOk();
 	afx_msg void OnBnClickedCancel();
 	CSCStatic m_static_message;
-	CMacProgressCtrl m_progress;
-	CSCStatic m_static_speed;
-	CSCStatic m_static_index;
+	CSCSliderCtrl m_progress;
 	CVtListCtrlEx m_list;
 	virtual BOOL OnInitDialog();
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
@@ -88,5 +90,5 @@ public:
 	afx_msg void OnPaint();
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	CButton m_button_cancel;
+	CGdiButton m_button_cancel;
 };

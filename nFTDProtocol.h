@@ -155,6 +155,7 @@ typedef struct _msg_server_num {
 typedef struct _ProgressData 
 {
 	DWORD nTime;
+	DWORD total_count;
 	DWORD nTransferedFile;
 	ULARGE_INTEGER ulTotalSize;
 	ULARGE_INTEGER ulReceivedSize;

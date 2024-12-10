@@ -135,6 +135,12 @@
     <ClInclude Include="..\..\Common\CWnd\WndShadow\WndShadow.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="MessageDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nFTDServer.cpp">
@@ -228,6 +234,12 @@
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\CWnd\WndShadow\WndShadow.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>

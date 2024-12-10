@@ -12,7 +12,7 @@
 
 #include "../../Common/system/ShellImageList/ShellImageList.h"
 
-#define	TITLEBAR_HEIGHT		32
+#define	TITLEBAR_HEIGHT		26
 
 // CnFTDServerApp:
 // 이 클래스의 구현에 대해서는 nFTDServer.cpp을(를) 참조하세요.

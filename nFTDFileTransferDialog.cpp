@@ -10,6 +10,7 @@
 #include <algorithm>
 
 #include "../../Common/MemoryDC.h"
+#include "MessageDlg.h"
 
 extern HMODULE g_hRes;
 
@@ -20,7 +21,13 @@ IMPLEMENT_DYNAMIC(CnFTDFileTransferDialog, CDialogEx)
 CnFTDFileTransferDialog::CnFTDFileTransferDialog(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_FILETRANSFER, pParent)
 {
-
+	m_ProgressData.nTime = 0;
+	m_ProgressData.nTransferedFile = 0;
+	m_ProgressData.bBlocked = FALSE;
+	m_ProgressData.fSpeed = 0;
+	m_ProgressData.ulReceivedSize.QuadPart = 0;
+	m_ProgressData.ulRemainTimeSecond.QuadPart = 0;
+	m_ProgressData.ulTotalSize.QuadPart = 0;
 }
 
 CnFTDFileTransferDialog::~CnFTDFileTransferDialog()
@@ -32,8 +39,6 @@ void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_STATIC_MESSAGE, m_static_message);
 	DDX_Control(pDX, IDC_PROGRESS, m_progress);
-	DDX_Control(pDX, IDC_STATIC_SPEED, m_static_speed);
-	DDX_Control(pDX, IDC_STATIC_INDEX, m_static_index);
 	DDX_Control(pDX, IDC_LIST, m_list);
 	DDX_Control(pDX, IDCANCEL, m_button_cancel);
 }
@@ -64,21 +69,22 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	init_shadow();
 
 	m_resize.Create(this);
-	m_resize.SetMinimumTrackingSize(CSize(600, 440));
+	m_resize.SetMinimumTrackingSize(CSize(480, 360));
 	m_resize.Add(IDC_STATIC_MESSAGE, 0, 0, 100, 0);
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
-	m_resize.Add(IDC_STATIC_SPEED, 0, 0, 0, 0);
-	m_resize.Add(IDC_STATIC_INDEX, 0, 0, 100, 0);
 	m_resize.Add(IDCANCEL, 100, 0, 0, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
 	Gdiplus::Color cr_back = Gdiplus::Color::White;
 	m_static_message.set_back_color(cr_back);
-	m_static_speed.set_back_color(cr_back);
-	m_static_index.set_back_color(cr_back);
 
-	m_progress.show_text();
-	m_progress.set_back_color(GRAY(192));
+	m_sys_buttons.create(this, 1, 0, 26, 26, SC_CLOSE);
+	m_sys_buttons.set_back_color(Gdiplus::Color::White);
+
+	m_progress.set_style(CSCSliderCtrl::style_progress);
+	m_progress.set_text_style(CSCSliderCtrl::text_style_dual_text);
+	m_progress.set_text_color(white);
+	m_progress.set_font_size(8);
 
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);
 
@@ -108,7 +114,15 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 			return;
 		}
 
+		TRACE(_T("파일전송 취소 처리\n"));
+		m_pServerManager->m_DataSocket.set_transfer_stop();
+		m_pServerManager->m_DataSocket.Close();
 		m_thread_transfer_started = false;
+
+		//취소 처리 플래그에 따라 정상적인 취소 절차가 모두 처리된 후에 창이 종료되어야 하므로
+		//여기서 CDialogEx::OnCancel();까지 가서는 안된다. 그냥 리턴한다.
+		//return;
+		Wait(1000);
 	}
 
 	m_list.save_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
@@ -129,6 +143,8 @@ BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerM
 	m_transfer_to = to;
 	m_pServerManager = pServerManager;
 
+	m_ProgressData.ulRemainDiskSpace.QuadPart = pulRemainDiskSpace->QuadPart;
+
 	return TRUE;
 }
 
@@ -142,7 +158,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_font_name(theApp.GetProfileString(_T("list"), _T("font name"), _T("맑은 고딕")));
 
 	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
-	m_list.set_header_height(24);
+	m_list.set_header_height(22);
 
 	//
 	m_list.set_use_own_imagelist(true);
@@ -157,6 +173,9 @@ void CnFTDFileTransferDialog::init_list()
 
 	//m_list.set_column_data_type(list_score, CVtListCtrlEx::column_data_type_percentage_grid);
 	m_list.set_column_data_type(col_status, CVtListCtrlEx::column_data_type_progress);
+	m_list.show_progress_text();
+	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
+	m_list.set_progress_text_color(Gdiplus::Color::Black);
 
 	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 
@@ -211,10 +230,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 	CString folder;
 	CString size_str;
 	ULARGE_INTEGER file_size;
-	ULARGE_INTEGER total_size;
-	ULONGLONG total_transfered = 0;
 
-	total_size.QuadPart = 0;
+	m_ProgressData.total_count = m_filelist.size();
+	m_ProgressData.ulTotalSize.QuadPart = 0;
+	m_ProgressData.ulReceivedSize.QuadPart = 0;
 
 	m_progress.SetRange(0, m_filelist.size());
 
@@ -236,7 +255,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		{
 			file_size.LowPart = m_filelist[i].nFileSizeLow;
 			file_size.HighPart = m_filelist[i].nFileSizeHigh;
-			total_size.QuadPart += file_size.QuadPart;
+			m_ProgressData.ulTotalSize.QuadPart += file_size.QuadPart;
 
 			size_str = get_size_string(file_size.QuadPart);
 
@@ -246,8 +265,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 		filename = get_part(m_filelist[i].cFileName, fn_name);
 
-		//depth 표시 공백
-		depth = get_char_count(m_filelist[i].cFileName, '\\') - 1;
+		//depth 표시를 위해 앞에 depth만큼 공백을 추가한다. m_transfer_from을 뺀 후 '\\'의 개수를 세어야 한다.
+		folder = m_filelist[i].cFileName;
+		folder.Replace(m_transfer_from, _T(""));
+		depth = get_char_count(folder, '\\') - 1;
 
 		//"파일명,100;크기,100;상태,60;"
 		m_list.insert_item(i, image_index, make_string(_T(" "), depth) + filename, size_str, _T(""));
@@ -255,9 +276,26 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	TRACE(_T("file = %d, folder = %d\n"), file_count, folder_count);
 
-	m_progress.SetPos(0);
-	m_progress.SetRange(0, m_filelist.size());
+	//디스크 남은 용량 체크
+	if (false)//m_ProgressData.ulTotalSize.QuadPart > m_ProgressData.ulRemainDiskSpace.QuadPart)
+	{
+		CString message;
+		message.LoadString(NFTD_IDS_MSGBOX_DISKFULL);
 
+		CMessageDlg dlgMessage;
+		//dlgMessage.SetMessage(MsgType::TypeOK, message);
+		dlgMessage.DoModal();
+
+		EndDialog(0);
+		return;
+	}
+
+
+	//전체 데이터 송수신 양은 항상 100%로 환산한다. 그래야 용량에 관계없이 표현가능하다.
+	m_progress.SetPos(0);
+	m_progress.SetRange(0, 100);
+
+	int res;
 	CString from;
 	CString to;
 	CString msg;
@@ -278,19 +316,21 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	//전송 상태를 메시지로 받아 표시해봤으나 메시지 처리 방식은 매우 딜레이가 심함.
 	//컨트롤들을 건네받아 컨트롤에서 직접 표시함.
-	m_pServerManager->m_DataSocket.set_ui_controls(&m_progress, &m_list, &m_static_speed, &m_static_index);
+	m_pServerManager->m_DataSocket.set_ui_controls(&m_progress, &m_list);
 
+	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
 		if (m_thread_transfer_started == false)
 			break;
 
-		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_folder));
+		//현재 전송중인 파일명 표시
+		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_name));
 
-		m_progress.SetPos(i + 1);
 		m_list.select_item(i, true, true, true);
-		m_static_index.set_textf(-1, _T("%d / %d (%s / %s)"), i + 1, m_filelist.size(), get_size_string(total_transfered), get_size_string(total_size.QuadPart));
+		//m_progress.set_text(_T("%d / %d (%s / %s)"), i + 1, m_filelist.size(),
+		//	get_size_string(m_ProgressData.ulReceivedSize.QuadPart), get_size_string(m_ProgressData.ulTotalSize.QuadPart));
 
 		//dst 경로 설정
 		to = m_filelist[i].cFileName;
@@ -314,19 +354,22 @@ void CnFTDFileTransferDialog::thread_transfer()
 			filesize.LowPart = m_filelist[i].nFileSizeLow;
 			filesize.HighPart = m_filelist[i].nFileSizeHigh;
 
+			//송신
 			if (m_dstSide == CLIENT_SIDE)
 			{
-				int res = m_pServerManager->m_DataSocket.send_file(i, m_filelist[i], to);
+				res = m_pServerManager->m_DataSocket.send_file(i, m_filelist[i], to, m_ProgressData);
 
 				//success
 				if (res == transfer_result_success)
 				{
+					m_list.set_text(i, col_status, _T("100"));
 					logWrite(_T("%3d / %3d sent ok. %s"), i + 1, m_filelist.size(), m_filelist[i].cFileName);
 				}
 				//cancel
 				else if (res == transfer_result_cancel)
 				{
-					//AfxMessageBox(_T("전송이 취소되었습니다."));
+					logWrite(_T("사용자에 의한 전송 취소."));
+					break;//AfxMessageBox(_T("전송이 취소되었습니다."));
 				}
 				//error
 				else
@@ -334,9 +377,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 				}
 			}
+			//수신
 			else
 			{
-				int res = m_pServerManager->m_DataSocket.recv_file(i, m_filelist[i], to);
+				res = m_pServerManager->m_DataSocket.recv_file(i, m_filelist[i], to, m_ProgressData);
 
 				//success
 				if (res == transfer_result_success)
@@ -346,7 +390,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 				//cancel
 				else if (res == transfer_result_cancel)
 				{
-					//AfxMessageBox(_T("수신이 취소되었습니다."));
+					logWrite(_T("사용자에 의한 전송 취소."));
+					break;//AfxMessageBox(_T("수신이 취소되었습니다."));
 				}
 				//error
 				else
@@ -357,8 +402,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 		}
 
-		total_transfered += filesize.QuadPart;
-		m_static_index.set_textf(-1, _T("%d / %d (%s / %s)"), i + 1, m_filelist.size(), get_size_string(total_transfered), get_size_string(total_size.QuadPart));
+		//m_progress.set_text(_T("%d / %d (%s / %s)"), i + 1, m_filelist.size(),
+		//	get_size_string(m_ProgressData.ulReceivedSize.QuadPart), get_size_string(m_ProgressData.ulTotalSize.QuadPart));
 	}
 	/*
 	if (!m_pServerManager->DataConnect())
@@ -378,7 +423,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_pServerManager->DataClose();
 
 	m_thread_transfer_started = false;
-	m_button_cancel.EnableWindow(false);
+	m_button_cancel.EnableWindow(true);
+	TRACE(_T("exit thread_transfer()\n"));
 }
 
 
@@ -516,6 +562,14 @@ void CnFTDFileTransferDialog::OnSize(UINT nType, int cx, int cy)
 	CDialogEx::OnSize(nType, cx, cy);
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+	CRect rc;
+	GetClientRect(rc);
+
+	if (m_sys_buttons.m_hWnd == NULL)
+		return;
+
+	m_sys_buttons.adjust(rc.top + 1, rc.right - 1);
+
 	Invalidate();
 }
 
