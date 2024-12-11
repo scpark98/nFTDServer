@@ -132,4 +132,14 @@ public:
 	CMacProgressCtrl m_progress_space_local;
 	CMacProgressCtrl m_progress_space_remote;
 	afx_msg void OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnListContextMenuSend();
+	afx_msg void OnListContextMenuNewFolder();
+	afx_msg void OnListContextMenuRename();
+	afx_msg void OnListContextMenuDelete();
+	afx_msg void OnListContextMenuRefresh();
+	afx_msg void OnListContextMenuSelectAll();
 };

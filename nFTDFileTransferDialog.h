@@ -55,11 +55,11 @@ protected:
 
 	int					m_srcSide;
 	int					m_dstSide;
-	//CVtListCtrlEx*		m_pFileList;
 	CnFTDServerManager* m_pServerManager;
 	LPTSTR				m_lpInitPath;
 	CString				m_transfer_from;
 	CString				m_transfer_to;
+	bool				m_auto_close = false;		//전송 완료 후 창을 닫을 것인지
 
 	ProgressData		m_ProgressData;
 

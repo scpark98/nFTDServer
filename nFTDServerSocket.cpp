@@ -876,14 +876,12 @@ int CnFTDServerSocket::send_file(int index, WIN32_FIND_DATA from, LPCTSTR to, Pr
 		return transfer_result_fail;
 	}
 
-
 	//파일크기 전달
 	if (!m_sock.SendExact((LPSTR)&filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-4 : %d"), GetLastError());
 		return transfer_result_fail;
 	}
-
 
 	//수신측에서 파일 생성 및
 	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -993,6 +991,7 @@ int CnFTDServerSocket::send_file(int index, WIN32_FIND_DATA from, LPCTSTR to, Pr
 		m_list->set_text(index, 2, d2S(percent, false, 0));
 		TRACE(_T("dwBytesRead = %d, sent_size = %u, %d%%\n"), dwBytesRead, sent_size, (int)percent);
 
+		//전체 파일 진행 상태 표시
 		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
 		m_progress->SetPos((int)percent);
 		m_progress->set_text(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
@@ -1008,7 +1007,237 @@ int CnFTDServerSocket::send_file(int index, WIN32_FIND_DATA from, LPCTSTR to, Pr
 
 int CnFTDServerSocket::recv_file(int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress)
 {
-	return 0;
+	msg ret;
+	msgString1 str1;
+	HANDLE		hFile;
+	ULARGE_INTEGER	src_filesize;
+	ULARGE_INTEGER	dst_filesize;
+	//ULARGE_INTEGER ulTemp;
+	src_filesize.HighPart = from.nFileSizeHigh;
+	src_filesize.LowPart = from.nFileSizeLow;
+
+	// send file request
+	str1.type = nFTD_FileTransferReq;
+	str1.length = _tcslen(from.cFileName) * 2;
+
+	//파일요청 명령 및 대상 fullpath length 전달
+	if (!m_sock.SendExact((LPSTR)&str1, sz_msgString1, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return FALSE;
+	}
+
+	//fullpath 전달
+	if (!m_sock.SendExact((LPSTR)from.cFileName, str1.length, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return FALSE;
+	}
+
+	// recv file information
+	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return FALSE;
+	}
+	if (ret.type == nFTD_ERROR)
+	{
+		logWriteE(_T("CODE-4 : %d"), GetLastError());
+		return FALSE;
+	}
+	if (ret.type == nFTD_FileSize) // 20170404 : 파일사이즈를 얻도록 프로토콜 추가
+	{
+		ULARGE_INTEGER old_filesize = src_filesize;
+		if (!m_sock.RecvExact((LPSTR)&src_filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-5 : %d"), GetLastError());
+			return FALSE;
+		}
+		Progress.ulTotalSize.QuadPart += (src_filesize.QuadPart - old_filesize.QuadPart); // 전체사이즈 다시계산
+	}
+
+	// send file information
+	hFile = CreateFile(to, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		ret.type = nFTD_ERROR;
+		if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-6 : %d"), GetLastError());
+			return FALSE;
+		}
+		return FALSE;
+	}
+	else
+	{
+		if (false)//GetLastError() == ERROR_ALREADY_EXISTS)
+		{
+			dst_filesize.LowPart = GetFileSize(hFile, &(dst_filesize.HighPart));
+
+			DWORD dwWrite = m_dwWrite;
+			if (dwWrite == WRITE_UNKNOWN)
+			{
+				//CnFTDFileExistDialog FileExistDlg(m_pParentDlg);
+				//Progress.bBlocked = TRUE;
+				//dwWrite = FileExistDlg.DoModal(lpToPathName, &ulExistFileSize);
+				//Progress.bBlocked = FALSE;
+				//if ((dwWrite & WRITE_ALL) == WRITE_ALL)
+				//{
+				//	m_dwWrite = dwWrite;
+				//}
+			}
+
+			if ((dwWrite & WRITE_CONTINUE) == WRITE_CONTINUE)
+			{
+				ret.type = nFTD_FileContinue;
+				if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+				{
+					logWriteE(_T("CODE-7 : %d"), GetLastError());
+					return FALSE;
+				}
+				if (!m_sock.SendExact((LPSTR)&dst_filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+				{
+					logWriteE(_T("CODE-8 : %d"), GetLastError());
+					return FALSE;
+				}
+				SetFilePointer(hFile, 0, NULL, FILE_END);
+				Progress.ulTotalSize.QuadPart -= dst_filesize.QuadPart;
+				src_filesize.QuadPart -= dst_filesize.QuadPart;
+			}
+			else if ((dwWrite & WRITE_OVERWRITE) == WRITE_OVERWRITE)
+			{
+				ret.type = nFTD_FileOverWrite;
+				if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+				{
+					logWriteE(_T("CODE-9 : %d"), GetLastError());
+					return FALSE;
+				}
+				CloseHandle(hFile);
+				hFile = CreateFile(from.cFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+			}
+			else if ((dwWrite & WRITE_IGNORE) == WRITE_IGNORE)
+			{
+				ret.type = nFTD_FileIgnore;
+				if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+				{
+					logWriteE(_T("CODE-10 : %d"), GetLastError());
+					return FALSE;
+				}
+				CloseHandle(hFile);
+				Progress.ulTotalSize.QuadPart -= src_filesize.QuadPart;
+				return TRUE;
+			}
+		}
+		else
+		{
+			ret.type = nFTD_OK;
+			if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+			{
+				logWriteE(_T("CODE-11 : %d"), GetLastError());
+				return FALSE;
+			}
+		}
+	}
+
+	//0byte 파일일 경우는 아래의 do~while을 들어가지 않아야 한다.
+	if (src_filesize.QuadPart == 0)
+	{
+		logWriteE(_T("0 byte file. just return."));
+		CloseHandle(hFile);
+		return transfer_result_success;
+	}
+
+	//실제 수신 시작
+#define BUFFER_SIZE 1024 * 12
+	DWORD dwBytesRead = BUFFER_SIZE;
+	DWORD dwBytesWrite;
+	LPSTR packet = new char[BUFFER_SIZE];
+	ULONGLONG	received_size = 0;
+
+	int cnt = 0;
+
+	do
+	{
+		//파일 수신 시 맨 마지막에 버퍼크기보다 작게 남았을 경우 dwBytesRead값을 정확히 주고 RecvExact로 받아야한다.
+		//if (src_filesize.HighPart == 0 && src_filesize.LowPart < dwBytesRead)
+		//{
+		//	dwBytesRead = src_filesize.LowPart;
+		//}
+		if ((src_filesize.QuadPart - received_size) < BUFFER_SIZE)
+		{
+			dwBytesRead = src_filesize.QuadPart - received_size;
+		}
+
+#ifdef MOBILE_FILETRANSFER
+		if (!m_sock.RecvExact(packet, (INT)dwBytesRead, BLASTSOCK_BUFFER))
+		{
+			CloseHandle(hFile);
+			delete[] packet;
+			return FALSE;
+		}
+#else
+		if (false)//osType == OS_MAC)
+		{
+			if (!m_sock.RecvExact(packet, (INT)dwBytesRead, BLASTSOCK_BUFFER))
+			{
+				CloseHandle(hFile);
+				delete[] packet;
+				return FALSE;
+			}
+		}
+		else
+		{
+			if (!m_sock.RecvExact(packet, (INT)dwBytesRead, BLASTSOCK_NO_BUFFER))
+			{
+				logWriteE(_T("CODE-12 : %d"), GetLastError());
+				CloseHandle(hFile);
+				delete[] packet;
+				return FALSE;
+			}
+		}
+#endif
+
+		WriteFile(hFile, packet, dwBytesRead, &dwBytesWrite, NULL);
+		Progress.ulReceivedSize.QuadPart += dwBytesRead;
+		received_size += dwBytesRead;
+
+		//현재 파일 진행 상태 표시
+		double percent = (double)received_size * 100.0 / (double)src_filesize.QuadPart;
+		m_list->set_text(index, 2, d2S(percent, false, 0));
+		TRACE(_T("dwBytesRead = %d, received_size = %u, %.2f%%\n"), dwBytesRead, received_size, percent);
+
+		//전체 파일 진행 상태 표시
+		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
+		m_progress->SetPos((int)percent);
+		m_progress->set_text(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+			get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+		TRACE(_T("total percent = %.2f\n"), percent);
+		/*
+		if (++cnt == 10)
+		{
+			_ui64tot(((ulTemp.QuadPart - ulTemp.QuadPart) * 100) / ulTemp.QuadPart, packet2, 10);
+			_tcscat(packet2, _T("%|"));
+			//if (XList.GetItemText(iIndex, 2).Compare(packet2))
+			//{
+			//	XList.SetItemText(iIndex, 2, packet2);
+			//}
+			cnt = 0;
+		}
+		*/
+	} while (dwBytesRead == BUFFER_SIZE);
+	//XList.SetItemText(iIndex, 2, _T("100%|"));
+
+	delete[] packet;
+	CloseHandle(hFile);
+	/*
+	ret.type = nFTD_OK;
+	if(!m_sock.SendExact((LPSTR)&ret, sz_msg,BLASTSOCK_BUFFER))
+	{
+		logWrite(_T("[CnFTDServerSocket::RecvFile][Error] CODE-13 : %d"), GetLastError());
+		return FALSE;
+	}
+	*/
+	return TRUE;
 }
 
 void CnFTDServerSocket::set_ui_controls(CSCSliderCtrl* pProgress, CVtListCtrlEx* pListCtrl)

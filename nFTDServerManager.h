@@ -27,7 +27,7 @@ public:
 	void	refresh_tree(CSCTreeCtrl* pTreeCtrl, bool is_server_side);
 
 	//scpark add
-	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq);
+	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive);
 	bool	get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath);
 
 	//이전 코드 함수명 : GetFileList(CShellTreeCtrl* pShellTreeCtrl)

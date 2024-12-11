@@ -40,7 +40,10 @@
 #define IDD_MESSAGE                     132
 #define IDS_PATH                        133
 #define IDS_DEVICE_NAME                 134
+#define IDR_MENU_TREE_CONTEXT           134
 #define IDS_TRANSFER                    135
+#define IDR_MENU_TREE_CONTEXT1          135
+#define IDR_MENU_LIST_CONTEXT           135
 #define IDS_DISCONNECT                  136
 #define IDS_FONT                        137
 #define NFTD_IDS_CONNECTING_P2P         138
@@ -110,13 +113,25 @@
 #define NFTD_IDS_OVERWRITE              2085
 #define NFTD_IDS_PASS                   2086
 #define NFTD_IDS_CHECK_ALL              2087
+#define ID_LIST_32771                   32771
+#define ID_LIST_32772                   32772
+#define ID_LIST_32773                   32773
+#define ID_LIST_32774                   32774
+#define ID_LIST_32775                   32775
+#define ID_LIST_32776                   32776
+#define ID_LIST_CONTEXT_MENU_SEND       32777
+#define ID_LIST_CONTEXT_MENU_NEW_FOLDER 32778
+#define ID_LIST_CONTEXT_MENU_RENAME     32779
+#define ID_LIST_CONTEXT_MENU_DELETE     32780
+#define ID_LIST_CONTEXT_MENU_REFRESH    32781
+#define ID_LIST_CONTEXT_MENU_SELECT_ALL 32782
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        134
-#define _APS_NEXT_COMMAND_VALUE         32771
+#define _APS_NEXT_RESOURCE_VALUE        135
+#define _APS_NEXT_COMMAND_VALUE         32783
 #define _APS_NEXT_CONTROL_VALUE         1020
 #define _APS_NEXT_SYMED_VALUE           101
 #endif

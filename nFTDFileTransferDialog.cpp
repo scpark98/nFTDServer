@@ -138,10 +138,10 @@ BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerM
 
 	m_srcSide = srcSide;
 	m_dstSide = dstSide;
-	//m_pFileList = pShellListCtrl;
 	m_transfer_from = from;
 	m_transfer_to = to;
 	m_pServerManager = pServerManager;
+	m_auto_close = isAutoClose;
 
 	m_ProgressData.ulRemainDiskSpace.QuadPart = pulRemainDiskSpace->QuadPart;
 
@@ -190,7 +190,7 @@ void CnFTDFileTransferDialog::init_shadow()
 	m_shadow.Create(GetSafeHwnd());
 	m_shadow.SetSize(4);	// -19 ~ 19
 	m_shadow.SetSharpness(19);	// 0 ~ 19
-	m_shadow.SetDarkness(200);	// 0 ~ 254
+	m_shadow.SetDarkness(128);	// 0 ~ 254
 	m_shadow.SetPosition(0, 0);	// -19 ~ 19
 	m_shadow.SetColor(RGB(0, 0, 0));
 }
@@ -207,7 +207,17 @@ void CnFTDFileTransferDialog::thread_transfer()
 		if (m_filelist[i].dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
 		{
 			std::deque<WIN32_FIND_DATA> dq;
-			find_all_files(m_filelist[i].cFileName, &dq, _T(""), true, true);
+
+			//로컬인 경우는 직접 찾지만 remote인 경우는 요청해서 채워야 한다.
+			if (m_srcSide == SERVER_SIDE)
+			{
+				find_all_files(m_filelist[i].cFileName, &dq, _T(""), true, true);
+			}
+			else
+			{
+				m_pServerManager->get_filelist(m_filelist[i].cFileName, &dq, true);
+			}
+
 			m_filelist.insert(m_filelist.begin() + i + 1, dq.begin(), dq.end());
 			i = i + dq.size() + 1;
 		}
@@ -332,9 +342,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//m_progress.set_text(_T("%d / %d (%s / %s)"), i + 1, m_filelist.size(),
 		//	get_size_string(m_ProgressData.ulReceivedSize.QuadPart), get_size_string(m_ProgressData.ulTotalSize.QuadPart));
 
-		//dst 경로 설정
-		to = m_filelist[i].cFileName;
-		to.Replace(m_transfer_from, m_transfer_to);
+		//dst 경로 설정. cFileName(fullpath)에서 src 폴더명을 dst 폴더명으로 변경해준다.
+		to.Format(_T("%s\\%s"), m_transfer_to, get_part(m_filelist[i].cFileName, fn_name));
 
 		ULARGE_INTEGER	filesize;
 		filesize.LowPart = 0;
@@ -381,6 +390,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 			else
 			{
 				res = m_pServerManager->m_DataSocket.recv_file(i, m_filelist[i], to, m_ProgressData);
+				logWrite(_T("recv_file res = %d"), res);
 
 				//success
 				if (res == transfer_result_success)

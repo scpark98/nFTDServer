@@ -883,7 +883,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 }
 
 //scpark add
-bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq)
+bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive)
 {
 	msg ret;
 
@@ -906,6 +906,13 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 
 	//path 전송
 	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return false;
+	}
+
+	//recursive 여부 전송
+	if (!m_socket.m_sock.SendExact((LPSTR)&recursive, sizeof(bool), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return false;

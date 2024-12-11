@@ -103,6 +103,16 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CDialogEx)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_REMOTE, &CnFTDServerDlg::OnTvnSelchangedTreeRemote)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMDblclkListRemote)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMDblclkListLocal)
+	ON_NOTIFY(NM_RCLICK, IDC_TREE_LOCAL, &CnFTDServerDlg::OnNMRClickTreeLocal)
+	ON_NOTIFY(NM_RCLICK, IDC_TREE_REMOTE, &CnFTDServerDlg::OnNMRClickTreeRemote)
+	ON_NOTIFY(NM_RCLICK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMRClickListLocal)
+	ON_NOTIFY(NM_RCLICK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMRClickListRemote)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_SEND, &CnFTDServerDlg::OnListContextMenuSend)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_NEW_FOLDER, &CnFTDServerDlg::OnListContextMenuNewFolder)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_RENAME, &CnFTDServerDlg::OnListContextMenuRename)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_DELETE, &CnFTDServerDlg::OnListContextMenuDelete)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_REFRESH, &CnFTDServerDlg::OnListContextMenuRefresh)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_SELECT_ALL, &CnFTDServerDlg::OnListContextMenuSelectAll)
 END_MESSAGE_MAP()
 
 
@@ -204,23 +214,32 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_progress_space_remote.draw_border();
 	m_progress_space_remote.SetPos(70);
 
-	CString my_ip = get_my_ip();
-	if (my_ip == CString(__targv[4]))
-		ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
-
+	//nFTDClient.exe를 디버깅하지 않고 단순 연결 후 실행하여 테스트 할 경우는 true로 변경할것.
+	if (true)
+	{
+		CString my_ip = get_my_ip();
+		if (my_ip == CString(__targv[4]))
+		{
+			//대상 IP가 my_ip와 같고 실행중인 nFTDClient.exe가 없다면 실행시켜준다.
+			//만약 nFTDClient.exe도 trace mode로 돌려야한다면 nFTDClient.exe를 먼저 trace mode로 실행시켜서 테스트해야 한다.
+			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient.exe")) == 0)
+				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
+		}
+	}
 
 	init_treectrl();
 	init_listctrl();
 	init_pathctrl();
+
 	init_shadow();
 
 	RestoreWindowPosition(&theApp, this);
 
 	init_progress();
 
-	std::thread t(&CnFTDServerDlg::thread_connect, this);
-	t.detach();
-
+	//std::thread t(&CnFTDServerDlg::thread_connect, this);
+	//t.detach();
+	thread_connect();
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -232,7 +251,6 @@ void CnFTDServerDlg::init_treectrl()
 	//m_tree_local.add_drag_images(IDB_DRAG_ONE_FILE, IDB_DRAG_MULTI_FILES);
 	//m_tree_local.set_path(_T("c:\\"));
 
-	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false);
 }
 
 void CnFTDServerDlg::init_listctrl()
@@ -243,8 +261,6 @@ void CnFTDServerDlg::init_listctrl()
 	//m_list_local.set_path(_T("d:\\"));
 	//m_list_local.add_drag_images(IDB_DRAG_ONE_FILE, IDB_DRAG_MULTI_FILES);
 
-	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false);
-	m_list_remote.set_use_drag_and_drop(true);
 }
 
 void CnFTDServerDlg::init_pathctrl()
@@ -252,8 +268,6 @@ void CnFTDServerDlg::init_pathctrl()
 	m_path_local.set_shell_imagelist(&theApp.m_shell_imagelist);
 	//m_path_local.set_path(_T("d:\\"));
 
-	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist);
-	m_path_remote.set_is_local_device(false);
 }
 
 void CnFTDServerDlg::init_shadow()
@@ -621,9 +635,18 @@ void CnFTDServerDlg::initialize()
 {
 	InitServerManager();		// Server Manager 설정
 
+	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false);
+	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false);
+	m_list_remote.set_use_drag_and_drop(true);
+	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist);
+	m_path_remote.set_is_local_device(false);
+
+	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
 	CString path = convert_special_folder_to_real_path(GetLocalLastPath());
 	if (path.IsEmpty() || !PathFileExists(path))
 		path = get_known_folder(CSIDL_DRIVES);
+
+	//만약 real_path가 "C:\Users\scpark\Desktop"이라도 트리에서는 "바탕 화면" 항목이 선택되야 한다.
 
 	logWrite(_T("local last path = %s"), path);
 	change_directory(path, SERVER_SIDE);
@@ -635,7 +658,7 @@ void CnFTDServerDlg::initialize()
 	//logWrite(_T("remote last path = %s"), path);
 	//change_directory(path, CLIENT_SIDE);
 
-	if (path != _T(""))
+	if (path != _T("") && path != _T("\\"))
 	{
 		logWrite(_T("RemotePath : %s"), path);
 		if (!change_directory(path, CLIENT_SIDE))
@@ -712,10 +735,9 @@ void CnFTDServerDlg::SetDefaultPathToDesktop(int type)
 BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
-	if (pMsg->message == WM_KEYDOWN ||
-		pMsg->message == WM_KEYUP)
+	if (pMsg->message == WM_KEYDOWN)
 	{
-		TRACE(_T("key on CnFTDServerDlg\n"));
+		TRACE(_T("keydown on CnFTDServerDlg\n"));
 		switch (pMsg->wParam)
 		{
 			case VK_RETURN :
@@ -1084,7 +1106,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 	if (dwSide == SERVER_SIDE)
 	{
 		m_path_local.set_path(path);
-		m_tree_local.set_path(path);
+		m_tree_local.set_path(path, false);
 		m_list_local.set_path(path);
 
 		//if (_tchdir(path) == 0)
@@ -1117,7 +1139,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			//리스트 파일목록 갱신
 			m_list_remote.delete_all_items();
 			//m_ServerManager.refresh_list(&dq, false);
-			m_ServerManager.get_filelist(path, &dq);
+			m_ServerManager.get_filelist(path, &dq, false);
 
 			CString filename;
 			CString fullpath;
@@ -1202,6 +1224,12 @@ void CnFTDServerDlg::set_color_theme(int theme)
 }
 
 //보내기 버튼 or 받기 버튼 or drag&drop으로 전송을 시작한다.
+//전송 조건으로 아래 값들이 채워진 후 호출되어야 한다.
+//m_transfer_list	: fullpath 전송 목록
+//m_srcSide			: 송신측
+//m_dstSide			: 수신측
+//m_transfer_from	: 송신 폴더
+//m_transfer_to		: 수신 폴더
 void CnFTDServerDlg::file_transfer()
 {
 	if (m_transfer_list.size() == 0)
@@ -1258,12 +1286,52 @@ void CnFTDServerDlg::file_transfer()
 	{
 		pListFile = &m_list_local;
 		pulDiskSpace = &m_ulClientDiskSpace;
+
+		//서버에서 서버로 전송일 경우
+		if (m_srcSide == m_dstSide)
+		{
+			//from이 to와 같거나
+			if (m_transfer_from == m_transfer_to)
+			{
+				TRACE(_T("same folder. skip"));
+				return;
+			}
+
+			//to의 바로 위 parent라면 리턴
+			if (m_transfer_from == GetParentDirectory(m_transfer_to))
+			{
+				TRACE(_T("대상 폴더가 원본 폴더와 같습니다. skip"));
+				return;
+			}
+
+			//폴더가 다르다면 move로 동작한다.
+		}
 	}
 	else
 	{
 		pListFile = &m_list_remote;
 		pulDiskSpace = &m_ulServerDiskSpace;
-		m_transfer_from = convert_special_folder_to_real_path(m_remoteCurrentPath, m_list_remote.get_shell_imagelist());
+		m_transfer_from = convert_special_folder_to_real_path(m_remoteCurrentPath, m_list_remote.get_shell_imagelist(), 1);
+
+		//remote에서 remote로 전송할 경우
+		if (m_srcSide == m_dstSide)
+		{
+			//from이 to와 같거나
+			if (m_transfer_from == m_transfer_to)
+			{
+				TRACE(_T("same folder. skip"));
+				return;
+			}
+
+			//to의 바로 위 parent라면 리턴
+			if (m_transfer_from == GetParentDirectory(m_transfer_to))
+			{
+				TRACE(_T("대상 폴더가 원본 폴더와 같습니다. skip"));
+				return;
+			}
+
+			//폴더가 다르다면 move로 동작한다.
+		}
 	}
 
 	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &filelist, pulDiskSpace,
@@ -1272,7 +1340,7 @@ void CnFTDServerDlg::file_transfer()
 		m_FileTransferDlg.DoModal();
 		
 		//전송이 모두 끝나면 해당 폴더를 refresh해준다.
-		change_directory(m_transfer_to, CLIENT_SIDE);
+		change_directory(m_transfer_to, m_dstSide);
 	}
 	else
 	{
@@ -1283,5 +1351,132 @@ void CnFTDServerDlg::file_transfer()
 		//dlgMessage.SetMessage(MsgType::TypeOK, message);
 		//dlgMessage.DoModal();
 	}
+}
 
+
+void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	*pResult = 0;
+}
+
+
+void CnFTDServerDlg::OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	*pResult = 0;
+}
+
+
+void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	int item = -1;// = pNMItemActivate->iItem;
+	int subItem = -1;// = pNMItemActivate->iSubItem;	<== invalid index returned when user clicked out of columns
+
+	if (!m_list_local.get_index_from_point(pNMItemActivate->ptAction, item, subItem, false) ||
+		item < 0 || subItem < 0)
+		return;
+
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
+
+	CMenu* pMenu = menu.GetSubMenu(0);
+
+	if (pNMItemActivate->iItem == -1)
+	{
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
+	}
+
+	CPoint pt;
+	GetCursorPos(&pt);
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+
+	*pResult = 0;
+}
+
+
+void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	int item = -1;// = pNMItemActivate->iItem;
+	int subItem = -1;// = pNMItemActivate->iSubItem;	<== invalid index returned when user clicked out of columns
+
+	if (!m_list_local.get_index_from_point(pNMItemActivate->ptAction, item, subItem, false) ||
+		item < 0 || subItem < 0)
+		return;
+
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
+
+	CMenu* pMenu = menu.GetSubMenu(0);
+
+	if (pNMItemActivate->iItem == -1)
+	{
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
+	}
+
+	CPoint pt;
+	GetCursorPos(&pt);
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+
+	*pResult = 0;
+}
+
+
+void CnFTDServerDlg::OnListContextMenuSend()
+{
+	m_srcSide = (GetFocus() == &m_list_remote);
+	m_dstSide = !m_srcSide;
+
+	if (m_srcSide == SERVER_SIDE)
+	{
+		m_list_local.get_selected_items(&m_transfer_list);
+		m_transfer_from = m_list_local.get_path();
+		m_transfer_to = m_list_remote.get_path();
+	}
+	else
+	{
+		m_list_remote.get_selected_items(&m_transfer_list);
+		m_transfer_from = m_list_remote.get_path();
+		m_transfer_to = m_list_local.get_path();
+	}
+
+	TRACE(_T("m_srcSide = %d, send %d items from %s to %s\n"), m_srcSide, m_transfer_list.size(), m_transfer_from, m_transfer_to);
+}
+
+
+void CnFTDServerDlg::OnListContextMenuNewFolder()
+{
+	//m_ServerManager.create_directory(_T("New Folder"), )
+}
+
+
+void CnFTDServerDlg::OnListContextMenuRename()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+}
+
+
+void CnFTDServerDlg::OnListContextMenuDelete()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+}
+
+
+void CnFTDServerDlg::OnListContextMenuRefresh()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+}
+
+
+void CnFTDServerDlg::OnListContextMenuSelectAll()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
 }
