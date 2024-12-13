@@ -6,6 +6,8 @@
 #define IDD_ABOUTBOX                    100
 #define IDS_ABOUTBOX                    101
 #define IDD_NFTDSERVER_DIALOG           102
+#define IDS_NEW_FOLDER                  102
+#define IDS_TRANSFER_START              103
 #define IDS_REG_HKEY_LOCAL_MACH         104
 #define IDS_REG_PROXYINFO               105
 #define NFTD_IDS_AGENT                  106
@@ -44,11 +46,15 @@
 #define IDS_TRANSFER                    135
 #define IDR_MENU_TREE_CONTEXT1          135
 #define IDR_MENU_LIST_CONTEXT           135
+#define IDD_EXIST_FILE                  135
 #define IDS_DISCONNECT                  136
 #define IDS_FONT                        137
 #define NFTD_IDS_CONNECTING_P2P         138
 #define NFTD_IDS_CONNECTING_AP2P        139
 #define NFTD_ISD_FOLDER_FILE_LIST_LOADING 140
+#define IDS_EXIST_SRC_FILE_TITLE        141
+#define IDS_EXIST_DST_FILE_TITLE        142
+#define IDS_DISABLE_SUCCEED_TRANSFER    143
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -67,9 +73,19 @@
 #define IDC_LIST                        1014
 #define IDC_STATIC_MESSAGE              1015
 #define IDC_STATIC_SPEED                1016
+#define IDC_STATIC_SRC_FILE_TITLE       1016
 #define IDC_STATIC_INDEX                1017
+#define IDC_STATIC_DST_FILE_TITLE       1017
 #define IDC_LIST1                       1018
 #define IDC_LIST_QUEUE                  1018
+#define IDC_STATIC_SRC_FILE             1018
+#define IDC_STATIC_DST_FILE             1019
+#define IDC_RADIO_SUCCEED               1020
+#define IDC_RADIO_OVERWRITE             1021
+#define IDC_RADIO_SKIP                  1022
+#define IDC_CHECK_APPLY_ALL             1023
+#define IDC_STATIC_SRC_FILESIZE         1024
+#define IDC_STATIC_DST_FILESIZE         1025
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -125,14 +141,18 @@
 #define ID_LIST_CONTEXT_MENU_DELETE     32780
 #define ID_LIST_CONTEXT_MENU_REFRESH    32781
 #define ID_LIST_CONTEXT_MENU_SELECT_ALL 32782
+#define ID_LIST_32783                   32783
+#define ID_LIST_32784                   32784
+#define ID_LIST_CONTEXT_MENU_OPEN       32785
+#define ID_LIST_CONTEXT_MENU_PROPERTY   32786
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        135
-#define _APS_NEXT_COMMAND_VALUE         32783
-#define _APS_NEXT_CONTROL_VALUE         1020
+#define _APS_NEXT_RESOURCE_VALUE        137
+#define _APS_NEXT_COMMAND_VALUE         32787
+#define _APS_NEXT_CONTROL_VALUE         1024
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

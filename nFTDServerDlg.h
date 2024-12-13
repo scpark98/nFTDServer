@@ -25,6 +25,11 @@ class CnFTDServerDlg : public CDialogEx
 public:
 	CnFTDServerDlg(CWnd* pParent = nullptr);	// 표준 생성자입니다.
 
+	enum TIMER_ID
+	{
+		timer_init_remote_controls = 0,
+	};
+
 	//ui 관련
 	CSCColorTheme		m_theme = CSCColorTheme(this);
 	void				set_color_theme(int theme);
@@ -78,11 +83,16 @@ public:
 
 	void				InitServerManager();
 
+	//열기(open), 이름변경(rename), 삭제(delete), 속성보기(property), 새 폴더 생성(new folder) 등의 파일명령은 파라미터만 다를 뿐이므로 하나의 함수로 통일한다.
+	//param0가 ""이면 현재 포커스를 가진 리스트에서 선택된 항목의 값으로 채워주고
+	//param1은 rename일 경우에만 유효하다.
+	bool				file_command(int cmd, CString param0 = _T(""), CString param1 = _T(""));
+
 	//전송시작 버튼 또는 drag&drop으로 전송을 시작한다.
-	std::deque<CString> m_transfer_list;
-	CString				m_transfer_from;
-	CString				m_transfer_to;
-	void				file_transfer();
+	std::deque<CString> m_transfer_list;	//전송할 파일/폴더 목록이며 반드시 fullpath로 기록되어 있어야 한다.
+	CString				m_transfer_from;	//전송할 파일/폴더의 src 폴더
+	CString				m_transfer_to;		//전송할 dst 폴더
+	void				file_transfer();	//위의 값들에 따라 전송 시작
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
@@ -142,4 +152,8 @@ public:
 	afx_msg void OnListContextMenuDelete();
 	afx_msg void OnListContextMenuRefresh();
 	afx_msg void OnListContextMenuSelectAll();
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnListContextMenuOpen();
+	afx_msg void OnListContextMenuProperty();
+	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
 };

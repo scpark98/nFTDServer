@@ -141,6 +141,9 @@
     <ClInclude Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="ExistFileDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nFTDServer.cpp">
@@ -241,6 +244,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.cpp">
       <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="ExistFileDlg.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

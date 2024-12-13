@@ -300,7 +300,8 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 
 BOOL CnFTDServerManager::Connection()
 {
-	return m_socket.Connection();
+	m_is_connected = m_socket.Connection();
+	return m_is_connected;
 }
 
 BOOL CnFTDServerManager::DataConnect()
@@ -704,6 +705,7 @@ bool CnFTDServerManager::create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDa
 	return false;
 }
 
+
 // 실질적인 화일전송부분. recursive 하게 구현되었다
 // depth : recursive 의 깊이. 하위폴더인지판별하기위해사용
 BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath)
@@ -888,7 +890,7 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 	msg ret;
 
 	//명령 전송
-	ret.type = nFTD_FileList_All;
+	ret.type = nFTD_filelist_all;
 	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
@@ -946,7 +948,7 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 	msg ret;
 
 	//명령 전송
-	ret.type = nFTD_FolderList_All;
+	ret.type = nFTD_folderlist_all;
 	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
@@ -1044,3 +1046,4 @@ CString CnFTDServerManager::GetRemoteDocumentPath()
 
 	return _T("");
 }
+

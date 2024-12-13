@@ -333,6 +333,7 @@
     <ClInclude Include="..\..\Common\system\ShellImageList\ShellImageList.h" />
     <ClInclude Include="..\..\Common\ui\theme\theme.h" />
     <ClInclude Include="..\..\Common\ui\theme\ThemeLib.h" />
+    <ClInclude Include="ExistFileDlg.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MessageDlg.h" />
     <ClInclude Include="nFTDFileManager.h" />
@@ -547,6 +548,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="ExistFileDlg.cpp" />
     <ClCompile Include="MessageDlg.cpp" />
     <ClCompile Include="nFTDFileManager.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>

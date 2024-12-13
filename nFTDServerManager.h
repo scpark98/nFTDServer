@@ -14,7 +14,8 @@ class CnFTDServerManager
 public:
 	CnFTDServerManager();
 	virtual ~CnFTDServerManager();
-
+	
+	bool	is_connected() { return m_is_connected; }
 	BOOL	SetConnection(LPTSTR lpCmdLine);
 	BOOL	SetConnectionService();
 	BOOL	Connection();
@@ -79,6 +80,6 @@ private :
 
 	BOOL m_bDataClose;
 	BOOL m_isStatisticsMode;
-
+	bool m_is_connected = false;
 };
 

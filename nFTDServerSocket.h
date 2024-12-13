@@ -21,6 +21,7 @@
 #define WRITE_CONTINUE		0x00000100
 #define WRITE_OVERWRITE		0x00000200
 #define WRITE_IGNORE		0x00000400
+#define WRITE_CANCEL		0x00000800
 #define WRITE_ALL			0x00001000
 
 enum TRANSFER_RESULT
@@ -28,6 +29,8 @@ enum TRANSFER_RESULT
 	transfer_result_cancel = -1,
 	transfer_result_fail,
 	transfer_result_success,
+	transfer_result_overwrite,
+	transfer_result_skip,
 };
 
 class CnFTDServerSocket
@@ -47,6 +50,10 @@ public:
 
 
 	BOOL create_directory(LPCTSTR lpPathName);
+
+	//열기(open), 이름변경(rename), 삭제(delete), 속성보기(property), 새 폴더 생성(new folder) 등의 파일명령은 파라미터만 다를 뿐이므로 하나의 함수로 통일한다.
+	bool file_command(int cmd, LPCTSTR param0, LPCTSTR param1 = NULL);
+
 	BOOL ExecuteFile(LPCTSTR lpDirName);
 	BOOL Rename(LPCTSTR lpOldName, LPCTSTR lpNewName);
 	BOOL delete_directory(LPCTSTR lpPath);
@@ -65,8 +72,9 @@ public:
 
 	BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
 	BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
-	int send_file(int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
-	int recv_file(int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
+
+	int send_file(CWnd* parent, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
+	int recv_file(CWnd* parent, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
 	void SetFileWriteMode(DWORD dwWrite);
 
 	BOOL get_remote_system_label(std::map<int, CString> *map);

@@ -69,7 +69,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	init_shadow();
 
 	m_resize.Create(this);
-	m_resize.SetMinimumTrackingSize(CSize(480, 360));
+	m_resize.SetMinimumTrackingSize(CSize(400, 320));
 	m_resize.Add(IDC_STATIC_MESSAGE, 0, 0, 100, 0);
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
 	m_resize.Add(IDCANCEL, 100, 0, 0, 0);
@@ -175,7 +175,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_column_data_type(col_status, CVtListCtrlEx::column_data_type_progress);
 	m_list.show_progress_text();
 	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
-	m_list.set_progress_text_color(Gdiplus::Color::Black);
+	//m_list.set_progress_text_color(Gdiplus::Color::Black);
 
 	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 
@@ -306,7 +306,6 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_progress.SetRange(0, 100);
 
 	int res;
-	CString from;
 	CString to;
 	CString msg;
 
@@ -327,6 +326,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//전송 상태를 메시지로 받아 표시해봤으나 메시지 처리 방식은 매우 딜레이가 심함.
 	//컨트롤들을 건네받아 컨트롤에서 직접 표시함.
 	m_pServerManager->m_DataSocket.set_ui_controls(&m_progress, &m_list);
+	m_pServerManager->m_DataSocket.SetFileWriteMode(WRITE_UNKNOWN);
 
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
@@ -338,12 +338,12 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//현재 전송중인 파일명 표시
 		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_name));
 
-		m_list.select_item(i, true, true, true);
-		//m_progress.set_text(_T("%d / %d (%s / %s)"), i + 1, m_filelist.size(),
-		//	get_size_string(m_ProgressData.ulReceivedSize.QuadPart), get_size_string(m_ProgressData.ulTotalSize.QuadPart));
-
 		//dst 경로 설정. cFileName(fullpath)에서 src 폴더명을 dst 폴더명으로 변경해준다.
 		to.Format(_T("%s\\%s"), m_transfer_to, get_part(m_filelist[i].cFileName, fn_name));
+
+		//현재 전송중인 항목을 선택표시하면 왠지 산만하다. 그냥 EnsureVisible()만 처리하자.
+		//m_list.select_item(i, true, true, true);
+		m_list.EnsureVisible(i, FALSE);
 
 		ULARGE_INTEGER	filesize;
 		filesize.LowPart = 0;
@@ -363,71 +363,39 @@ void CnFTDFileTransferDialog::thread_transfer()
 			filesize.LowPart = m_filelist[i].nFileSizeLow;
 			filesize.HighPart = m_filelist[i].nFileSizeHigh;
 
+			logWrite(_T("send %3d / %3d (%s)"), i + 1, m_filelist.size(), m_filelist[i].cFileName);
+
 			//송신
 			if (m_dstSide == CLIENT_SIDE)
-			{
-				res = m_pServerManager->m_DataSocket.send_file(i, m_filelist[i], to, m_ProgressData);
-
-				//success
-				if (res == transfer_result_success)
-				{
-					m_list.set_text(i, col_status, _T("100"));
-					logWrite(_T("%3d / %3d sent ok. %s"), i + 1, m_filelist.size(), m_filelist[i].cFileName);
-				}
-				//cancel
-				else if (res == transfer_result_cancel)
-				{
-					logWrite(_T("사용자에 의한 전송 취소."));
-					break;//AfxMessageBox(_T("전송이 취소되었습니다."));
-				}
-				//error
-				else
-				{
-
-				}
-			}
-			//수신
+				res = m_pServerManager->m_DataSocket.send_file(this, i, m_filelist[i], to, m_ProgressData);
 			else
+				res = m_pServerManager->m_DataSocket.recv_file(this, i, m_filelist[i], to, m_ProgressData);
+
+			switch (res)
 			{
-				res = m_pServerManager->m_DataSocket.recv_file(i, m_filelist[i], to, m_ProgressData);
-				logWrite(_T("recv_file res = %d"), res);
-
-				//success
-				if (res == transfer_result_success)
-				{
-					logWrite(_T("%3d / %3d recv ok. %s"), i + 1, m_filelist.size(), m_filelist[i].cFileName);
-				}
-				//cancel
-				else if (res == transfer_result_cancel)
-				{
-					logWrite(_T("사용자에 의한 전송 취소."));
-					break;//AfxMessageBox(_T("수신이 취소되었습니다."));
-				}
-				//error
-				else
-				{
-
-				}
+				case transfer_result_success :
+					m_list.set_text(i, col_status, _T("100"));
+					logWrite(_T("success. %s"), m_filelist[i].cFileName);
+					break;
+				case transfer_result_cancel :
+					m_list.set_text(i, col_status, _T("cancel"));
+					logWrite(_T("cancel."));
+					break;
+				case transfer_result_skip :
+					m_list.set_text(i, col_status, _T("skip"));
+					logWrite(_T("skip."));
+					break;
+				case transfer_result_overwrite :
+					m_list.set_text(i, col_status, _T("overwrite"));
+					logWrite(_T("overwrite."));
+					break;
+				default :
+					logWriteE(_T("fail."));
+					m_list.set_text(i, col_status, _T("fail"));
+					m_list.set_text_color(i, col_status, Gdiplus::Color::Red);
 			}
-
 		}
-
-		//m_progress.set_text(_T("%d / %d (%s / %s)"), i + 1, m_filelist.size(),
-		//	get_size_string(m_ProgressData.ulReceivedSize.QuadPart), get_size_string(m_ProgressData.ulTotalSize.QuadPart));
 	}
-	/*
-	if (!m_pServerManager->DataConnect())
-	{
-		AfxMessageBox(_T("m_pServerManager->DataConnect() fail."));
-		return;
-	}
-
-	// 전체 파일 리스트 얻어오기
-	if (!m_pServerManager->FileTransferInitalize(m_pFileList, &m_list, &m_ListQueue, m_ProgressData.ulTotalSize, m_dwSide, m_strStartPath))
-	{
-		return;
-	}
-	*/
 
 	//전송이 모두 완료되면 dataSocket은 닫아준다.
 	m_pServerManager->DataClose();

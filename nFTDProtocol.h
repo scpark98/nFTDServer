@@ -37,14 +37,25 @@
 #define		nFTD_FileInfo					27
 #define		nFTD_FileList3					28
 
-//scpark add 
+//scpark add 새로 추가되는 프로토콜 정의는 #define이 아닌 enum으로 추가한다.
 enum FTD_PROTOCOL
 {
 	nFTD_get_system_label = 40,		//내 PC, 바탕 화면, 문서 등의 레이블 요청.
 	nFTD_get_system_path,			//바탕 화면, 문서 등의 절대 경로 요청.
-	nFTD_FileList_All,		//remote의 파일목록
-	nFTD_FolderList_All,	//nFTD_FileList_All을 이용할수도 있지만 파일이 많을 경우는 패킷 송수신 양이 커지므로 별도 정의.
+	nFTD_filelist_all,				//remote의 파일목록
+	nFTD_folderlist_all,			//nFTD_folderlist_all을 이용할수도 있지만 파일이 많을 경우는 패킷 송수신 양이 커지므로 별도 정의.
+	nFTD_file_command,				//열기(open), 이름변경(rename), 삭제(delete), 속성보기(property), 새 폴더(new folder) 등의 파일 명령은 파라미터만 다를 뿐이므로 하나의 명령으로 통일한다.
 };
+
+enum FILE_COMMAND
+{
+	file_cmd_open = 0,
+	file_cmd_rename,
+	file_cmd_delete,
+	file_cmd_property,
+	file_cmd_new_folder,
+};
+
 
 //scpark mwj 20240508 양방향 파일전송 오류 수정을 위해 추가
 #define		P2P_NFTD_SERVERNUM				700

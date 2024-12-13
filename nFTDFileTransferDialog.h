@@ -41,6 +41,7 @@ public:
 #endif
 
 protected:
+	CWnd				*m_parent = NULL;
 	CResizeCtrl			m_resize;
 	CSCSystemButtons	m_sys_buttons;
 
