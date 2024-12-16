@@ -55,6 +55,12 @@
 #define IDS_EXIST_SRC_FILE_TITLE        141
 #define IDS_EXIST_DST_FILE_TITLE        142
 #define IDS_DISABLE_SUCCEED_TRANSFER    143
+#define IDS_REFRESH                     144
+#define IDS_OPEN                        145
+#define IDS_DELETE                      146
+#define IDS_SELECT_ALL                  147
+#define IDS_RENAME                      148
+#define IDS_PROPERTY                    149
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -85,7 +91,9 @@
 #define IDC_RADIO_SKIP                  1022
 #define IDC_CHECK_APPLY_ALL             1023
 #define IDC_STATIC_SRC_FILESIZE         1024
+#define IDC_STATIC_INDEX_BYTES          1024
 #define IDC_STATIC_DST_FILESIZE         1025
+#define IDC_STATIC_REMAIN_SPEED         1025
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -150,9 +158,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        137
+#define _APS_NEXT_RESOURCE_VALUE        145
 #define _APS_NEXT_COMMAND_VALUE         32787
-#define _APS_NEXT_CONTROL_VALUE         1024
+#define _APS_NEXT_CONTROL_VALUE         1025
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

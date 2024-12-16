@@ -3,10 +3,10 @@
 #include "nFTDProtocol.h"
 #include "blastsock.h"
 
-#include "../../Common/CStatic/SCStatic/SCStatic.h"
-#include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+//#include "../../Common/CStatic/SCStatic/SCStatic.h"
+//#include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
 //#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
-#include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
+//#include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 
 //전송상황을 nFTDFileTransferDialog로 보내기 위한 메시지. 속도 저하되므로 사용 안함.
 //static const UINT Message_CnFTDServerSocket = ::RegisterWindowMessage(_T("MessageString_CnFTDServerSocket"));
@@ -70,11 +70,11 @@ public:
 	BOOL DriveList(PUINT pDriveType, LPTSTR lpDriveName);
 	BOOL NextDriveList(PUINT pDriveType, LPTSTR lpDriveName);
 
-	BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
-	BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
+	//BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
+	//BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
 
-	int send_file(CWnd* parent, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
-	int recv_file(CWnd* parent, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
+	int send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
+	int recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
 	void SetFileWriteMode(DWORD dwWrite);
 
 	BOOL get_remote_system_label(std::map<int, CString> *map);
@@ -83,8 +83,6 @@ public:
 	BOOL GetDocumentPath(WIN32_FIND_DATA* pFileInfo);
 
 	blastsock m_sock;
-	//void	set_transfer_dialog_handle(HWND hWnd) { m_hTransferDialog = hWnd; }
-	void	set_ui_controls(CSCSliderCtrl* pProgress, CVtListCtrlEx* pListCtrl);
 	void	set_transfer_pause(bool pause = true) { m_transfer_pause = pause; }
 	void	set_transfer_stop() { m_transfer_pause = false; m_transfer_stop = true; }
 
@@ -101,11 +99,5 @@ protected :
 
 	bool	m_transfer_pause = false;
 	bool	m_transfer_stop = false;
-
-	//UI 표시를 위한 컨트롤들
-	//HWND m_hTransferDialog = NULL;
-	CSCStatic *m_static_message = NULL;
-	CSCSliderCtrl *m_progress = NULL;
-	CVtListCtrlEx *m_list = NULL;
 };
 

@@ -92,4 +92,6 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	CGdiButton m_button_cancel;
+	CSCStatic m_static_index_bytes;
+	CSCStatic m_static_remain_speed;
 };

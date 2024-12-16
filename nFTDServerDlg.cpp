@@ -744,10 +744,11 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 		switch (pMsg->wParam)
 		{
 			case VK_RETURN :
-			{
 				OnBnClickedOk();
 				return TRUE;
-			}
+			case VK_DELETE :
+				file_command(file_cmd_delete);
+				return TRUE;
 		}
 	}
 
@@ -1399,26 +1400,38 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	int item = -1;// = pNMItemActivate->iItem;
-	int subItem = -1;// = pNMItemActivate->iSubItem;	<== invalid index returned when user clicked out of columns
-
-	if (!m_list_local.get_index_from_point(pNMItemActivate->ptAction, item, subItem, false) ||
-		item < 0 || subItem < 0)
-		return;
+	int item = pNMItemActivate->iItem;
 
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
 
 	CMenu* pMenu = menu.GetSubMenu(0);
 
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_OPEN, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_OPEN, _S(IDS_OPEN) + _T("(&O)"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_NEW_FOLDER, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_NEW_FOLDER, _S(IDS_NEW_FOLDER) + _T("(&N)"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_DELETE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_DELETE, _S(IDS_DELETE) + _T("(&D)") + _T("\tDel"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_RENAME, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_RENAME, _S(IDS_RENAME) + _T("(&M)") + _T("\tF2"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SELECT_ALL, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SELECT_ALL, _S(IDS_SELECT_ALL) + _T("(&A)") + _T("\tCtrl+A"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
+
 	//선택된 항목이 없을 경우
-	if (pNMItemActivate->iItem == -1)
+	if (item == -1)
 	{
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_OPEN, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_PROPERTY, MF_DISABLED);
+	}
+
+	//보호된 파일/폴더일 경우
+	if (item >= 0 && is_protected(m_list_local.get_path(item), m_list_local.get_shell_imagelist(), 0))
+	{
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
 
 	CPoint pt;
@@ -1433,26 +1446,38 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	int item = -1;// = pNMItemActivate->iItem;
-	int subItem = -1;// = pNMItemActivate->iSubItem;	<== invalid index returned when user clicked out of columns
-
-	if (!m_list_remote.get_index_from_point(pNMItemActivate->ptAction, item, subItem, false) ||
-		item < 0 || subItem < 0)
-		return;
+	int item = pNMItemActivate->iItem;
 
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
 
 	CMenu* pMenu = menu.GetSubMenu(0);
 
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_OPEN, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_OPEN, _S(IDS_OPEN) + _T("(&O)"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_NEW_FOLDER, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_NEW_FOLDER, _S(IDS_NEW_FOLDER) + _T("(&N)"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_DELETE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_DELETE, _S(IDS_DELETE) + _T("(&D)") + _T("\tDel"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_RENAME, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_RENAME, _S(IDS_RENAME) + _T("(&M)") + _T("\tF2"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SELECT_ALL, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SELECT_ALL, _S(IDS_SELECT_ALL) + _T("(&A)") + _T("\tCtrl+A"));
+	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
+
 	//선택된 항목이 없을 경우
-	if (pNMItemActivate->iItem == -1)
+	if (item == -1)
 	{
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_OPEN, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_PROPERTY, MF_DISABLED);
+	}
+
+	//보호된 파일/폴더일 경우
+	if (item >= 0 && is_protected(m_list_remote.get_path(item), m_list_remote.get_shell_imagelist(), 1))
+	{
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
 
 	CPoint pt;
@@ -1543,11 +1568,17 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	bool res = false;
 
 	CVtListCtrlEx* plist = ((GetFocus() == &m_list_local ? &m_list_local : &m_list_remote));
-	int index = plist->get_selected_index();
+	std::deque<int> dq;
+	plist->get_selected_items(&dq);
 	//CString file;
 
 	if (param0.IsEmpty())
-		param0.Format(_T("%s\\%s"), plist->get_path(), plist->get_text(index, CVtListCtrlEx::col_filename));
+	{
+		if (dq.size() == 0)
+			param0 = plist->get_path();
+		else
+			param0.Format(_T("%s\\%s"), plist->get_path(), plist->get_text(dq[0], CVtListCtrlEx::col_filename));
+	}
 
 	//이러한 처리를 기존처럼 m_ServerManager의 open_file()함수에서 일괄 처리하도록 구현할 수도 있으나
 	//m_ServerManager에서는 CnFTDServerDlg에 있는 tree, list 등을 접근하자면 별도의 처리가 필요하므로
@@ -1556,7 +1587,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	{
 		switch (cmd)
 		{
-			case file_cmd_open:
+			case file_cmd_open :
 				//폴더인 경우
 				if (PathIsDirectory(param0))
 				{
@@ -1568,15 +1599,34 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					res = true;
 				}
 				break;
-			case file_cmd_rename:
-				m_list_local.edit_item(index, CVtListCtrlEx::col_filename);
+			case file_cmd_new_folder :
+				//list의 현재 폴더에 새 폴더를 생성한다.
+				res = m_list_local.new_folder(_S(IDS_NEW_FOLDER));
+				break;
+			case file_cmd_rename :
+				m_list_local.edit_item(dq[0], CVtListCtrlEx::col_filename);
 				res = true;
 				break;
-			case file_cmd_delete:
-				res = m_list_local.delete_item(index, true);
+			case file_cmd_delete :
+				{
+					int deleted_count = 0;
+
+					for (auto item : dq)
+					{
+						//item 위치의 항목을 제거하면 그 뒤 item들의 index는 당겨져야 한다.
+						item -= deleted_count;
+
+						res = m_list_local.delete_item(item, true);
+						if (res)
+						{
+							deleted_count++;
+						}
+					}
+				}
 				break;
-			case file_cmd_property:
+			case file_cmd_property :
 				res = show_file_property_window(param0);
+				break;
 		}
 	}
 	else
@@ -1588,7 +1638,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 		{
 			case file_cmd_open:
 				//폴더인 경우
-				if (m_list_remote.get_text(index, CVtListCtrlEx::col_filesize).IsEmpty())
+				if (m_list_remote.get_text(dq[0], CVtListCtrlEx::col_filesize).IsEmpty())
 				{
 					res = change_directory(param0, CLIENT_SIDE);
 				}
@@ -1600,15 +1650,33 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				}
 				break;
 			case file_cmd_rename:
-				m_list_remote.edit_item(index, CVtListCtrlEx::col_filename);
+				m_list_remote.edit_item(dq[0], CVtListCtrlEx::col_filename);
 				res = true;
 				break;
 			case file_cmd_delete:
-				res = m_ServerManager.m_socket.file_command(file_cmd_delete, param0);
-				res = m_list_remote.delete_item(index);
+				{
+					int deleted_count = 0;
+
+					for (auto item : dq)
+					{
+						//item 위치의 항목을 제거하면 그 뒤 item들의 index는 당겨져야 한다.
+						item -= deleted_count;
+
+						//remote에서 정상 삭제된 경우에만 리스트에서도 삭제해야 한다.
+						res = m_ServerManager.m_socket.file_command(file_cmd_delete, m_list_remote.get_path(item));
+						if (res)
+						{
+							res = m_list_remote.delete_item(item);
+							deleted_count++;
+						}
+					}
+
+					m_list_remote.refresh_list();
+				}
 				break;
 			case file_cmd_property:
-				res = show_file_property_window(param0);
+				res = m_ServerManager.m_socket.file_command(file_cmd_property, param0);
+				break;
 		}
 	}
 

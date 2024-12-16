@@ -41,6 +41,8 @@ void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_PROGRESS, m_progress);
 	DDX_Control(pDX, IDC_LIST, m_list);
 	DDX_Control(pDX, IDCANCEL, m_button_cancel);
+	DDX_Control(pDX, IDC_STATIC_INDEX_BYTES, m_static_index_bytes);
+	DDX_Control(pDX, IDC_STATIC_REMAIN_SPEED, m_static_remain_speed);
 }
 
 
@@ -71,6 +73,8 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Create(this);
 	m_resize.SetMinimumTrackingSize(CSize(400, 320));
 	m_resize.Add(IDC_STATIC_MESSAGE, 0, 0, 100, 0);
+	m_resize.Add(IDC_STATIC_INDEX_BYTES, 0, 0, 50, 0);
+	m_resize.Add(IDC_STATIC_REMAIN_SPEED, 50, 0, 50, 0);
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
 	m_resize.Add(IDCANCEL, 100, 0, 0, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
@@ -81,10 +85,15 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_sys_buttons.create(this, 1, 0, 26, 26, SC_CLOSE);
 	m_sys_buttons.set_back_color(Gdiplus::Color::White);
 
-	m_progress.set_style(CSCSliderCtrl::style_progress);
-	m_progress.set_text_style(CSCSliderCtrl::text_style_dual_text);
-	m_progress.set_text_color(white);
-	m_progress.set_font_size(8);
+	m_static_index_bytes.set_back_color(Gdiplus::Color::White);
+	m_static_remain_speed.set_back_color(Gdiplus::Color::White);
+
+	m_progress.set_style(CSCSliderCtrl::style_progress_line);
+	m_progress.set_active_color(RGB(0, 134, 218));
+	m_progress.set_back_color(white);
+	//m_progress.set_text_style(CSCSliderCtrl::text_style_dual_text);
+	//m_progress.set_text_color(white);
+	//m_progress.set_font_size(8);
 
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);
 
@@ -325,7 +334,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	//전송 상태를 메시지로 받아 표시해봤으나 메시지 처리 방식은 매우 딜레이가 심함.
 	//컨트롤들을 건네받아 컨트롤에서 직접 표시함.
-	m_pServerManager->m_DataSocket.set_ui_controls(&m_progress, &m_list);
+	//m_pServerManager->m_DataSocket.set_ui_controls(this, &m_progress, &m_list);
 	m_pServerManager->m_DataSocket.SetFileWriteMode(WRITE_UNKNOWN);
 
 	//실제 파일 송수신 시작
