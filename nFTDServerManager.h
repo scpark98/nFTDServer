@@ -31,6 +31,8 @@ public:
 	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive);
 	bool	get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath);
 
+	bool	get_disk_space(ULARGE_INTEGER* ulRemain, ULARGE_INTEGER* ulTotal);
+
 	//이전 코드 함수명 : GetFileList(CShellTreeCtrl* pShellTreeCtrl)
 	//tree에서 해당 path folder의 sub folder 목록을 refresh한다.
 	//선택할 때가 아니라 폴더를 처음 펼칠 때, 새로고침 할 때 사용된다.

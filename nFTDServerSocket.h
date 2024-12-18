@@ -73,8 +73,8 @@ public:
 	//BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
 	//BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
 
-	int send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
-	int recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress);
+	int send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress);
+	int recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress);
 	void SetFileWriteMode(DWORD dwWrite);
 
 	BOOL get_remote_system_label(std::map<int, CString> *map);

@@ -12,13 +12,11 @@
 
 IMPLEMENT_DYNAMIC(CExistFileDlg, CDialogEx)
 
-CExistFileDlg::CExistFileDlg(CWnd* pParent, CString src_file, ULONGLONG src_size, CString dst_file, ULONGLONG dst_size)
+CExistFileDlg::CExistFileDlg(CWnd* pParent, WIN32_FIND_DATA src_file, WIN32_FIND_DATA dst_file)
 	: CDialogEx(IDD_EXIST_FILE, pParent)
 {
 	m_src_file = src_file;
-	m_src_filesize = src_size;
 	m_dst_file = dst_file;
-	m_dst_filesize = dst_size;
 }
 
 CExistFileDlg::~CExistFileDlg()
@@ -39,6 +37,8 @@ void CExistFileDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_DST_FILE, m_static_dst_file);
 	DDX_Control(pDX, IDC_STATIC_SRC_FILESIZE, m_static_src_filesize);
 	DDX_Control(pDX, IDC_STATIC_DST_FILESIZE, m_static_dst_filesize);
+	DDX_Control(pDX, IDC_STATIC_SRC_MTIME, m_static_src_mtime);
+	DDX_Control(pDX, IDC_STATIC_DST_MTIME, m_static_dst_mtime);
 }
 
 
@@ -84,9 +84,19 @@ BOOL CExistFileDlg::OnInitDialog()
 		m_radio_skip.SetCheck(BST_CHECKED);
 
 	m_tooltip.Create(this);
+	m_tooltip.SetDelayTime(TTDT_INITIAL, 800);
+	m_tooltip.SetMaxTipWidth(400);
 
 	//대상 파일이 원본 파일보다 크다면 "이어서 전송"은 불가하다. 그 경우는 덮어쓰기, 건너뛰기 또는 전송 취소를 선택할 수 밖에 없다.
-	if (m_dst_filesize > m_src_filesize)
+	ULARGE_INTEGER src_filesize;
+	ULARGE_INTEGER dst_filesize;
+
+	src_filesize.LowPart = m_src_file.nFileSizeLow;
+	src_filesize.HighPart = m_src_file.nFileSizeHigh;
+	dst_filesize.LowPart = m_dst_file.nFileSizeLow;
+	dst_filesize.HighPart = m_dst_file.nFileSizeHigh;
+
+	if (dst_filesize.QuadPart > src_filesize.QuadPart)
 	{
 		m_tooltip.AddTool(&m_radio_succeed, _S(IDS_DISABLE_SUCCEED_TRANSFER));
 		m_radio_succeed.SetCheck(BST_UNCHECKED);
@@ -99,10 +109,18 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_check_apply_all.SetCheck(theApp.GetProfileInt(_T("setting\\ExistFileDlg"), _T("apply all"), BST_CHECKED));
 	
 	//src와 dst 파일크기가 동일하면 파란색으로 표시, 그렇지 않으면 기본색으로 표시.
-	m_static_src_file.set_textf((m_src_filesize == m_dst_filesize ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_src_file);
-	m_static_dst_file.set_textf((m_src_filesize == m_dst_filesize ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_dst_file);
-	m_static_src_filesize.set_textf((m_src_filesize == m_dst_filesize ? Gdiplus::Color(0, 51, 200) : -1), _T("%s (%s)"), get_size_string(m_src_filesize, 1), get_size_string(m_src_filesize, 0));
-	m_static_dst_filesize.set_textf((m_src_filesize == m_dst_filesize ? Gdiplus::Color(0, 51, 200) : -1), _T("%s (%s)"), get_size_string(m_dst_filesize, 1), get_size_string(m_dst_filesize, 0));
+	m_static_src_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_src_file.cFileName);
+	m_static_dst_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_dst_file.cFileName);
+	m_static_src_filesize.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1),
+		_T("%s (%s)  %s"),
+		get_size_str(src_filesize.QuadPart, 1),
+		get_size_str(src_filesize.QuadPart, 0),
+		get_file_time_str(m_src_file.ftLastWriteTime));
+	m_static_dst_filesize.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1),
+		_T("%s (%s)  %s"),
+		get_size_str(dst_filesize.QuadPart, 1),
+		get_size_str(dst_filesize.QuadPart, 0),
+		get_file_time_str(m_dst_file.ftLastWriteTime));
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.

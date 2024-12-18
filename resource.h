@@ -59,8 +59,12 @@
 #define IDS_OPEN                        145
 #define IDS_DELETE                      146
 #define IDS_SELECT_ALL                  147
+#define IDI_LOCAL                       147
 #define IDS_RENAME                      148
+#define IDI_REMOTE                      148
 #define IDS_PROPERTY                    149
+#define IDS_ITEM_COUNT                  150
+#define IDS_ITEM_SELECTED_COUNT         151
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -92,8 +96,12 @@
 #define IDC_CHECK_APPLY_ALL             1023
 #define IDC_STATIC_SRC_FILESIZE         1024
 #define IDC_STATIC_INDEX_BYTES          1024
-#define IDC_STATIC_DST_FILESIZE         1025
 #define IDC_STATIC_REMAIN_SPEED         1025
+#define IDC_STATIC_DST_MTIME            1025
+#define IDC_STATIC_SRC_MTIME            1026
+#define IDC_STATIC_LOCAL                1026
+#define IDC_STATIC_REMOTE               1027
+#define IDC_STATIC_DST_FILESIZE         1028
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -153,14 +161,15 @@
 #define ID_LIST_32784                   32784
 #define ID_LIST_CONTEXT_MENU_OPEN       32785
 #define ID_LIST_CONTEXT_MENU_PROPERTY   32786
+#define ID_LIST_CONTEXT_MENU_OPEN_EXPLORER 32787
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        145
-#define _APS_NEXT_COMMAND_VALUE         32787
-#define _APS_NEXT_CONTROL_VALUE         1025
+#define _APS_NEXT_RESOURCE_VALUE        149
+#define _APS_NEXT_COMMAND_VALUE         32788
+#define _APS_NEXT_CONTROL_VALUE         1027
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include "nFTDServer.h"
+#include "nFTDServerDlg.h"
 #include "nFTDFileTransferDialog.h"
 #include "afxdialogex.h"
 
@@ -276,7 +277,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 			file_size.HighPart = m_filelist[i].nFileSizeHigh;
 			m_ProgressData.ulTotalSize.QuadPart += file_size.QuadPart;
 
-			size_str = get_size_string(file_size.QuadPart);
+			size_str = get_size_str(file_size.QuadPart);
 
 			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(m_filelist[i].cFileName, false);
 			file_count++;
@@ -315,8 +316,9 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_progress.SetRange(0, 100);
 
 	int res;
-	CString to;
+	//CString to;
 	CString msg;
+	WIN32_FIND_DATA to;
 
 	//데이터 전송을 위한 소켓을 연결하고 (전송이 모두 완료되면 DataClose())
 	//지금은 하나의 소켓을 연결하고 모든 파일들을 순차적으로 전송하지만
@@ -340,6 +342,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
+		res = transfer_result_fail;
+
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
 		if (m_thread_transfer_started == false)
 			break;
@@ -347,8 +351,18 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//현재 전송중인 파일명 표시
 		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_name));
 
-		//dst 경로 설정. cFileName(fullpath)에서 src 폴더명을 dst 폴더명으로 변경해준다.
-		to.Format(_T("%s\\%s"), m_transfer_to, get_part(m_filelist[i].cFileName, fn_name));
+		memcpy(&to, &m_filelist[i], sizeof(to));
+
+		//dst 경로 설정. cFileName(fullpath)에서 m_transfer_from 값을 m_transfer_to 값으로 변경해준다.
+		CString temp = m_filelist[i].cFileName;
+		temp.Replace(m_transfer_from, m_transfer_to);
+		_tcscpy(to.cFileName, temp);
+		
+		//하나의 파일/폴더가 전송되면 대상 리스트에도 바로 목록이 표시되는 것이 좋으나
+		//하위 폴더까지 들어가서 표시할 필요는 없다. 현재의 m_transfer_to 경로에 생성되는 파일/폴더만 리스트에 표시한다.
+		temp.Replace(m_transfer_to, _T(""));
+		bool insert_item_after_transfer_success = (get_char_count(temp, '\\') == 1);
+
 
 		//현재 전송중인 항목을 선택표시하면 왠지 산만하다. 그냥 EnsureVisible()만 처리하자.
 		//m_list.select_item(i, true, true, true);
@@ -358,12 +372,16 @@ void CnFTDFileTransferDialog::thread_transfer()
 		filesize.LowPart = 0;
 		filesize.HighPart = 0;
 
-		//폴더 전송
+		//폴더 전송. 폴더는 실제 폴더를 전송하지 않고 동일한 이름으로 폴더를 생성해주면 된다.
 		if (m_filelist[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
-			if (m_pServerManager->create_directory(to, m_dstSide, true))
+			if (m_pServerManager->create_directory(to.cFileName, m_dstSide, true))
 			{
+				res = transfer_result_success;
 				m_list.set_text(i, col_status, _T("100"));
+				//change_directory를 할 경우 모든 파일들을 각각의 폴더까지 들어가서 전송되는 것을 보여주지만 이는 산만하다는 단점이 된다.
+				//그냥 폴더든 파일이든 현재 대상 폴더의 경로와 동일할때만 리스트에 추가해서 보여줄 뿐 하위 폴더까지 들어가서 보여주지 않는다.
+				//((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->change_directory(to, m_dstSide);
 			}
 		}
 		//파일 전송
@@ -374,6 +392,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 			logWrite(_T("send %3d / %3d (%s)"), i + 1, m_filelist.size(), m_filelist[i].cFileName);
 
+			//받기 전에 리스트는 해당 폴더로 자동 변경되도록? 너무 산만할 듯 하다.
 			//송신
 			if (m_dstSide == CLIENT_SIDE)
 				res = m_pServerManager->m_DataSocket.send_file(this, i, m_filelist[i], to, m_ProgressData);
@@ -403,6 +422,17 @@ void CnFTDFileTransferDialog::thread_transfer()
 					m_list.set_text(i, col_status, _T("fail"));
 					m_list.set_text_color(i, col_status, Gdiplus::Color::Red);
 			}
+
+		}
+
+		//전송이 완료되면 리스트를 새로고침하거나
+		//해당 항목을 수동으로 리스트에 추가하고 선택상태로 표시, 스크롤되게 보여줘야 한다.
+		if ((res == transfer_result_success || res == transfer_result_overwrite) && insert_item_after_transfer_success)
+		{
+			//WIN32_FIND_DATA data = m_filelist[i];
+			//_tcscpy(data.cFileName, to);
+
+			((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->add_transfered_file_to_list(m_dstSide, to);
 		}
 	}
 

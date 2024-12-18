@@ -1,5 +1,7 @@
 #pragma pack(push, 1)
 
+#define BUFFER_SIZE							1024 * 1024 * 4
+
 #define		nFTD_OK							0
 #define		nFTD_ERROR						1
 #define		nFTD_END						2
@@ -45,11 +47,14 @@ enum FTD_PROTOCOL
 	nFTD_filelist_all,				//remote의 파일목록
 	nFTD_folderlist_all,			//nFTD_folderlist_all을 이용할수도 있지만 파일이 많을 경우는 패킷 송수신 양이 커지므로 별도 정의.
 	nFTD_file_command,				//열기(open), 이름변경(rename), 삭제(delete), 속성보기(property), 새 폴더(new folder) 등의 파일 명령은 파라미터만 다를 뿐이므로 하나의 명령으로 통일한다.
+	nFTD_total_disk_space,
+	nFTD_remain_disk_space,
 };
 
 enum FILE_COMMAND
 {
 	file_cmd_open = 0,
+	file_cmd_open_explorer,
 	file_cmd_new_folder,
 	file_cmd_delete,
 	file_cmd_rename,

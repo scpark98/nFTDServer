@@ -912,15 +912,16 @@ void CnFTDServerSocket::SetFileWriteMode(DWORD dwWrite)
 	m_dwWrite = dwWrite;
 }
 
-int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress)
+int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress)
 {
 	msg			ret;
-	msgString1	str1;
+	//msgString1	str1;
 	HANDLE		hFile;
 	ULARGE_INTEGER	filesize;
-	ULARGE_INTEGER	exist_filesize;
 	ULONGLONG		sent_size = 0;		//Progress.ulReceivedSize는 n개 파일에 대한 정보지만 sent_size는 현재 파일을 대상으로 한다.
 	CnFTDFileTransferDialog* parent = (CnFTDFileTransferDialog*)parent_dlg;
+	WIN32_FIND_DATA exist_file;
+	ULARGE_INTEGER	exist_filesize;
 
 	hFile = CreateFile(from.cFileName, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE)
@@ -939,19 +940,20 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 
 	// send file information
-	str1.type = nFTD_FileTransfer;
-	str1.length = _tcslen(to) * 2;
+	//str1.type = nFTD_FileTransfer;
+	//str1.length = _tcslen(to) * 2;
+	ret.type = nFTD_FileTransfer;
 
-	//파일전송 명령 및 대상 fullpath length 전달
-	if (!m_sock.SendExact((LPSTR)&str1, sz_msgString1, BLASTSOCK_BUFFER))
+	//파일전송 명령 전달
+	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		CloseHandle(hFile);
 		return transfer_result_fail;
 	}
 
-	//fullpath 전달
-	if (!m_sock.SendExact((LPSTR)(to), str1.length, BLASTSOCK_BUFFER))
+	//WIN32_FIND_DATA 전달
+	if (!m_sock.SendExact((LPSTR)&to, sizeof(to), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		CloseHandle(hFile);
@@ -959,12 +961,12 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	}
 
 	//파일크기 전달
-	if (!m_sock.SendExact((LPSTR)&filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
-	{
-		logWriteE(_T("CODE-4 : %d"), GetLastError());
-		CloseHandle(hFile);
-		return transfer_result_fail;
-	}
+	//if (!m_sock.SendExact((LPSTR)&filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+	//{
+	//	logWriteE(_T("CODE-4 : %d"), GetLastError());
+	//	CloseHandle(hFile);
+	//	return transfer_result_fail;
+	//}
 
 	//수신측에서 파일 생성 및 준비 결과 수신
 	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -983,12 +985,16 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	
 	if (ret.type == nFTD_FileExist)
 	{
-		if (!m_sock.RecvExact((LPSTR)&exist_filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+		//기존 버전은 파일크기만 받았으나 WIN32_FIND_DATA를 받아서 시간정보도 표시하도록 수정.
+		if (!m_sock.RecvExact((LPSTR)&exist_file, sizeof(WIN32_FIND_DATA), BLASTSOCK_BUFFER))
 		{
 			logWriteE(_T("CODE-6 : %d"), GetLastError());
 			CloseHandle(hFile);
 			return transfer_result_fail;
 		}
+
+		exist_filesize.LowPart = exist_file.nFileSizeLow;
+		exist_filesize.HighPart = exist_file.nFileSizeHigh;
 
 		DWORD dwWrite = m_dwWrite;
 
@@ -1015,7 +1021,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			}
 			else
 			{
-				CExistFileDlg dlg(parent, from.cFileName, filesize.QuadPart, to, exist_filesize.QuadPart);
+				CExistFileDlg dlg(parent, from, exist_file);
 				dwWrite = dlg.DoModal();
 
 				if (dwWrite == IDCANCEL)
@@ -1078,7 +1084,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			CloseHandle(hFile);
 			Progress.ulTotalSize.QuadPart -= filesize.QuadPart;
 			parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-				get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+				get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 			return transfer_result_skip;
 		}
@@ -1091,19 +1097,16 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		CloseHandle(hFile);
 
 		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 		return transfer_result_success;
 	}
 
-	//실제 전송 시작
-#define BUFFER_SIZE 1024 * 12
-
 	DWORD		dwBytesRead;
-	LPSTR		packet[BUFFER_SIZE] = { 0, };
+	LPSTR		packet = new CHAR[BUFFER_SIZE];
 	int			nCompareSpeed = 0;
 	int			loop = 0;
-	long		t0 = clock(), t1 = -1;
+	long		t0 = clock(), t1 = 0;
 
 	if (g_FT_mode != FT_MODE_AP2P)
 		nCompareSpeed = 0;
@@ -1125,6 +1128,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		if (m_transfer_stop)
 		{
 			CloseHandle(hFile);
+			delete[] packet;
 			return transfer_result_cancel;
 		}
 
@@ -1136,6 +1140,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		if (!m_sock.SendExact(packet, dwBytesRead, BLASTSOCK_BUFFER))
 		{
 			CloseHandle(hFile);
+			delete[] packet;
 			return transfer_result_fail;
 		}
 #else
@@ -1160,9 +1165,10 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				dwBytesRead = remainSize.QuadPart;
 			}
 
-			if (!m_sock.SendExact((char*)&packet, dwBytesRead))
+			if (!m_sock.SendExact(packet, dwBytesRead))
 			{
 				CloseHandle(hFile);
+				delete[] packet;
 				return transfer_result_fail;
 			}
 		}
@@ -1195,12 +1201,13 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
 		parent->m_progress.SetPos((int)percent);
 		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 		//TRACE(_T("total percent = %.2f\n"), percent);
 #endif
 	} while (dwBytesRead == BUFFER_SIZE);
 
 	CloseHandle(hFile);
+	delete[] packet;
 
 	//스킵되거나 동일 파일을 이어받을 때 그 크기 또한 BUFFER_SIZE보다 작다면 m_progress에는 아무것도 나타나지 않는다.
 	//이를 보완하기 위해
@@ -1208,41 +1215,43 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//(기존 방식으로서 lock()처리가 필요하다)
 	//2.위와 같은 경우를 판별하여 이 블록에 m_progress의 출력 텍스트를 표시한다.
 	//우선 2번으로 처리한다.
-	if (t1 < 0)
+	if (t1 <= 0)
 	{
 		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 		parent->m_static_remain_speed.set_textf(-1, _T("0 Sec / 0 KB/s"));
 	}
 
 	return transfer_result_success;
 }
 
-int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, LPCTSTR to, ProgressData& Progress)
+int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress)
 {
 	msg ret;
 	msgString1 str1;
 	HANDLE		hFile;
 	ULARGE_INTEGER	src_filesize;
-	ULARGE_INTEGER	dst_filesize;
 	CnFTDFileTransferDialog* parent = (CnFTDFileTransferDialog*)parent_dlg;
+	WIN32_FIND_DATA exist_file;
+	ULARGE_INTEGER	exist_filesize;
 
 	src_filesize.HighPart = from.nFileSizeHigh;
 	src_filesize.LowPart = from.nFileSizeLow;
 
 	// send file request
-	str1.type = nFTD_FileTransferReq;
-	str1.length = _tcslen(from.cFileName) * 2;
+	//str1.type = nFTD_FileTransferReq;
+	//str1.length = _tcslen(from.cFileName) * 2;
+	ret.type = nFTD_FileTransferReq;
 
-	//파일요청 명령 및 대상 fullpath length 전달
-	if (!m_sock.SendExact((LPSTR)&str1, sz_msgString1, BLASTSOCK_BUFFER))
+	//파일요청 명령 전달
+	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
 		return transfer_result_fail;
 	}
 
-	//fullpath 전달
-	if (!m_sock.SendExact((LPSTR)from.cFileName, str1.length, BLASTSOCK_BUFFER))
+	//WIN32_FIND_DATA from 전달
+	if (!m_sock.SendExact((LPSTR)&from, sizeof(from), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return transfer_result_fail;
@@ -1254,11 +1263,13 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return transfer_result_fail;
 	}
+
 	if (ret.type == nFTD_ERROR)
 	{
 		logWriteE(_T("CODE-4 : %d"), GetLastError());
 		return transfer_result_fail;
 	}
+
 	if (ret.type == nFTD_FileSize) // 20170404 : 파일사이즈를 얻도록 프로토콜 추가
 	{
 		ULARGE_INTEGER old_filesize = src_filesize;
@@ -1271,7 +1282,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	}
 
 	// send file information
-	hFile = CreateFile(to, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	hFile = CreateFile(to.cFileName, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		ret.type = nFTD_ERROR;
@@ -1286,7 +1298,13 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	{
 		if (GetLastError() == ERROR_ALREADY_EXISTS)
 		{
-			dst_filesize.LowPart = GetFileSize(hFile, &(dst_filesize.HighPart));
+			//기존 버전은 파일크기만 보냈으나 WIN32_FIND_DATA를 보내서 시간정보도 표시하도록 수정.
+			//HANDLE hFind = FindFirstFile(to.cFileName, &exist_file);
+			//FindClose(hFind);
+			//_tcscpy(exist_file.cFileName, to);
+			memcpy(&exist_file, &to, sizeof(to));
+
+			exist_filesize.LowPart = GetFileSize(hFile, &(exist_filesize.HighPart));
 
 			DWORD dwWrite = m_dwWrite;
 
@@ -1296,7 +1314,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				//스킵하지만 사용자 선택에 의한 스킵이 아니므로 continue로 처리한다.
 				//그렇다고 dwWrite를 WRITE_CONTINUE로 강제로 줘서는 안된다.
 				//0바이트가 아닌 파일을 만나면 사용자의 결정을 받아야한다.
-				if (src_filesize.QuadPart == 0 && dst_filesize.QuadPart == 0)
+				if (src_filesize.QuadPart == 0 && exist_filesize.QuadPart == 0)
 				{
 					ret.type = nFTD_FileContinue;
 					if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -1305,7 +1323,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 						logWriteE(_T("CODE-7 : %d"), GetLastError());
 						return FALSE;
 					}
-					if (!m_sock.SendExact((LPSTR)&dst_filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+					if (!m_sock.SendExact((LPSTR)&exist_file, sizeof(WIN32_FIND_DATA), BLASTSOCK_BUFFER))
 					{
 						CloseHandle(hFile);
 						logWriteE(_T("CODE-8 : %d"), GetLastError());
@@ -1313,12 +1331,12 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 					}
 
 					SetFilePointer(hFile, 0, NULL, FILE_END);
-					Progress.ulTotalSize.QuadPart -= dst_filesize.QuadPart;
-					src_filesize.QuadPart -= dst_filesize.QuadPart;
+					Progress.ulTotalSize.QuadPart -= exist_filesize.QuadPart;
+					src_filesize.QuadPart -= exist_filesize.QuadPart;
 				}
 				else
 				{
-					CExistFileDlg dlg(parent, from.cFileName, src_filesize.QuadPart, to, dst_filesize.QuadPart);
+					CExistFileDlg dlg(parent, from, exist_file);
 					dwWrite = dlg.DoModal();
 
 					if (dwWrite == IDCANCEL)
@@ -1341,7 +1359,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 					logWriteE(_T("CODE-7 : %d"), GetLastError());
 					return FALSE;
 				}
-				if (!m_sock.SendExact((LPSTR)&dst_filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
+				if (!m_sock.SendExact((LPSTR)&exist_filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
 				{
 					CloseHandle(hFile);
 					logWriteE(_T("CODE-8 : %d"), GetLastError());
@@ -1349,8 +1367,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				}
 
 				SetFilePointer(hFile, 0, NULL, FILE_END);
-				Progress.ulTotalSize.QuadPart -= dst_filesize.QuadPart;
-				src_filesize.QuadPart -= dst_filesize.QuadPart;
+				Progress.ulTotalSize.QuadPart -= exist_filesize.QuadPart;
+				src_filesize.QuadPart -= exist_filesize.QuadPart;
 			}
 			else if ((dwWrite & WRITE_OVERWRITE) == WRITE_OVERWRITE)
 			{
@@ -1380,7 +1398,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				CloseHandle(hFile);
 				Progress.ulTotalSize.QuadPart -= src_filesize.QuadPart;
 				parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-					get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+					get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 				return transfer_result_skip;
 			}
@@ -1397,22 +1415,27 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 	}
 
+	SetFileTime(hFile, &from.ftCreationTime, &from.ftLastAccessTime, &from.ftLastWriteTime);
+
 	//0byte 파일일 경우는 아래의 do~while을 들어가지 않아야 한다.
 	if (src_filesize.QuadPart == 0)
 	{
 		logWriteE(_T("0 byte file. just return."));
 		CloseHandle(hFile);
+
+		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+
 		return transfer_result_success;
 	}
 
 	//실제 수신 시작
-#define BUFFER_SIZE 1024 * 12
 	DWORD dwBytesRead = BUFFER_SIZE;
 	DWORD dwBytesWrite;
-	LPSTR packet[BUFFER_SIZE] = { 0, };
+	LPSTR packet = new CHAR[BUFFER_SIZE];
 	ULONGLONG	received_size = 0;
 	int			loop = 0;
-	long		t0 = clock(), t1;
+	long		t0 = clock(), t1 = 0;
 
 	m_transfer_pause = false;
 	m_transfer_stop = false;
@@ -1446,18 +1469,20 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 #else
 		if (false)//osType == OS_MAC)
 		{
-			if (!m_sock.RecvExact((char*)&packet, (INT)dwBytesRead, BLASTSOCK_BUFFER))
+			if (!m_sock.RecvExact(packet, (INT)dwBytesRead, BLASTSOCK_BUFFER))
 			{
 				CloseHandle(hFile);
+				delete[] packet;
 				return FALSE;
 			}
 		}
 		else
 		{
-			if (!m_sock.RecvExact((char*)&packet, (INT)dwBytesRead, BLASTSOCK_NO_BUFFER))
+			if (!m_sock.RecvExact(packet, (INT)dwBytesRead, BLASTSOCK_NO_BUFFER))
 			{
 				logWriteE(_T("CODE-12 : %d"), GetLastError());
 				CloseHandle(hFile);
+				delete[] packet;
 				return FALSE;
 			}
 		}
@@ -1492,7 +1517,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
 		parent->m_progress.SetPos((int)percent);
 		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 		//TRACE(_T("total percent = %.2f\n"), percent);
 
 		/*
@@ -1510,6 +1535,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	} while (dwBytesRead == BUFFER_SIZE);
 
 	CloseHandle(hFile);
+	delete[] packet;
 
 	//스킵되거나 동일 파일을 이어받을 때 그 크기 또한 BUFFER_SIZE보다 작다면 m_progress에는 아무것도 나타나지 않는다.
 	//이를 보완하기 위해
@@ -1517,10 +1543,10 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//(기존 방식으로서 lock()처리가 필요하다)
 	//2.위와 같은 경우를 판별하여 이 블록에 m_progress의 출력 텍스트를 표시한다.
 	//우선 2번으로 처리한다.
-	if (t1 < 0)
+	if (t1 <= 0)
 	{
 		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_string(Progress.ulReceivedSize.QuadPart), get_size_string(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 		parent->m_static_remain_speed.set_textf(-1, _T("0 Sec / 0 KB/s"));
 	}
 

@@ -80,6 +80,8 @@ void CnFTDServerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_COUNT_REMOTE, m_static_count_remote);
 	DDX_Control(pDX, IDC_PROGRESS_SPACE_LOCAL, m_progress_space_local);
 	DDX_Control(pDX, IDC_PROGRESS_SPACE_REMOTE, m_progress_space_remote);
+	DDX_Control(pDX, IDC_STATIC_LOCAL, m_static_local);
+	DDX_Control(pDX, IDC_STATIC_REMOTE, m_static_remote);
 }
 
 BEGIN_MESSAGE_MAP(CnFTDServerDlg, CDialogEx)
@@ -117,6 +119,9 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CDialogEx)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN, &CnFTDServerDlg::OnListContextMenuOpen)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_PROPERTY, &CnFTDServerDlg::OnListContextMenuProperty)
 	ON_WM_CONTEXTMENU()
+	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnItemChangedListLocal)
+	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnItemChangedListRemote)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnListContextMenuOpenExplorer)
 END_MESSAGE_MAP()
 
 
@@ -157,6 +162,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	set_color_theme(CSCColorTheme::color_theme_default);
 
 	m_resize.Create(this);
+	m_resize.Add(IDC_STATIC_LOCAL, 0, 0, 0, 0);
 	m_resize.Add(IDC_PATH_LOCAL, 0, 0, 50, 0);
 	m_resize.Add(IDC_TREE_LOCAL, 0, 0, 0, 100);
 	m_resize.Add(IDC_SPLITTER_LEFT, 0, 0, 0, 100);
@@ -166,6 +172,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	m_resize.Add(IDC_SPLITTER_CENTER, 50, 0, 0, 100);
 
+	m_resize.Add(IDC_STATIC_REMOTE, 50, 0, 0, 0);
 	m_resize.Add(IDC_PATH_REMOTE, 50, 0, 50, 0);
 	m_resize.Add(IDC_TREE_REMOTE, 50, 0, 0, 100);
 	m_resize.Add(IDC_SPLITTER_RIGHT, 50, 0, 0, 100);
@@ -173,14 +180,20 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_resize.Add(IDC_PROGRESS_SPACE_REMOTE, 50, 100, 0, 0);
 	m_resize.Add(IDC_STATIC_COUNT_REMOTE, 100, 100, 0, 0);
 
+	//왼쪽 트리와 리스트 스플리터
 	m_splitter_left.SetType(CControlSplitter::CS_VERT);
+	m_splitter_left.AddToTopOrLeftCtrls(IDC_STATIC_LOCAL);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_TREE_LOCAL);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_PROGRESS_SPACE_LOCAL);
+	m_splitter_left.AddToBottomOrRightCtrls(IDC_PATH_LOCAL);
 	m_splitter_left.AddToBottomOrRightCtrls(IDC_LIST_LOCAL);
 
+	//오른쪽 트리와 리스트 스플리터
 	m_splitter_right.SetType(CControlSplitter::CS_VERT);
+	m_splitter_right.AddToTopOrLeftCtrls(IDC_STATIC_REMOTE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_TREE_REMOTE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_PROGRESS_SPACE_REMOTE);
+	m_splitter_right.AddToBottomOrRightCtrls(IDC_PATH_REMOTE);
 	m_splitter_right.AddToBottomOrRightCtrls(IDC_LIST_REMOTE);
 
 	//중앙 splitter
@@ -189,6 +202,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_splitter_center.AddToTopOrLeftCtrls(IDC_LIST_LOCAL);
 	m_splitter_center.AddToTopOrLeftCtrls(IDC_PROGRESS_SPACE_LOCAL);
 	m_splitter_center.AddToTopOrLeftCtrls(IDC_STATIC_COUNT_LOCAL, SPF_RIGHT);
+	m_splitter_center.AddToBottomOrRightCtrls(IDC_STATIC_REMOTE, SPF_LEFT);
 	m_splitter_center.AddToBottomOrRightCtrls(IDC_PATH_REMOTE);
 	m_splitter_center.AddToBottomOrRightCtrls(IDC_TREE_REMOTE, SPF_LEFT);
 	m_splitter_center.AddToBottomOrRightCtrls(IDC_SPLITTER_RIGHT, SPF_LEFT);
@@ -203,8 +217,12 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	//m_sys_buttons.set_color_theme(CSCColorTheme::color_theme_dark_gray);
 
-
-
+	m_static_local.set_icon(IDI_LOCAL, 24);
+	m_static_remote.set_icon(IDI_REMOTE, 24);
+	m_static_local.set_back_color(Gdiplus::Color::LightCyan);
+	m_static_remote.set_back_color(Gdiplus::Color::LemonChiffon);
+	m_static_local.set_font_bold();
+	m_static_remote.set_font_bold();
 
 	//for test
 	while (get_process_running_count(_T("nFTDClient.exe")) > 0)
@@ -212,11 +230,11 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	m_progress_space_local.SetColor(RGB(36, 160, 212), RGB(230, 230, 230));
 	m_progress_space_local.draw_border();
-	m_progress_space_local.SetPos(30);
+	m_progress_space_local.SetPos(0);
 
 	m_progress_space_remote.SetColor(RGB(36, 160, 212), RGB(230, 230, 230));
 	m_progress_space_remote.draw_border();
-	m_progress_space_remote.SetPos(70);
+	m_progress_space_remote.SetPos(0);
 
 	//nFTDClient.exe를 디버깅하지 않고 단순 연결 후 실행하여 테스트 할 경우는 true로 변경할것.
 	if (true)
@@ -239,7 +257,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	RestoreWindowPosition(&theApp, this);
 
-	init_progress();
+	init_progressDlg();
 
 	//20241212 scpark thread_connect()에서 접속 시도 후 initialize()를 통해 remote의 CPathCtrl, CTreeCtrl, CListCtrl등을 표시하는데
 	//MFC 관련 오류가 발생한다. std::thread에서도 컨트롤에 대한 일반적인 액션들은 대부분 가능하나 생성과 관련된 뭔가 문제를 일으키는 듯 하다.
@@ -290,7 +308,7 @@ void CnFTDServerDlg::init_shadow()
 	m_shadow.SetColor(RGB(0, 0, 0));
 }
 
-void CnFTDServerDlg::init_progress()
+void CnFTDServerDlg::init_progressDlg()
 {
 	CString msg;
 	Gdiplus::Color cr_text = gRGB(212, 212, 212);
@@ -902,13 +920,13 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		{
 			if (m_srcSide == SERVER_SIDE)
 			{
-				m_transfer_list.push_back(pDragListCtrl->get_path(dq[i]));
+				m_transfer_list.push_back(pDragListCtrl->get_file_data(dq[i]));
 			}
 			else
 			{
-				m_transfer_list.push_back(pDragListCtrl->get_path(dq[i]));
+				m_transfer_list.push_back(pDragListCtrl->get_file_data(dq[i]));
 			}
-			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CVtListCtrlEx::col_filename), m_transfer_list.back());
+			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CVtListCtrlEx::col_filename), m_transfer_list.back().cFileName);
 		}
 
 		file_transfer();
@@ -1027,6 +1045,8 @@ void CnFTDServerDlg::OnTvnSelchangedTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	m_list_local.set_path(path);
 	m_path_local.set_path(path);
 
+	refresh_selection_status(&m_list_local);
+	refresh_disk_usage(false);
 	*pResult = 0;
 }
 
@@ -1138,7 +1158,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 		m_tree_local.set_path(path, false);
 		m_list_local.set_path(path);
 
-		//if (_tchdir(path) == 0)
+		refresh_selection_status(&m_list_local);
+		refresh_disk_usage(false);
 		return true;
 	}
 	else
@@ -1156,8 +1177,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 		}
 
 
-		//result = m_ServerManager.change_directory(path, m_dwSide, false);
-		if (true)//result)
+		result = m_ServerManager.change_directory(path, dwSide, false);
+		if (result)
 		{
 			//path가 내 PC, 바탕 화면, 문서, 로컬 디스크(C:) 등 모두 그대로 전달한다.
 			m_remoteCurrentPath = path;
@@ -1195,7 +1216,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			}
 			m_path_remote.set_path(path, &folder_list);
 
-			m_static_count_remote.set_textf(-1, _T("%d개 항목"), dq.size());
+			refresh_selection_status(&m_list_remote);
+			refresh_disk_usage(true);
 		}
 
 		result = TRUE;
@@ -1238,7 +1260,7 @@ void CnFTDServerDlg::SaveLocalLastPath()
 void CnFTDServerDlg::set_color_theme(int theme)
 {
 	m_theme.set_color_theme(theme);
-	m_theme.cr_text = Gdiplus::Color::DarkGray;
+	m_theme.cr_text = Gdiplus::Color::DimGray;
 	m_theme.cr_back = Gdiplus::Color::White;
 
 	m_tree_local.set_color_theme(theme);
@@ -1267,6 +1289,12 @@ void CnFTDServerDlg::file_transfer()
 		return;
 	}
 
+	//m_transfer_from, m_transfer_to의 끝에 '\\'가 있을 경우의 보정.
+	if (m_transfer_from.GetLength() > 3 && m_transfer_from.Right(1) == '\\')
+		truncate(m_transfer_from, 1);
+	if (m_transfer_to.GetLength() > 3 && m_transfer_to.Right(1) == '\\')
+		truncate(m_transfer_to, 1);
+
 	//l to l, l to r, r to l, r to l 4가지 모두 나눠서 처리?? 우선 ltr, rtl 2가지만 고려한다.
 	//if (m_dwSide == SERVER_SIDE && target == SERVER_SIDE)
 	//{
@@ -1277,14 +1305,15 @@ void CnFTDServerDlg::file_transfer()
 	//	return;
 	//}
 
-	std::deque<WIN32_FIND_DATA> filelist;
+	//std::deque<WIN32_FIND_DATA> filelist;
 
 	//전송할 파일목록을 filelist에 채운다.
 	//이 목록을 CnFTDFileTransferDialog에 전달하고
 	//그 dlg의 thread에서 전체 파일 목록을 재구성한 후 순차적으로 전송을 시작한다.
 	//추후에는 multithread로 파일을 전송하는 방법 또한 생각해야 한다.
-	for (int i = 0; i < m_transfer_list.size(); i++)
+	//for (int i = 0; i < m_transfer_list.size(); i++)
 	{
+		/*
 		WIN32_FIND_DATA data;
 		memset(&data, 0, sizeof(data));
 
@@ -1301,11 +1330,11 @@ void CnFTDServerDlg::file_transfer()
 		{
 			m_list_remote.get_remote_file_info(m_transfer_list[i], &data);
 		}
-
 		filelist.push_back(data);
+		*/
 	}
 
-	CnFTDFileTransferDialog m_FileTransferDlg;
+	CnFTDFileTransferDialog m_FileTransferDlg(this);
 
 	CVtListCtrlEx* pListFile;
 	ULARGE_INTEGER* pulDiskSpace;
@@ -1362,7 +1391,9 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 
-	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &filelist, pulDiskSpace,
+	TRACE(_T("src mtime = %s\n"), get_file_time_str(m_transfer_list[0].ftLastWriteTime));
+
+	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &m_transfer_list, pulDiskSpace,
 												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, false))
 	{
 		m_FileTransferDlg.DoModal();
@@ -1379,6 +1410,12 @@ void CnFTDServerDlg::file_transfer()
 		//dlgMessage.SetMessage(MsgType::TypeOK, message);
 		//dlgMessage.DoModal();
 	}
+}
+
+void CnFTDServerDlg::add_transfered_file_to_list(int dstSide, WIN32_FIND_DATA data)
+{
+	CVtListCtrlEx* plist = (dstSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	plist->insert_item(-1, data, true, true);
 }
 
 
@@ -1599,6 +1636,10 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					res = true;
 				}
 				break;
+			case file_cmd_open_explorer :
+				param0 = m_list_local.get_path();
+				ShellExecute(NULL, _T("explore"), param0, 0, 0, SW_SHOWNORMAL);
+				break;
 			case file_cmd_new_folder :
 				//list의 현재 폴더에 새 폴더를 생성한다.
 				res = m_list_local.new_folder(_S(IDS_NEW_FOLDER));
@@ -1649,6 +1690,10 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					res = true;
 				}
 				break;
+			case file_cmd_open_explorer :
+				param0 = m_list_remote.get_path();
+				m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
+				break;
 			case file_cmd_rename:
 				m_list_remote.edit_item(dq[0], CVtListCtrlEx::col_filename);
 				res = true;
@@ -1683,11 +1728,94 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	return res;
 }
 
+//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
+void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
+{
+	CString str;
+
+	std::deque<WIN32_FIND_DATA> dq;
+	plist->get_selected_items(&dq);
+
+	ULARGE_INTEGER total_size;
+	total_size.QuadPart = 0;
+
+	//멀티 선택 시 파일/폴더가 혼합되어 선택되면 파일크기를 표시하지 않는다.
+	bool folder_included = false;
+
+	for (auto item : dq)
+	{
+		if (item.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			folder_included = true;
+
+		ULARGE_INTEGER file_size;
+		file_size.LowPart = item.nFileSizeLow;
+		file_size.HighPart = item.nFileSizeHigh;
+		total_size.QuadPart += file_size.QuadPart;
+	}
+
+	if (dq.size())
+	{
+		if (folder_included)
+			str.Format(_T("%d%s     %d%s"), plist->size(), _S(IDS_ITEM_COUNT), dq.size(), _S(IDS_ITEM_SELECTED_COUNT));
+		else
+			str.Format(_T("%d%s     %d%s  %s"), plist->size(), _S(IDS_ITEM_COUNT), dq.size(), _S(IDS_ITEM_SELECTED_COUNT), get_size_str(total_size.QuadPart, -1, 2));
+	}
+	else
+	{
+		str.Format(_T("%d%s"), plist->size(), _S(IDS_ITEM_COUNT));
+	}
+
+	if (plist == &m_list_local)
+		m_static_count_local.set_text(str);
+	else if (plist == &m_list_remote)
+		m_static_count_remote.set_text(str);
+}
+
+void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
+{
+	CVtListCtrlEx* plist = (is_remote_side ? &m_list_remote : &m_list_local);
+	CString drive = convert_special_folder_to_real_path(plist->get_path(), m_list_local.get_shell_imagelist(), is_remote_side).Left(2);
+
+	ULARGE_INTEGER ulFree;// get_disk_free_size(drive);
+	ULARGE_INTEGER ulTotal;// get_disk_total_size(drive);
+
+	ulFree.QuadPart = 0;
+	ulTotal.QuadPart = 0;
+
+	if (is_remote_side)
+	{
+		m_ServerManager.m_socket.RemainSpace(&ulFree);
+		m_ServerManager.m_socket.TotalSpace(&ulTotal);
+		//m_ServerManager.KeepConnection();
+		ulFree.QuadPart = ulFree.QuadPart;
+		ulTotal.QuadPart = ulTotal.QuadPart;
+	}
+	else
+	{
+		ulFree.QuadPart = get_disk_free_size(drive);
+		ulTotal.QuadPart = get_disk_total_size(drive);
+	}
+
+	double free_ratio = (((double)ulFree.QuadPart / (double)ulTotal.QuadPart)) * 100.0;
+
+	TRACE(_T("%s drive free space ratio = %f\n"), drive, free_ratio);
+
+	//progressbar에는 남은 용량만큼 채우는게 아니라 사용량만큼 채워서 보여준다.
+	if (is_remote_side)
+		m_progress_space_remote.SetPos(100 - (int)free_ratio);
+	else
+		m_progress_space_local.SetPos(100 - (int)free_ratio);
+}
+
 void CnFTDServerDlg::OnListContextMenuOpen()
 {
 	file_command(file_cmd_open);
 }
 
+void CnFTDServerDlg::OnListContextMenuOpenExplorer()
+{
+	file_command(file_cmd_open_explorer);
+}
 
 void CnFTDServerDlg::OnListContextMenuProperty()
 {
@@ -1698,4 +1826,26 @@ void CnFTDServerDlg::OnListContextMenuProperty()
 void CnFTDServerDlg::OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/)
 {
 	TRACE(_T("context menu\n"));
+}
+
+
+void CnFTDServerDlg::OnLvnItemChangedListLocal(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
+		refresh_selection_status(&m_list_local);
+
+	*pResult = 0;
+}
+
+
+void CnFTDServerDlg::OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
+		refresh_selection_status(&m_list_remote);
+
+	*pResult = 0;
 }

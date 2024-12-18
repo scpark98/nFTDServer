@@ -10,7 +10,7 @@ class CExistFileDlg : public CDialogEx
 	DECLARE_DYNAMIC(CExistFileDlg)
 
 public:
-	CExistFileDlg(CWnd *pParent, CString src_file, ULONGLONG src_size, CString dst_file, ULONGLONG dst_size);   // 표준 생성자입니다.
+	CExistFileDlg(CWnd *pParent, WIN32_FIND_DATA src_file, WIN32_FIND_DATA dst_file);   // 표준 생성자입니다.
 	virtual ~CExistFileDlg();
 
 // 대화 상자 데이터입니다.
@@ -19,12 +19,10 @@ public:
 #endif
 
 protected:
-	CString			m_src_file;
-	ULONGLONG		m_src_filesize;
-	CString			m_dst_file;
-	ULONGLONG		m_dst_filesize;
+	WIN32_FIND_DATA		m_src_file;
+	WIN32_FIND_DATA		m_dst_file;
 
-	CToolTipCtrl	m_tooltip;
+	CToolTipCtrl		m_tooltip;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.
@@ -50,4 +48,6 @@ public:
 	CSCStatic m_static_dst_filesize;
 	afx_msg void OnBnClickedCheckApplyAll();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	CSCStatic m_static_src_mtime;
+	CSCStatic m_static_dst_mtime;
 };

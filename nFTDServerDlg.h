@@ -47,7 +47,7 @@ public:
 	void				init_treectrl();
 	void				init_listctrl();
 	void				init_pathctrl();
-	void				init_progress();
+	void				init_progressDlg();
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
@@ -88,11 +88,16 @@ public:
 	//param1은 rename일 경우에만 유효하다.
 	bool				file_command(int cmd, CString param0 = _T(""), CString param1 = _T(""));
 
+	//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
+	void				refresh_selection_status(CVtListCtrlEx* plist);
+	void				refresh_disk_usage(bool is_remote_side);
+
 	//전송시작 버튼 또는 drag&drop으로 전송을 시작한다.
-	std::deque<CString> m_transfer_list;	//전송할 파일/폴더 목록이며 반드시 fullpath로 기록되어 있어야 한다.
+	std::deque<WIN32_FIND_DATA> m_transfer_list;	//전송할 파일/폴더 목록이며 .Filename은 반드시 fullpath로 기록되어 있어야 한다.
 	CString				m_transfer_from;	//전송할 파일/폴더의 src 폴더
 	CString				m_transfer_to;		//전송할 dst 폴더
 	void				file_transfer();	//위의 값들에 따라 전송 시작
+	void				add_transfered_file_to_list(int dstSide, WIN32_FIND_DATA);
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
@@ -156,4 +161,9 @@ public:
 	afx_msg void OnListContextMenuOpen();
 	afx_msg void OnListContextMenuProperty();
 	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
+	afx_msg void OnLvnItemChangedListLocal(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnListContextMenuOpenExplorer();
+	CSCStatic m_static_local;
+	CSCStatic m_static_remote;
 };

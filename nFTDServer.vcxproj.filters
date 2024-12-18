@@ -263,6 +263,18 @@
     <Image Include="res\nFTDServer.ico">
       <Filter>리소스 파일</Filter>
     </Image>
+    <Image Include="res\images\IDP_ICO_LOCAL.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\IDP_ICO_REMOTE.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\IDP_ICO_LOCAL.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\IDP_ICO_REMOTE.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="readme.txt" />
