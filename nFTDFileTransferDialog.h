@@ -41,6 +41,11 @@ public:
 #endif
 
 protected:
+	enum TIMER_ID
+	{
+		timer_check_thread_transfer = 0,
+	};
+
 	CWnd				*m_parent = NULL;
 	CResizeCtrl			m_resize;
 	CSCSystemButtons	m_sys_buttons;
@@ -52,7 +57,7 @@ protected:
 
 	bool				m_thread_transfer_started = false;
 	void				thread_transfer();
-
+	std::thread			m_thread_transfer;
 
 	int					m_srcSide;
 	int					m_dstSide;
@@ -94,4 +99,5 @@ public:
 	CGdiButton m_button_cancel;
 	CSCStatic m_static_index_bytes;
 	CSCStatic m_static_remain_speed;
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 };

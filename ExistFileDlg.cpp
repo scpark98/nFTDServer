@@ -112,14 +112,21 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_static_src_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_src_file.cFileName);
 	m_static_dst_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_dst_file.cFileName);
 	m_static_src_filesize.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1),
-		_T("%s (%s)  %s"),
+		_T("%s : %s (%s)"),
+		_S(IDS_FILE_SIZE),
 		get_size_str(src_filesize.QuadPart, 1),
-		get_size_str(src_filesize.QuadPart, 0),
+		get_size_str(src_filesize.QuadPart, 0));
+	m_static_src_mtime.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s : %s"),
+		_S(IDS_FILE_LAST_MODIFIED_TIME),
 		get_file_time_str(m_src_file.ftLastWriteTime));
+
 	m_static_dst_filesize.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1),
-		_T("%s (%s)  %s"),
+		_T("%s : %s (%s)"),
+		_S(IDS_FILE_SIZE),
 		get_size_str(dst_filesize.QuadPart, 1),
-		get_size_str(dst_filesize.QuadPart, 0),
+		get_size_str(dst_filesize.QuadPart, 0));
+	m_static_dst_mtime.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s : %s"),
+		_S(IDS_FILE_LAST_MODIFIED_TIME),
 		get_file_time_str(m_dst_file.ftLastWriteTime));
 
 	return TRUE;  // return TRUE unless you set the focus to a control

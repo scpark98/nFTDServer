@@ -6,7 +6,8 @@
 
 #include "../../Common/colors.h"
 #include "../../Common/ResizeCtrl.h"
-#include "../../Common/CButton/SCSystemButtons/SCSystemButtons.h"
+#include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
+//#include "../../Common/CButton/SCSystemButtons/SCSystemButtons.h"
 #include "../../Common/CDialog/SCProgressDlg/SCProgressDlg.h"
 #include "../../Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
@@ -19,7 +20,7 @@
 
 
 // CnFTDServerDlg 대화 상자
-class CnFTDServerDlg : public CDialogEx
+class CnFTDServerDlg : public CSCThemeDlg
 {
 // 생성입니다.
 public:
@@ -39,7 +40,7 @@ public:
 	void				init_shadow();
 
 	CResizeCtrl			m_resize;
-	CSCSystemButtons	m_sys_buttons;
+	//CSCSystemButtons	m_sys_buttons;
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 	CString				m_title = _T("FileTransfer (not connected)");
@@ -166,4 +167,6 @@ public:
 	afx_msg void OnListContextMenuOpenExplorer();
 	CSCStatic m_static_local;
 	CSCStatic m_static_remote;
+	CGdiButton m_check_close_after_all;
+	afx_msg void OnBnClickedCheckCloseAfterAll();
 };

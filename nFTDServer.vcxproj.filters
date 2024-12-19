@@ -135,13 +135,19 @@
     <ClInclude Include="..\..\Common\CWnd\WndShadow\WndShadow.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="MessageDlg.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="ExistFileDlg.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CEdit\SCEdit\SCEdit.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CDialog\SCThemeDlg\SCThemeDlg.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -239,13 +245,19 @@
     <ClCompile Include="..\..\Common\CWnd\WndShadow\WndShadow.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="MessageDlg.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="ExistFileDlg.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CEdit\SCEdit\SCEdit.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CDialog\SCThemeDlg\SCThemeDlg.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

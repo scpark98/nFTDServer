@@ -58,6 +58,7 @@ BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CDialogEx)
 	ON_WM_SIZE()
 	ON_WM_ERASEBKGND()
 	//ON_REGISTERED_MESSAGE(Message_CnFTDServerSocket, &CnFTDFileTransferDialog::on_message_server_socket)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -100,8 +101,10 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 	RestoreWindowPosition(&theApp, this, _T("CnFTDFileTransferDialog"));
 
-	std::thread th(&CnFTDFileTransferDialog::thread_transfer, this);
-	th.detach();
+	m_thread_transfer = std::thread(&CnFTDFileTransferDialog::thread_transfer, this);
+	m_thread_transfer.detach();
+
+	SetTimer(timer_check_thread_transfer, 2000, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.
@@ -117,7 +120,7 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 	if (m_thread_transfer_started)
 	{
 		m_pServerManager->m_DataSocket.set_transfer_pause(true);
-		int res = AfxMessageBox(_T("파일전송을 종료합니다."), MB_OKCANCEL);
+		int res = AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 		if (res == IDCANCEL)
 		{
 			m_pServerManager->m_DataSocket.set_transfer_pause(false);
@@ -209,6 +212,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 {
 	int i;
 
+	m_thread_transfer_started = true;
+
 	m_static_message.set_text(_T("파일, 폴더 목록을 생성중입니다..."));
 
 	//폴더인 항목은 그 항목을 유지한 채 하위 모든 폴더, 파일 목록을 찾아서 추가시킨다.
@@ -260,8 +265,6 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//list에 그 내용을 채워준다.
 	for (i = 0; i < m_filelist.size(); i++)
 	{
-		m_progress.SetPos(i + 1);
-
 		//TRACE(_T("src[%3d] = %s\n"), i, m_filelist[i].cFileName);
 		is_folder = (m_filelist[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
 
@@ -612,3 +615,25 @@ LRESULT CnFTDFileTransferDialog::on_message_server_socket(WPARAM wParam, LPARAM 
 	return 0;
 }
 */
+
+void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	if (nIDEvent == timer_check_thread_transfer)
+	{
+		KillTimer(timer_check_thread_transfer);
+
+		if (!m_thread_transfer_started)
+		{
+			if (m_auto_close)
+			{
+				CDialogEx::OnCancel();
+			}
+		}
+		else
+		{
+			SetTimer(timer_check_thread_transfer, 1000, NULL);
+		}
+	}
+	CDialogEx::OnTimer(nIDEvent);
+}

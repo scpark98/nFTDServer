@@ -65,6 +65,8 @@
 #define IDS_PROPERTY                    149
 #define IDS_ITEM_COUNT                  150
 #define IDS_ITEM_SELECTED_COUNT         151
+#define IDS_FILE_LAST_MODIFIED_TIME     152
+#define IDS_FILE_SIZE                   153
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -102,6 +104,7 @@
 #define IDC_STATIC_LOCAL                1026
 #define IDC_STATIC_REMOTE               1027
 #define IDC_STATIC_DST_FILESIZE         1028
+#define IDC_CHECK_CLOSE_AFTER_ALL       1028
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -169,7 +172,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        149
 #define _APS_NEXT_COMMAND_VALUE         32788
-#define _APS_NEXT_CONTROL_VALUE         1027
+#define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

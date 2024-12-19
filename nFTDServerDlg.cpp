@@ -14,6 +14,7 @@
 #include "../../Common/MemoryDC.h"
 
 #include "nFTDFileTransferDialog.h"
+#include "MessageDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -59,14 +60,14 @@ END_MESSAGE_MAP()
 
 
 CnFTDServerDlg::CnFTDServerDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_NFTDSERVER_DIALOG, pParent)
+	: CSCThemeDlg(IDD_NFTDSERVER_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
 void CnFTDServerDlg::DoDataExchange(CDataExchange* pDX)
 {
-	CDialogEx::DoDataExchange(pDX);
+	CSCThemeDlg::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_TREE_LOCAL, m_tree_local);
 	DDX_Control(pDX, IDC_LIST_LOCAL, m_list_local);
 	DDX_Control(pDX, IDC_TREE_REMOTE, m_tree_remote);
@@ -82,9 +83,10 @@ void CnFTDServerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_PROGRESS_SPACE_REMOTE, m_progress_space_remote);
 	DDX_Control(pDX, IDC_STATIC_LOCAL, m_static_local);
 	DDX_Control(pDX, IDC_STATIC_REMOTE, m_static_remote);
+	DDX_Control(pDX, IDC_CHECK_CLOSE_AFTER_ALL, m_check_close_after_all);
 }
 
-BEGIN_MESSAGE_MAP(CnFTDServerDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
@@ -122,6 +124,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CDialogEx)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnItemChangedListLocal)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnItemChangedListRemote)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnListContextMenuOpenExplorer)
+	ON_BN_CLICKED(IDC_CHECK_CLOSE_AFTER_ALL, &CnFTDServerDlg::OnBnClickedCheckCloseAfterAll)
 END_MESSAGE_MAP()
 
 
@@ -129,7 +132,7 @@ END_MESSAGE_MAP()
 
 BOOL CnFTDServerDlg::OnInitDialog()
 {
-	CDialogEx::OnInitDialog();
+	CSCThemeDlg::OnInitDialog();
 
 	// 시스템 메뉴에 "정보..." 메뉴 항목을 추가합니다.
 
@@ -180,6 +183,8 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_resize.Add(IDC_PROGRESS_SPACE_REMOTE, 50, 100, 0, 0);
 	m_resize.Add(IDC_STATIC_COUNT_REMOTE, 100, 100, 0, 0);
 
+	m_resize.Add(IDC_CHECK_CLOSE_AFTER_ALL, 100, 0, 0, 0);
+
 	//왼쪽 트리와 리스트 스플리터
 	m_splitter_left.SetType(CControlSplitter::CS_VERT);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_STATIC_LOCAL);
@@ -215,12 +220,21 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//아래 코드를 사용하지 않으면 타이틀바가 없는 dlg는 상단에 흰색 여백 공간이 생기는 부작용이 생긴다.
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN);
 
-	//m_sys_buttons.set_color_theme(CSCColorTheme::color_theme_dark_gray);
+	set_titlebar_height(32);
+	m_sys_buttons.set_button_width(44);
+	set_back_color(Gdiplus::Color::White);
+	set_title(_T("LinkMeMine File Manager"));
+	set_title_bold(true);
+	set_font_size(10);
+	set_titlebar_text_color(Gdiplus::Color::White);
+	set_titlebar_back_color(gRGB(59, 70, 92));
+	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
+	m_sys_buttons.set_back_hover_color(get_color(gRGB(59, 70, 92), 32));
 
 	m_static_local.set_icon(IDI_LOCAL, 24);
 	m_static_remote.set_icon(IDI_REMOTE, 24);
-	m_static_local.set_back_color(Gdiplus::Color::LightCyan);
-	m_static_remote.set_back_color(Gdiplus::Color::LemonChiffon);
+	m_static_local.set_back_color(Gdiplus::Color::White);
+	m_static_remote.set_back_color(Gdiplus::Color::White);
 	m_static_local.set_font_bold();
 	m_static_remote.set_font_bold();
 
@@ -235,6 +249,14 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_progress_space_remote.SetColor(RGB(36, 160, 212), RGB(230, 230, 230));
 	m_progress_space_remote.draw_border();
 	m_progress_space_remote.SetPos(0);
+
+	m_check_close_after_all.SetWindowText(_S(IDS_CLOSE_AFTER_TRANSFER));
+	m_check_close_after_all.text_color(Gdiplus::Color::White);
+	m_check_close_after_all.back_color(gRGB(59, 70, 92));
+	m_check_close_after_all.use_hover(false);
+	m_check_close_after_all.set_font_bold();
+	int auto_close = theApp.GetProfileInt(_T("setting"), _T("auto close after all"), BST_CHECKED);
+	m_check_close_after_all.SetCheck(auto_close);
 
 	//nFTDClient.exe를 디버깅하지 않고 단순 연결 후 실행하여 테스트 할 경우는 true로 변경할것.
 	if (true)
@@ -258,6 +280,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	RestoreWindowPosition(&theApp, this);
 
 	init_progressDlg();
+
 
 	//20241212 scpark thread_connect()에서 접속 시도 후 initialize()를 통해 remote의 CPathCtrl, CTreeCtrl, CListCtrl등을 표시하는데
 	//MFC 관련 오류가 발생한다. std::thread에서도 컨트롤에 대한 일반적인 액션들은 대부분 가능하나 생성과 관련된 뭔가 문제를 일으키는 듯 하다.
@@ -293,8 +316,7 @@ void CnFTDServerDlg::init_listctrl()
 void CnFTDServerDlg::init_pathctrl()
 {
 	m_path_local.set_shell_imagelist(&theApp.m_shell_imagelist);
-	//m_path_local.set_path(_T("d:\\"));
-
+	//m_path_local.back_color(Gdiplus::Color::Bisque);
 }
 
 void CnFTDServerDlg::init_shadow()
@@ -343,7 +365,7 @@ void CnFTDServerDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 	else
 	{
-		CDialogEx::OnSysCommand(nID, lParam);
+		CSCThemeDlg::OnSysCommand(nID, lParam);
 	}
 }
 
@@ -372,6 +394,9 @@ void CnFTDServerDlg::OnPaint()
 	}
 	else
 	{
+		CSCThemeDlg::OnPaint();
+		return;
+
 		CPaintDC dc1(this);
 		CRect rc;
 
@@ -424,7 +449,7 @@ HCURSOR CnFTDServerDlg::OnQueryDragIcon()
 
 void CnFTDServerDlg::OnWindowPosChanged(WINDOWPOS* lpwndpos)
 {
-	CDialogEx::OnWindowPosChanged(lpwndpos);
+	CSCThemeDlg::OnWindowPosChanged(lpwndpos);
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
 	SaveWindowPosition(&theApp, this);
@@ -440,6 +465,10 @@ void CnFTDServerDlg::OnBnClickedOk()
 void CnFTDServerDlg::OnBnClickedCancel()
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	CMessageDlg	dlg(this, _S(IDS_CONFIRM_EXIT), MB_OKCANCEL);
+	if (dlg.DoModal() == IDCANCEL)
+		return;
+
 	kill_process_by_fullpath(get_exe_directory() + _T("\\nFTDClient.exe"));
 	SaveLocalLastPath();
 
@@ -450,7 +479,7 @@ void CnFTDServerDlg::OnBnClickedCancel()
 BOOL CnFTDServerDlg::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 {
 	if (IsZoomed())
-		return CDialogEx::OnSetCursor(pWnd, nHitTest, message);
+		return CSCThemeDlg::OnSetCursor(pWnd, nHitTest, message);
 
 	CPoint pt;
 	CRect rc;
@@ -558,18 +587,13 @@ void CnFTDServerDlg::OnSize(UINT nType, int cx, int cy)
 	if (m_hWnd == NULL)
 		return;
 
-	CRect rc;
-	GetClientRect(rc);
 
 	if (m_sys_buttons.m_hWnd == NULL)
-	{
-		m_sys_buttons.create(this, 1, rc.right - 1, 44, TITLEBAR_HEIGHT, SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
-	}
-	else
-	{
-		m_sys_buttons.adjust(rc.top + 1, rc.right - 1);
-	}
+		return;
 
+	CRect rc;
+	GetClientRect(rc);
+	m_sys_buttons.adjust(rc.top, rc.right);
 	Invalidate();
 }
 
@@ -661,6 +685,7 @@ void CnFTDServerDlg::initialize()
 	m_list_remote.set_use_drag_and_drop(true);
 	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist);
 	m_path_remote.set_is_local_device(false);
+	//m_path_remote.back_color(Gdiplus::Color::Turquoise);
 
 	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
 	CString path = convert_special_folder_to_real_path(GetLocalLastPath());
@@ -1268,7 +1293,7 @@ void CnFTDServerDlg::set_color_theme(int theme)
 	m_tree_remote.set_color_theme(theme);
 	m_list_remote.set_color_theme(theme);
 
-	m_sys_buttons.set_back_color(m_theme.cr_back);
+	//m_sys_buttons.set_back_color(m_theme.cr_back);
 
 	m_static_count_local.set_color(m_theme.cr_text, m_theme.cr_back);
 	m_static_count_remote.set_color(m_theme.cr_text, m_theme.cr_back);
@@ -1295,6 +1320,10 @@ void CnFTDServerDlg::file_transfer()
 	if (m_transfer_to.GetLength() > 3 && m_transfer_to.Right(1) == '\\')
 		truncate(m_transfer_to, 1);
 
+	//트리로 drop된 경우 list가 해당 폴더를 표시하고 있지 않다면 change_directory()해준다.
+	if ((m_dstSide == SERVER_SIDE && m_list_local.get_path() != m_transfer_to) ||
+		(m_dstSide == CLIENT_SIDE && m_list_remote.get_path() != m_transfer_to))
+		change_directory(m_transfer_to, m_dstSide);
 	//l to l, l to r, r to l, r to l 4가지 모두 나눠서 처리?? 우선 ltr, rtl 2가지만 고려한다.
 	//if (m_dwSide == SERVER_SIDE && target == SERVER_SIDE)
 	//{
@@ -1394,7 +1423,7 @@ void CnFTDServerDlg::file_transfer()
 	TRACE(_T("src mtime = %s\n"), get_file_time_str(m_transfer_list[0].ftLastWriteTime));
 
 	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &m_transfer_list, pulDiskSpace,
-												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, false))
+												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, m_check_close_after_all.GetCheck()))
 	{
 		m_FileTransferDlg.DoModal();
 		
@@ -1716,7 +1745,9 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 						}
 					}
 
-					m_list_remote.refresh_list();
+					//m_list_remote.refresh_list();
+					refresh_disk_usage(true);
+					refresh_selection_status(&m_list_remote);
 				}
 				break;
 			case file_cmd_property:
@@ -1848,4 +1879,10 @@ void CnFTDServerDlg::OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 		refresh_selection_status(&m_list_remote);
 
 	*pResult = 0;
+}
+
+
+void CnFTDServerDlg::OnBnClickedCheckCloseAfterAll()
+{
+	theApp.WriteProfileInt(_T("setting"), _T("auto close after all"), m_check_close_after_all.GetCheck());
 }
