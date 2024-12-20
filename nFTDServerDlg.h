@@ -40,7 +40,6 @@ public:
 	void				init_shadow();
 
 	CResizeCtrl			m_resize;
-	//CSCSystemButtons	m_sys_buttons;
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 	CString				m_title = _T("FileTransfer (not connected)");
@@ -49,6 +48,9 @@ public:
 	void				init_listctrl();
 	void				init_pathctrl();
 	void				init_progressDlg();
+	void				init_splitter();
+	void				init_favorite();
+
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
@@ -92,6 +94,15 @@ public:
 	//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
 	void				refresh_selection_status(CVtListCtrlEx* plist);
 	void				refresh_disk_usage(bool is_remote_side);
+
+	//즐겨찾기 목록
+	enum FAVORITE_CMD
+	{
+		favorite_delete = 0,
+		favorite_add,
+		favorite_find,
+	};
+	int					favorite_cmd(int cmd, int side, CString fullpath = _T(""));
 
 	//전송시작 버튼 또는 drag&drop으로 전송을 시작한다.
 	std::deque<WIN32_FIND_DATA> m_transfer_list;	//전송할 파일/폴더 목록이며 .Filename은 반드시 fullpath로 기록되어 있어야 한다.
@@ -141,8 +152,11 @@ public:
 	afx_msg void OnTvnSelchangedTreeRemote(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMDblclkListRemote(NMHDR* pNMHDR, LRESULT* pResult);
 	CControlSplitter m_splitter_center;
+	CControlSplitter m_splitter_center2;
 	CControlSplitter m_splitter_left;
 	CControlSplitter m_splitter_right;
+	CControlSplitter m_splitter_local_favorite;
+	CControlSplitter m_splitter_remote_favorite;
 	CSCStatic m_static_count_local;
 	CSCStatic m_static_count_remote;
 	CMacProgressCtrl m_progress_space_local;
@@ -169,4 +183,13 @@ public:
 	CSCStatic m_static_remote;
 	CGdiButton m_check_close_after_all;
 	afx_msg void OnBnClickedCheckCloseAfterAll();
+	CGdiButton m_button_local_to_remote;
+	CGdiButton m_button_remote_to_local;
+	afx_msg void OnBnClickedButtonLocalToRemote();
+	afx_msg void OnBnClickedButtonRemoteToLocal();
+	CVtListCtrlEx m_list_local_favorite;
+	CVtListCtrlEx m_list_remote_favorite;
+	afx_msg void OnNMDblclkListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnListContextMenuFavorite();
 };

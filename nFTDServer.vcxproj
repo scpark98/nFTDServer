@@ -335,6 +335,7 @@
     <ClInclude Include="..\..\Common\CWnd\WndShadow\WndShadow.h" />
     <ClInclude Include="..\..\Common\Functions.h" />
     <ClInclude Include="..\..\Common\GdiplusBitmap.h" />
+    <ClInclude Include="..\..\Common\ini\EZIni\EZIni.h" />
     <ClInclude Include="..\..\Common\log\SCLog\SCLog.h" />
     <ClInclude Include="..\..\Common\MemoryDC.h" />
     <ClInclude Include="..\..\Common\ResizeCtrl.h" />
@@ -540,6 +541,14 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\Common\ini\EZIni\EZIni.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\Common\log\SCLog\SCLog.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|Win32'">NotUsing</PrecompiledHeader>
@@ -603,10 +612,22 @@
     <None Include="res\nFTDServer.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\images\arrow_left_to_right.png" />
+    <Image Include="res\images\arrow_right_to_left.png" />
+    <Image Include="res\images\drag_multi_files.png" />
+    <Image Include="res\images\drag_single_file.png" />
     <Image Include="res\images\IDP_ICO_LOCAL.ico" />
     <Image Include="res\images\IDP_ICO_LOCAL.png" />
     <Image Include="res\images\IDP_ICO_REMOTE.ico" />
     <Image Include="res\images\IDP_ICO_REMOTE.png" />
+    <Image Include="res\images\left_arrow.png" />
+    <Image Include="res\images\local_pc.png" />
+    <Image Include="res\images\local_pc1.png" />
+    <Image Include="res\images\multi_transfer.png" />
+    <Image Include="res\images\remote_pc.png" />
+    <Image Include="res\images\remote_pc1.png" />
+    <Image Include="res\images\right_arrow.png" />
+    <Image Include="res\images\single_transfer.png" />
     <Image Include="res\nFTDServer.ico" />
   </ItemGroup>
   <ItemGroup>

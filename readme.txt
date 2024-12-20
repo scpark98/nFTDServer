@@ -1,10 +1,12 @@
 [수정할 내용]
 - 즐겨찾기 폴더 표시
 - 리스트, 트리에 경로 복사 팝업메뉴 추가
-- 중앙에 전송 버튼 추가
 - remote 파일명 변경 처리
 
 [수정한 내용]
+*20241220
+- 중앙에 전송 버튼 추가
+
 *20241219
 - ok. "전송 완료 후 전송창 닫기" 추가 외 다수 수정.
 
@@ -25,11 +27,13 @@
 
 [AP2P 단독 테스트 시 파라미터]
 nFTDClient.exe -p 13.124.64.192 7002 351
-nFTDServer.exe -p -viewermode -statisticsmode "13.124.64.192" 7002 351 "C4BDE5622FFF487532505376" "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
+
+SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
+SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 E0E1A9351FF9913636543560 "SCPARK-KOINO" "apple" "1" b4cf3f3509f42d5bb1e049bba39438e9b034435a "192.168.74.1" "192.168.74.1" 1
 
 [P2P 단독 테스트 시 파라미터]
 nFTDClient.exe -l 443
-nFTDServer.exe -c -viewermode -statisticsmode "192.168.3.196" 443 351 "C4BDE5622FFF487532505376" "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
+nFTDServer.exe -c -viewermode -statisticsmode 192.168.3.196 443 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
 
 [전송속도]
 -P2P  send : 17.80 MB/s, recv : 15.45 MB/s

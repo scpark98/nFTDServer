@@ -59,14 +59,29 @@
 #define IDS_OPEN                        145
 #define IDS_DELETE                      146
 #define IDS_SELECT_ALL                  147
-#define IDI_LOCAL                       147
 #define IDS_RENAME                      148
-#define IDI_REMOTE                      148
 #define IDS_PROPERTY                    149
+#define IDB_LEFT_ARROW                  149
 #define IDS_ITEM_COUNT                  150
+#define IDB_LOCAL_PC                    150
 #define IDS_ITEM_SELECTED_COUNT         151
+#define IDB_LOCAL_PC1                   151
 #define IDS_FILE_LAST_MODIFIED_TIME     152
+#define IDB_DRAG_MULTI_FILES            152
 #define IDS_FILE_SIZE                   153
+#define IDB_REMOTE_PC                   153
+#define IDB_REMOTE_PC1                  154
+#define IDS_FAVORITE                    154
+#define IDB_RIGHT_ARROW                 155
+#define IDS_SET                         155
+#define IDB_DRAG_SINGLE_FILE            156
+#define IDS_RESET                       156
+#define IDB_ARROW_LEFT_TO_RIGHT         157
+#define IDS_ADD                         157
+#define IDB_ARROW_RIGHT_TO_LEFT         158
+#define IDS_REMOVE                      158
+#define IDS_FAVORITE_ADD                159
+#define IDS_FAVORITE_REMOVE             160
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -82,12 +97,17 @@
 #define IDC_PROGRESS_SPACE_REMOTE       1012
 #define IDC_PROGRESS                    1012
 #define IDC_BUTTON_CANCEL               1013
+#define IDC_SPLITTER_CENTER2            1013
 #define IDC_LIST                        1014
+#define IDC_LIST_LOCAL_FAVORITE         1014
 #define IDC_STATIC_MESSAGE              1015
+#define IDC_LIST_REMOTE_FAVORITE        1015
 #define IDC_STATIC_SPEED                1016
 #define IDC_STATIC_SRC_FILE_TITLE       1016
+#define IDC_SPLITTER_LOCAL_FAVORITE     1016
 #define IDC_STATIC_INDEX                1017
 #define IDC_STATIC_DST_FILE_TITLE       1017
+#define IDC_SPLITTER_REMOTE_FAVORITE    1017
 #define IDC_LIST1                       1018
 #define IDC_LIST_QUEUE                  1018
 #define IDC_STATIC_SRC_FILE             1018
@@ -105,6 +125,8 @@
 #define IDC_STATIC_REMOTE               1027
 #define IDC_STATIC_DST_FILESIZE         1028
 #define IDC_CHECK_CLOSE_AFTER_ALL       1028
+#define IDC_BUTTON_LOCAL_TO_REMOTE      1029
+#define IDC_BUTTON_REMOTE_TO_LOCAL      1030
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -165,14 +187,16 @@
 #define ID_LIST_CONTEXT_MENU_OPEN       32785
 #define ID_LIST_CONTEXT_MENU_PROPERTY   32786
 #define ID_LIST_CONTEXT_MENU_OPEN_EXPLORER 32787
+#define ID_LIST_32788                   32788
+#define ID_LIST_CONTEXT_MENU_FAVORITE   32789
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        149
-#define _APS_NEXT_COMMAND_VALUE         32788
-#define _APS_NEXT_CONTROL_VALUE         1029
+#define _APS_NEXT_RESOURCE_VALUE        159
+#define _APS_NEXT_COMMAND_VALUE         32790
+#define _APS_NEXT_CONTROL_VALUE         1030
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

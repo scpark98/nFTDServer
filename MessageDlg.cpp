@@ -93,8 +93,12 @@ BOOL CMessageDlg::OnInitDialog()
 	m_button_ok.set_font_size(10);
 	m_button_ok.text_color(Gdiplus::Color::White);
 	m_button_ok.back_color(gRGB(59, 70, 92));
+	m_button_ok.set_round(10);
 	m_button_cancel.set_font_bold();
 	m_button_cancel.set_font_size(10);
+	m_button_cancel.set_round(10);
+	m_button_cancel.draw_border();
+	m_button_cancel.draw_hover_rect();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.

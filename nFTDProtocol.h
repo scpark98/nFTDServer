@@ -59,6 +59,7 @@ enum FILE_COMMAND
 	file_cmd_delete,
 	file_cmd_rename,
 	file_cmd_property,
+	file_cmd_favorite,
 };
 
 

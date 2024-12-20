@@ -150,6 +150,9 @@
     <ClInclude Include="MessageDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Common\ini\EZIni\EZIni.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nFTDServer.cpp">
@@ -260,6 +263,9 @@
     <ClCompile Include="MessageDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\Common\ini\EZIni\EZIni.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="nFTDServer.rc">
@@ -285,6 +291,42 @@
       <Filter>리소스 파일</Filter>
     </Image>
     <Image Include="res\images\IDP_ICO_REMOTE.ico">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\left_arrow.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\local_pc.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\local_pc1.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\multi_transfer.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\remote_pc.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\remote_pc1.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\right_arrow.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\single_transfer.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\drag_multi_files.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\drag_single_file.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\arrow_left_to_right.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\images\arrow_right_to_left.png">
       <Filter>리소스 파일</Filter>
     </Image>
   </ItemGroup>

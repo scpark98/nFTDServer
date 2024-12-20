@@ -960,16 +960,26 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 	//path 길이 전송
 	if (!m_socket.m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
 	{
-		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return false;
 	}
 
 	//path 전송
 	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
 	{
-		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return false;
 	}
+
+	//응답 및 준비 결과 확인
+	if (!m_socket.m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-4 : %d"), GetLastError());
+		return false;
+	}
+
+	if (ret.type == nFTD_ERROR)
+		return false;
 
 	LPTSTR file_path[MAX_PATH] = { 0, };
 	WIN32_FIND_DATA data;
