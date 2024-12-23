@@ -1178,6 +1178,10 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		loop++;
 
+		//속도가 빠를 경우는 100번마다 표시하는 것이 적절해보이나
+		//속도가 느린 경우는 n번마다 표시해주는 것이 좋다. n은?
+		//빠를 경우는 버퍼를 크게 잡아도 문제없으나
+		//느릴 경우는 이러한 부작용이 생긴다.
 		if ((loop % 100 == 0))// || (dwBytesRead < BUFFER_SIZE))
 		{
 			t1 = clock();

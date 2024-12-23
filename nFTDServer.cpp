@@ -74,7 +74,7 @@ BOOL CnFTDServerApp::InitInstance()
 	// 적절한 내용으로 수정해야 합니다.
 	SetRegistryKey(_T("Koino"));
 
-	gLog.set(_T("..\\bin\\Log"));
+	//gLog.set(_T("..\\bin\\Log"));
 	logWrite(_T("\n==================== Program Start ===================="));
 
 	g_hRes = AfxGetInstanceHandle();

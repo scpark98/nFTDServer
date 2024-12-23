@@ -81,6 +81,7 @@
 #define IDB_ARROW_RIGHT_TO_LEFT         158
 #define IDS_REMOVE                      158
 #define IDS_FAVORITE_ADD                159
+#define IDR_MENU_FAVORITE_CONTEXT       159
 #define IDS_FAVORITE_REMOVE             160
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
@@ -94,8 +95,10 @@
 #define IDC_STATIC_COUNT_LOCAL          1009
 #define IDC_STATIC_COUNT_REMOTE         1010
 #define IDC_PROGRESS_SPACE_LOCAL        1011
+#define IDC_STATIC_LOCAL_DISK_SPACE     1011
 #define IDC_PROGRESS_SPACE_REMOTE       1012
 #define IDC_PROGRESS                    1012
+#define IDC_STATIC_REMOTE_DISK_SPACE    1012
 #define IDC_BUTTON_CANCEL               1013
 #define IDC_SPLITTER_CENTER2            1013
 #define IDC_LIST                        1014
@@ -127,6 +130,8 @@
 #define IDC_CHECK_CLOSE_AFTER_ALL       1028
 #define IDC_BUTTON_LOCAL_TO_REMOTE      1029
 #define IDC_BUTTON_REMOTE_TO_LOCAL      1030
+#define IDC_SLIDER_LOCAL_DISK_SPACE     1031
+#define IDC_SLIDER_REMOTE_DISK_SPACE    1032
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -189,14 +194,16 @@
 #define ID_LIST_CONTEXT_MENU_OPEN_EXPLORER 32787
 #define ID_LIST_32788                   32788
 #define ID_LIST_CONTEXT_MENU_FAVORITE   32789
+#define ID_FAVORITE_32790               32790
+#define ID_FAVORITE_CONTEXT_MENU_DELETE 32791
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        159
-#define _APS_NEXT_COMMAND_VALUE         32790
-#define _APS_NEXT_CONTROL_VALUE         1030
+#define _APS_NEXT_RESOURCE_VALUE        160
+#define _APS_NEXT_COMMAND_VALUE         32792
+#define _APS_NEXT_CONTROL_VALUE         1032
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

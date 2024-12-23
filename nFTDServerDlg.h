@@ -13,6 +13,7 @@
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
 #include "../../Common/CStatic/PathCtrl/PathCtrl.h"
 #include "../../Common/ControlSplitter.h"
+#include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 #include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 #include "../../Common/CWnd/WndShadow/WndShadow.h"
 
@@ -29,6 +30,7 @@ public:
 	enum TIMER_ID
 	{
 		timer_init_remote_controls = 0,
+		timer_check_favorites,
 	};
 
 	//ui 관련
@@ -49,7 +51,9 @@ public:
 	void				init_pathctrl();
 	void				init_progressDlg();
 	void				init_splitter();
-	void				init_favorite();
+
+	void				laod_favorite();
+	void				save_favorite();
 
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
@@ -90,6 +94,7 @@ public:
 	//param0가 ""이면 현재 포커스를 가진 리스트에서 선택된 항목의 값으로 채워주고
 	//param1은 rename일 경우에만 유효하다.
 	bool				file_command(int cmd, CString param0 = _T(""), CString param1 = _T(""));
+	//bool				file_command_on_favorite_list()
 
 	//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
 	void				refresh_selection_status(CVtListCtrlEx* plist);
@@ -159,8 +164,6 @@ public:
 	CControlSplitter m_splitter_remote_favorite;
 	CSCStatic m_static_count_local;
 	CSCStatic m_static_count_remote;
-	CMacProgressCtrl m_progress_space_local;
-	CMacProgressCtrl m_progress_space_remote;
 	afx_msg void OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult);
@@ -192,4 +195,13 @@ public:
 	afx_msg void OnNMDblclkListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnListContextMenuFavorite();
+	afx_msg void OnFavoriteContextMenuDelete();
+	afx_msg void OnNMRClickListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMRClickListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult);
+	CSCSliderCtrl m_slider_local_disk_space;
+	CSCSliderCtrl m_slider_remote_disk_space;
+	CSCStatic m_static_local_disk_space;
+	CSCStatic m_static_remote_disk_space;
+	afx_msg void OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult);
 };
