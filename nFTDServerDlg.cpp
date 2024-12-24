@@ -387,7 +387,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 void CnFTDServerDlg::init_treectrl()
 {
-	m_tree_local.set_use_drag_and_drop(true);
+	//m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//m_tree_local.set_path(_T("c:\\"));
@@ -413,7 +413,7 @@ void CnFTDServerDlg::init_shadow()
 {
 	CWndShadow::Initialize(AfxGetInstanceHandle());
 	m_shadow.Create(GetSafeHwnd());
-	m_shadow.SetSize(14);	// -19 ~ 19
+	m_shadow.SetSize(10);	// -19 ~ 19
 	m_shadow.SetSharpness(19);	// 0 ~ 19
 	m_shadow.SetDarkness(128);	// 0 ~ 254
 	m_shadow.SetPosition(0, 0);	// -19 ~ 19
@@ -853,7 +853,7 @@ void CnFTDServerDlg::initialize()
 	InitServerManager();		// Server Manager 설정
 
 	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false);
-	m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false);
 	m_list_remote.set_use_drag_and_drop(true);
@@ -894,6 +894,15 @@ void CnFTDServerDlg::initialize()
 		logWrite(_T("remote path = Desktop"));
 		SetDefaultPathToDesktop(1);	// Remote 초기 경로를 바탕화면으로 설정
 	}
+
+	//실행되면 remote의 "내 PC"가 펼쳐진 상태로 시작하도록 한다.
+	HTREEITEM hItem = m_tree_remote.find_item(theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES));
+	m_tree_remote.Expand(hItem, TVE_EXPAND);
+	//std::deque<CString> drive_list;
+	//m_ServerManager.DriveList(&drive_list);
+	//theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].set_drive_list(&drive_list);
+	//m_tree_remote.update_drive_list(path, &drive_list);
+
 
 	//즐겨찾기로 등록된 폴더들이 유효한지 검사
 	SetTimer(timer_check_favorites, 1000, NULL);
@@ -981,7 +990,8 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 					return TRUE;
 				}
 
-				file_command(file_cmd_delete);
+				//삭제 시 물어보고 지우거나 아예 키를 이용한 삭제는 방지
+				//file_command(file_cmd_delete);
 				return TRUE;
 		}
 	}
@@ -1039,6 +1049,8 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 	}
 	else if (msg->message == CVtListCtrlEx::message_drag_and_drop)
 	{
+		m_transfer_list.clear();
+
 		//다른 앱에서 드롭된 경우는 대상 컨트롤들에 남아있는 drophilited 항목들의 상태를 지워줘야 한다.
 		//원래는 마지막 drophilited했던 컨트롤을 기억시켰다가 해당 컨트롤만 해줘야 한다.
 		if (msg->pTarget == NULL)
@@ -1112,7 +1124,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			if (hItem)
 			{
 				droppedItemText = pDropTreeCtrl->GetItemText(hItem);
-				dropped_path = pDropTreeCtrl->get_fullpath(hItem);
+				dropped_path = pDropTreeCtrl->get_path(hItem);
 				TRACE(_T("dropped on = %s (%s)\n"), droppedItemText, dropped_path);
 
 				//필요한 모든 처리가 끝나면 drophilited 표시를 없애준다.
@@ -1159,6 +1171,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	//m_tree0 or m_tree1 어느 컨트롤이냐에 따라 처리할 필요는 없다.
 	if (msg->message == CSCTreeCtrl::message_drag_and_drop)
 	{
+		m_transfer_list.clear();
+
 		//다른 앱에서 드롭된 경우는 대상 컨트롤들에 남아있는 drophilited 항목들의 상태를 지워줘야 한다.
 		//원래는 마지막 drophilited했던 컨트롤을 기억시켰다가 해당 컨트롤만 해줘야 한다.
 		if (msg->pTarget == NULL)
@@ -1173,19 +1187,28 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		CString droppedItemText;
 		CSCTreeCtrl* pDragTreeCtrl = (CSCTreeCtrl*)msg->pThis;
 
+		m_transfer_from = pDragTreeCtrl->get_path(pDragTreeCtrl->m_DragItem);
+		TRACE(_T("drag item = %s. m_transfer_from = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
+
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
 		{
 			CVtListCtrlEx* pDropListCtrl = (CVtListCtrlEx*)msg->pTarget;
 
 			if (pDragTreeCtrl->m_nDropIndex >= 0)
+			{
 				droppedItemText = pDropListCtrl->GetItemText(pDragTreeCtrl->m_nDropIndex, 0);
-
-			TRACE(_T("drag item = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem));
+			}
 
 			if (droppedItemText.IsEmpty())
-				TRACE(_T("dropped on = %s\n"), pDropListCtrl->get_path());
+			{
+				m_transfer_to = pDropListCtrl->get_path();
+				TRACE(_T("dropped on = %s\n"), m_transfer_to);
+			}
 			else
-				TRACE(_T("dropped on = %s\n"), pDropListCtrl->get_path() + _T("\\") + droppedItemText);
+			{
+				m_transfer_to = pDropListCtrl->get_path() + _T("\\") + droppedItemText;
+				TRACE(_T("dropped on = %s\n"), m_transfer_to);
+			}
 
 			//필요한 모든 처리가 끝나면 drophilited 표시를 없애준다.
 			if (pDragTreeCtrl->m_nDropIndex >= 0)
@@ -1195,13 +1218,16 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		{
 			CSCTreeCtrl* pDropTreeCtrl = (CSCTreeCtrl*)msg->pTarget;
 
-			TRACE(_T("drag item = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem));
-			TRACE(_T("dropped on = %s\n"), pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem));
+			m_transfer_to = pDropTreeCtrl->get_path(pDragTreeCtrl->m_DropItem);
+			//TRACE(_T("drag item = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem));
+			TRACE(_T("dropped on = %s. m_transfer_to = %s\n"), pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
 
 			//필요한 모든 처리가 끝나면 drophilited 표시를 없애준다.
 			//pDropTreeCtrl->SetItemState(hItem, 0, TVIS_DROPHILITED);	<= 이걸로는 해제 안된다.
 			pDropTreeCtrl->SelectDropTarget(NULL);
 		}
+
+		file_transfer();
 
 		return 0;
 	}
@@ -1256,7 +1282,7 @@ void CnFTDServerDlg::OnTvnSelchangedTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	//change_directory()를 써서 local이든 remote이든 공통으로 처리하면 좋지만
 	//tree가 변경된 경우는 path와 listctrl만 refresh한다든지 여러가지 부가적인 처리가 필요하여
 	//local인 경우는 직접 처리한다.
-	CString path = m_tree_local.get_fullpath();
+	CString path = m_tree_local.get_path();
 
 	m_list_local.set_path(path);
 	m_path_local.set_path(path);
@@ -1271,7 +1297,7 @@ void CnFTDServerDlg::OnTvnSelchangedTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMTREEVIEW pNMTreeView = reinterpret_cast<LPNMTREEVIEW>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	CString path = m_tree_remote.get_fullpath(NULL);
+	CString path = m_tree_remote.get_path(NULL);
 
 	//remote의 바탕화면, 내 PC는 그 경로가 고정이지만 MyDocuments는 사용자가 이를 변경할 수 있으므로 별도 처리해야 한다.
 	//내 문서의 기본 레이블인 "문서"를 리턴하면 이를 m_remoteDocumentPath로 변경하여 사용한다.
@@ -1432,6 +1458,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			}
 			m_path_remote.set_path(path, &folder_list);
 
+			m_tree_remote.set_path(path, false);
+
 			refresh_selection_status(&m_list_remote);
 			refresh_disk_usage(true);
 		}
@@ -1492,15 +1520,25 @@ void CnFTDServerDlg::set_color_theme(int theme)
 
 //보내기 버튼 or 받기 버튼 or drag&drop으로 전송을 시작한다.
 //전송 조건으로 아래 값들이 채워진 후 호출되어야 한다.
-//m_transfer_list	: fullpath 전송 목록
+//m_transfer_list	: fullpath 전송 목록. 목록이 없다면 m_transfer_from 이라는 1개의 폴더인 경우임.
 //m_srcSide			: 송신측
 //m_dstSide			: 수신측
 //m_transfer_from	: 송신 폴더
 //m_transfer_to		: 수신 폴더
 void CnFTDServerDlg::file_transfer()
 {
+	m_transfer_from = convert_special_folder_to_real_path(m_transfer_from, &theApp.m_shell_imagelist, m_srcSide);
+	m_transfer_to = convert_special_folder_to_real_path(m_transfer_to, &theApp.m_shell_imagelist, m_dstSide);
+
+	//목록이 없다면 m_transfer_from 이라는 1개의 폴더인 경우임.
 	if (m_transfer_list.size() == 0)
-		return;
+	{
+		WIN32_FIND_DATA data;
+		HANDLE hFind = FindFirstFile(m_transfer_from, &data);
+		FindClose(hFind);
+		_tcscpy(data.cFileName, m_transfer_from);	//cFileName에는 반드시 fullpath로 넣어줘야 한다.
+		m_transfer_list.push_back(data);
+	}
 
 	//m_transfer_from, m_transfer_to의 끝에 '\\'가 있을 경우의 보정.
 	if (m_transfer_from.GetLength() > 3 && m_transfer_from.Right(1) == '\\')
@@ -1609,7 +1647,6 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 
-	TRACE(_T("src mtime = %s\n"), get_file_time_str(m_transfer_list[0].ftLastWriteTime));
 
 	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &m_transfer_list, pulDiskSpace,
 												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, m_check_close_after_all.GetCheck()))
@@ -1634,6 +1671,58 @@ void CnFTDServerDlg::add_transfered_file_to_list(int dstSide, WIN32_FIND_DATA da
 {
 	CVtListCtrlEx* plist = (dstSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 	plist->insert_item(-1, data, true, true);
+}
+
+//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
+bool CnFTDServerDlg::is_transfer_enable(int dwSide)
+{
+	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+
+	//선택된 항목이 없다면 불가.
+	std::deque<int> dq;
+	plist->get_selected_items(&dq);
+
+	if (dq.size() == 0)
+		return false;
+
+	for (int i = 0; i < dq.size(); i++)
+	{
+		CString path = plist->get_path(dq[i]);
+
+		path = convert_special_folder_to_real_path(path, &theApp.m_shell_imagelist, dwSide);
+		if (path.IsEmpty())
+			return false;
+
+		//상대가 내 PC를 열고 있다면 전송 불가
+		if (dwSide == SERVER_SIDE && m_list_remote.get_path() == theApp.m_shell_imagelist.get_system_path(!dwSide, CSIDL_DRIVES))
+			return false;
+
+		//상대가 내 PC를 열고 있다면 전송 불가
+		if (dwSide == CLIENT_SIDE && m_list_local.get_path() == theApp.m_shell_imagelist.get_system_path(!dwSide, CSIDL_DRIVES))
+			return false;
+
+		//선택된 아이템이 드라이브 루트라면 전송 불가
+		for (auto drive_volume : *theApp.m_shell_imagelist.m_volume[dwSide].get_drive_list())
+		{
+			CString drive_root = convert_special_folder_to_real_path(drive_volume, &theApp.m_shell_imagelist, dwSide);
+			if (path == drive_root)
+				return false;
+		}
+
+		if (path == _T("C:\\Program Files") ||
+			path == _T("C:\\Program Files (x86)") ||
+			path == _T("C:\\Windows") ||
+			path == _T("C:\\Users") ||
+			path == _T("C:\\Documents and Settings") ||
+			path == _T("C:\\Program Files") ||
+			path == _T("C:\\Program Files (x86)") ||
+			path == _T("C:\\ProgramData") ||
+			path == _T("C:\\Recovery") ||
+			path == _T("C:\\System Volume Information"))
+			return false;
+	}
+
+	return true;
 }
 
 
@@ -1662,7 +1751,11 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 
 	CMenu* pMenu = menu.GetSubMenu(0);
 
-	int index = favorite_cmd(favorite_find, SERVER_SIDE, m_list_local.get_selected_path());
+	CString fullpath = m_list_local.get_selected_path();
+	if (fullpath.IsEmpty())
+		fullpath = m_list_local.get_path();
+
+	int index = favorite_cmd(favorite_find, SERVER_SIDE, fullpath);
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_FAVORITE, (index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
@@ -1684,13 +1777,17 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_PROPERTY, MF_DISABLED);
 	}
 
+	//전송 가능 상태가 아닐 경우
+	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
+
 	//보호된 파일/폴더일 경우
 	if (item >= 0 && is_protected(m_list_local.get_path(item), m_list_local.get_shell_imagelist(), 0))
 	{
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
+
+	//상대편이 "내 PC"를 열고 있다면 전송할 수 없다.
 
 	//멀티 선택일 경우는 "열기" 명령을 수행하면 맨 첫 아이템에 대한 "열기"를 수행하지만 좀 애매하다. 우선 제외시킨다.
 	if (m_list_local.GetSelectedCount() > 1)
@@ -1717,7 +1814,11 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 
 	CMenu* pMenu = menu.GetSubMenu(0);
 
-	int index = favorite_cmd(favorite_find, CLIENT_SIDE, m_list_remote.get_selected_path());
+	CString fullpath = m_list_remote.get_selected_path();
+	if (fullpath.IsEmpty())
+		fullpath = m_list_remote.get_path();
+
+	int index = favorite_cmd(favorite_find, CLIENT_SIDE, fullpath);
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_FAVORITE, (index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
@@ -1739,10 +1840,12 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_PROPERTY, MF_DISABLED);
 	}
 
+	//전송 가능 상태가 아닐 경우
+	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
+
 	//보호된 파일/폴더일 경우
 	if (item >= 0 && is_protected(m_list_remote.get_path(item), m_list_remote.get_shell_imagelist(), 1))
 	{
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
@@ -1862,15 +1965,23 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 {
 	bool res = false;
-
+	int dwSide = SERVER_SIDE;
 	CVtListCtrlEx* plist;
 	
 	if (GetFocus() == &m_list_local)
+	{
+		dwSide = SERVER_SIDE;
 		plist = &m_list_local;
+	}
 	else if (GetFocus() == &m_list_remote)
+	{
+		dwSide = CLIENT_SIDE;
 		plist = &m_list_remote;
+	}
 	else
+	{
 		return false;
+	}
 
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
@@ -1883,6 +1994,8 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 		else
 			param0.Format(_T("%s\\%s"), plist->get_path(), plist->get_text(dq[0], CVtListCtrlEx::col_filename));
 	}
+
+	param0 = convert_special_folder_to_real_path(param0, &theApp.m_shell_imagelist, dwSide);
 
 	//이러한 처리를 기존처럼 m_ServerManager의 open_file()함수에서 일괄 처리하도록 구현할 수도 있으나
 	//m_ServerManager에서는 CnFTDServerDlg에 있는 tree, list 등을 접근하자면 별도의 처리가 필요하므로
@@ -1938,20 +2051,17 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 			case file_cmd_favorite :
 				{
 					//존재하는 항목이면 제거, 없던 항목이면 추가한다.
-					int index = favorite_cmd(favorite_find, SERVER_SIDE, m_list_local.get_selected_path());
+					int index = favorite_cmd(favorite_find, SERVER_SIDE, param0);
 					if (index < 0)
-						favorite_cmd(favorite_add, SERVER_SIDE, m_list_local.get_selected_path());
+						favorite_cmd(favorite_add, SERVER_SIDE, param0);
 					else
-						favorite_cmd(favorite_delete, SERVER_SIDE, m_list_local.get_selected_path());
+						favorite_cmd(favorite_delete, SERVER_SIDE, param0);
 				}
 				break;
 		}
 	}
 	else
 	{
-		//논리 경로라면 실제 경로로 변환해준다.
-		param0 = convert_special_folder_to_real_path(param0, m_list_remote.get_shell_imagelist(), CLIENT_SIDE);
-
 		switch (cmd)
 		{
 			case file_cmd_open:
@@ -1971,6 +2081,30 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				param0 = m_list_remote.get_path();
 				m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
 				break;
+			case file_cmd_new_folder:
+			{
+				param0 = convert_special_folder_to_real_path(m_list_remote.get_path(), &theApp.m_shell_imagelist, CLIENT_SIDE);
+				int new_folder_index = m_list_remote.get_file_index(param0, _S(IDS_NEW_FOLDER));
+				if (new_folder_index == 1)
+					param0.Format(_T("%s\\%s"), param0, _S(IDS_NEW_FOLDER));
+				else if (new_folder_index > 1)
+					param0.Format(_T("%s\\%s (%d)"), param0, _S(IDS_NEW_FOLDER), new_folder_index);
+				else
+					break;
+				res = m_ServerManager.m_socket.file_command(file_cmd_new_folder, param0);
+				if (res)
+				{
+					int index = m_list_remote.insert_folder(-1, get_part(param0, fn_name));
+					if (index < 0)
+					{
+						res = false;
+						break;
+					}
+					m_list_remote.select_item(index, true, true, true);
+					m_list_remote.edit_item(index, 0);
+				}
+			}
+			break;
 			case file_cmd_rename:
 				m_list_remote.edit_item(dq[0], CVtListCtrlEx::col_filename);
 				res = true;
@@ -2004,11 +2138,11 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 			case file_cmd_favorite:
 				{
 					//존재하는 항목이면 제거, 없던 항목이면 추가한다.
-					int index = favorite_cmd(favorite_find, CLIENT_SIDE, m_list_remote.get_selected_path());
+					int index = favorite_cmd(favorite_find, CLIENT_SIDE, param0);
 					if (index < 0)
-						favorite_cmd(favorite_add, CLIENT_SIDE, m_list_remote.get_selected_path());
+						favorite_cmd(favorite_add, CLIENT_SIDE, param0);
 					else
-						favorite_cmd(favorite_delete, CLIENT_SIDE, m_list_remote.get_selected_path());
+						favorite_cmd(favorite_delete, CLIENT_SIDE, param0);
 				}
 				break;
 		}
@@ -2055,9 +2189,19 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 	}
 
 	if (plist == &m_list_local)
+	{
 		m_static_count_local.set_text(str);
+
+		//선택여부에 따라 송수신 버튼 상태도 변한다.
+		m_button_local_to_remote.EnableWindow(is_transfer_enable(SERVER_SIDE));
+	}
 	else if (plist == &m_list_remote)
+	{
 		m_static_count_remote.set_text(str);
+
+		//선택여부에 따라 송수신 버튼 상태도 변한다.
+		m_button_remote_to_local.EnableWindow(is_transfer_enable(CLIENT_SIDE));
+	}
 }
 
 void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
@@ -2111,7 +2255,7 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 	TRACE(_T("%s drive free space ratio = %f\n"), drive, free_ratio);
 
 	//progressbar에는 남은 용량만큼 채우는게 아니라 사용량만큼 채워서 보여준다.
-	if (free_ratio < 50.0f)
+	if (free_ratio < 10.0f)
 		pslider->set_active_color(RGB(220 - free_ratio, 41, 42));
 	else
 		pslider->set_active_color(RGB(36, 160, 212));
@@ -2146,7 +2290,9 @@ void CnFTDServerDlg::OnLvnItemChangedListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
+	
+	//선택 이벤트도 처리하지만 빈 공간을 클릭하여 선택이 안된 경우에도 status는 갱신되어야 한다.
+	//if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
 		refresh_selection_status(&m_list_local);
 
 	*pResult = 0;
@@ -2157,7 +2303,9 @@ void CnFTDServerDlg::OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMLISTVIEW pNMLV = reinterpret_cast<LPNMLISTVIEW>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
+	
+	//선택 이벤트도 처리하지만 빈 공간을 클릭하여 선택이 안된 경우에도 status는 갱신되어야 한다.
+	//if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
 		refresh_selection_status(&m_list_remote);
 
 	*pResult = 0;

@@ -358,7 +358,11 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 		//dst 경로 설정. cFileName(fullpath)에서 m_transfer_from 값을 m_transfer_to 값으로 변경해준다.
 		CString temp = m_filelist[i].cFileName;
-		temp.Replace(m_transfer_from, m_transfer_to);
+		if (is_drive_root(m_transfer_from))
+			temp.Replace(m_transfer_from, m_transfer_to + _T("\\"));
+		else
+			temp.Replace(m_transfer_from, m_transfer_to);
+		temp.Replace(_T("\\\\"), _T("\\"));
 		_tcscpy(to.cFileName, temp);
 		
 		//하나의 파일/폴더가 전송되면 대상 리스트에도 바로 목록이 표시되는 것이 좋으나

@@ -40,6 +40,10 @@ BOOL CnFTDServerSocket::Connection()
 	}
 	*/
 
+	m_transfer_pause = false;
+	m_transfer_stop = false;
+
+
 	if (m_dwConnection == CONNECTION_CONNECT)
 	{
 		in_addr Inaddr;
@@ -1113,9 +1117,6 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 	//logWrite(_T("nCompareSpeed = %d"), nCompareSpeed);
 
-	m_transfer_pause = false;
-	m_transfer_stop = false;
-
 	do
 	{
 		while (m_transfer_pause)
@@ -1182,17 +1183,19 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//속도가 느린 경우는 n번마다 표시해주는 것이 좋다. n은?
 		//빠를 경우는 버퍼를 크게 잡아도 문제없으나
 		//느릴 경우는 이러한 부작용이 생긴다.
-		if ((loop % 100 == 0))// || (dwBytesRead < BUFFER_SIZE))
+		if ((loop % 10 == 1))// || (dwBytesRead < BUFFER_SIZE))
 		{
 			t1 = clock();
 
 			double Bps = 1.0;
-			if (t1 > t0)
+			if (t1 - t0 > 100)
+			{
 				Bps = double(sent_size) / double(t1 - t0) * 1000.0;
 
-			double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
-			//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-			parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_string(remain_sec), d2S(Bps / 1024.0, true, 0));
+				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
+				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_string(remain_sec), d2S(Bps / 1024.0, true, 0));
+			}
 		}
 
 		//현재는 개발 단계이므로 UI 갱신을 바로 하지만 추후에는 10회 간격으로 수정 필요!!
@@ -1309,6 +1312,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			memcpy(&exist_file, &to, sizeof(to));
 
 			exist_filesize.LowPart = GetFileSize(hFile, &(exist_filesize.HighPart));
+			exist_file.nFileSizeHigh = exist_filesize.HighPart;
+			exist_file.nFileSizeLow = exist_filesize.LowPart;
 
 			DWORD dwWrite = m_dwWrite;
 
@@ -1441,9 +1446,6 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	int			loop = 0;
 	long		t0 = clock(), t1 = 0;
 
-	m_transfer_pause = false;
-	m_transfer_stop = false;
-
 	do
 	{
 		while (m_transfer_pause)
@@ -1499,17 +1501,20 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		loop++;
 
-		if ((loop % 100 == 0))// || (dwBytesRead < BUFFER_SIZE))
+		if ((loop % 10 == 1))// || (dwBytesRead < BUFFER_SIZE))
 		{
 			t1 = clock();
 
 			double Bps = 1.0;
-			if (t1 > t0)
+
+			if (t1 - t0 > 100)
+			{
 				Bps = double(received_size) / double(t1 - t0) * 1000.0;
 
-			double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
-			//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-			parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_string(remain_sec), d2S(Bps / 1024.0, true, 0));
+				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
+				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_string(remain_sec), d2S(Bps / 1024.0, true, 0));
+			}
 		}
 
 		//현재 파일 진행 상태 표시

@@ -71,9 +71,6 @@ public:
 	ULARGE_INTEGER		m_ulServerDiskSpace;
 
 	CString				m_remoteCurrentPath;
-	//CString				m_remoteMyPCLabel;		//"내 PC"가 기본값이지만 사용자가 변경할 수 있고 OS 버전마다 다르다.
-	//CString				m_remoteDocumentPath;
-	//CString				m_remoteDesktopPath;
 	BOOL				change_directory(CString path, DWORD dwSide);
 	void				SetDefaultPathToDesktop(int type);
 
@@ -115,6 +112,9 @@ public:
 	CString				m_transfer_to;		//전송할 dst 폴더
 	void				file_transfer();	//위의 값들에 따라 전송 시작
 	void				add_transfered_file_to_list(int dstSide, WIN32_FIND_DATA);
+
+	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
+	bool				is_transfer_enable(int srcSide);
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME

@@ -98,11 +98,17 @@ BOOL CExistFileDlg::OnInitDialog()
 
 	if (dst_filesize.QuadPart > src_filesize.QuadPart)
 	{
+		m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE));
+
 		m_tooltip.AddTool(&m_radio_succeed, _S(IDS_DISABLE_SUCCEED_TRANSFER));
 		m_radio_succeed.SetCheck(BST_UNCHECKED);
 		m_radio_succeed.EnableWindow(FALSE);
 		m_radio_overwrite.SetCheck(BST_CHECKED);
 		m_radio_skip.SetCheck(BST_UNCHECKED);
+	}
+	else if (dst_filesize.QuadPart < src_filesize.QuadPart)
+	{
+		m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE));
 	}
 
 	m_check_apply_all.SetWindowText(_S(NFTD_IDS_CHECK_ALL));
