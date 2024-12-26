@@ -113,7 +113,7 @@ BOOL CnFTDServerSocket::Connection()
 		if (m_iServerNum != 0)
 		{
 			//scpark 20240411 timeout 추가. timeout은 .Create() 후, CryptInit()전에 설정해줘야 한다.
-			m_sock.SetTimeout(100000);
+			m_sock.SetTimeout(1000);
 
 			// N2N 일 경우에는 일단 N2N서버와 암호화를 한다
 			//logWrite(_T("before m_sock.CryptInit(BLASTSOCK_CRYPT_RECVAESKEY)"));
@@ -423,9 +423,10 @@ BOOL CnFTDServerSocket::create_directory(LPCTSTR lpPathName)
 }
 
 //열기(open), 이름변경(rename), 삭제(delete), 속성보기(property) 등의 파일명령은 파라미터만 다를 뿐이므로 하나의 함수로 통일한다.
-bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1)
+bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, void* dqlist)
 {
 	msg ret;
+	USHORT length;
 
 	//프로토콜 명령 코드 전송
 	ret.type = nFTD_file_command;
@@ -442,19 +443,52 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1)
 		return false;
 	}
 
-	//param0 길이 전송
-	USHORT length = _tcslen(param0) * 2;
-	if (!m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+	if (cmd == file_cmd_property)
 	{
-		logWriteE(_T("CODE-4 : %d"), GetLastError());
-		return false;
-	}
+		if (dqlist == NULL)
+			return false;
 
-	//param0 전송
-	if (!m_sock.SendExact((LPSTR)param0, length, BLASTSOCK_BUFFER))
+		auto dq = (std::deque<CString>*)dqlist;
+		for (int i = 0; i < dq->size(); i++)
+		{
+			length = _tcslen(dq->at(i)) * 2;
+			if (!m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+			{
+				logWriteE(_T("CODE-4 : %d"), GetLastError());
+				return false;
+			}
+
+			//param0 전송
+			if (!m_sock.SendExact((LPSTR)(LPCTSTR)(dq->at(i)), length, BLASTSOCK_BUFFER))
+			{
+				logWriteE(_T("CODE-5 : %d"), GetLastError());
+				return false;
+			}
+		}
+
+		length = 0;
+		if (!m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-4 : %d"), GetLastError());
+			return false;
+		}
+	}
+	else
 	{
-		logWriteE(_T("CODE-5 : %d"), GetLastError());
-		return false;
+		//param0 길이 전송
+		length = _tcslen(param0) * 2;
+		if (!m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-4 : %d"), GetLastError());
+			return false;
+		}
+
+		//param0 전송
+		if (!m_sock.SendExact((LPSTR)param0, length, BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-5 : %d"), GetLastError());
+			return false;
+		}
 	}
 
 	if (cmd == file_cmd_rename && param1)

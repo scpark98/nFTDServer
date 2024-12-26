@@ -2,10 +2,11 @@
 
 #include "nFTDServerSocket.h"
 #include "../../Common/CStatic/SCStatic/SCStatic.h"
+#include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
 
 // CExistFileDlg 대화 상자
 
-class CExistFileDlg : public CDialogEx
+class CExistFileDlg : public CSCThemeDlg
 {
 	DECLARE_DYNAMIC(CExistFileDlg)
 

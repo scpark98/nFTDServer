@@ -12,10 +12,12 @@ class CMessageDlg : public CSCThemeDlg
 	DECLARE_DYNAMIC(CMessageDlg)
 
 public:
-	CMessageDlg(CWnd* pParent = NULL, CString message = _T(""), UINT type = MB_OK, int timeout_ms = 0);   // 표준 생성자입니다.
+	CMessageDlg(CString message = _T(""), UINT type = MB_OK, int timeout_ms = 0, int width = 300, int height = 180);   // 표준 생성자입니다.
 	virtual ~CMessageDlg();
 
-	void		set(CString message, UINT type = MB_OK, int timeout_ms = 0);
+	//메시지박스가 표시된 상태에서도 set()을 호출하여 메시지 내용등을 변경할 수 있지만
+	//width, height를 변경하지 않는 것이 일반적이므로 0일 경우는 NO_RESIZE.
+	void		set(CString message, UINT type = MB_OK, int timeout_ms = 0, int width = 0, int height = 0);
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
@@ -24,8 +26,10 @@ public:
 
 protected:
 	CString		m_message;
-	UINT		m_type;
-	int			m_timeout;	//단위 : ms. 0 이하는 timeout 적용 안함.
+	UINT		m_type = MB_OK;
+	int			m_timeout = 0;	//단위 : ms. 0 이하는 timeout 적용 안함.
+	int			m_width = 300;
+	int			m_height = 180;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.

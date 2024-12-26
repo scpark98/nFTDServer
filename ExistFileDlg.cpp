@@ -10,10 +10,10 @@
 
 // CExistFileDlg 대화 상자
 
-IMPLEMENT_DYNAMIC(CExistFileDlg, CDialogEx)
+IMPLEMENT_DYNAMIC(CExistFileDlg, CSCThemeDlg)
 
 CExistFileDlg::CExistFileDlg(CWnd* pParent, WIN32_FIND_DATA src_file, WIN32_FIND_DATA dst_file)
-	: CDialogEx(IDD_EXIST_FILE, pParent)
+	: CSCThemeDlg(IDD_EXIST_FILE, pParent)
 {
 	m_src_file = src_file;
 	m_dst_file = dst_file;
@@ -42,7 +42,7 @@ void CExistFileDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 
-BEGIN_MESSAGE_MAP(CExistFileDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(CExistFileDlg, CSCThemeDlg)
 	ON_BN_CLICKED(IDOK, &CExistFileDlg::OnBnClickedOk)
 	ON_BN_CLICKED(IDCANCEL, &CExistFileDlg::OnBnClickedCancel)
 	ON_BN_CLICKED(IDC_RADIO_SUCCEED, &CExistFileDlg::OnBnClickedRadioSucceed)
@@ -56,21 +56,38 @@ END_MESSAGE_MAP()
 
 BOOL CExistFileDlg::OnInitDialog()
 {
-	CDialogEx::OnInitDialog();
+	CSCThemeDlg::OnInitDialog();
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
+	set_color_theme(CSCThemeDlg::theme_linkmemine);
+	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
+	show_titlebar_logo(false);
+	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
+
 	SetDlgItemText(IDOK, _S(NFTD_IDS_OK));
+
 	m_static_message.set_text_color(Gdiplus::Color(0, 51, 153));
+	m_static_message.set_back_color(m_cr_back);
 	m_static_message.set_font_bold();
 	m_static_message.set_text(_S(NFTD_IDS_EXIST_FILE));
 
 	m_static_src_file_title.set_text_color(Gdiplus::Color(0, 51, 153));
+	m_static_src_file_title.set_back_color(m_cr_back);
 	m_static_src_file_title.set_font_bold();
 	m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE));
 
 	m_static_dst_file_title.set_text_color(Gdiplus::Color(0, 51, 153));
+	m_static_dst_file_title.set_back_color(m_cr_back);
 	m_static_dst_file_title.set_font_bold();
 	m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE));
+
+	m_static_src_file.set_back_color(m_cr_back);
+	m_static_src_filesize.set_back_color(m_cr_back);
+	m_static_src_mtime.set_back_color(m_cr_back);
+
+	m_static_dst_file.set_back_color(m_cr_back);
+	m_static_dst_filesize.set_back_color(m_cr_back);
+	m_static_dst_mtime.set_back_color(m_cr_back);
 
 	m_radio_succeed.SetWindowText(_S(NFTD_IDS_CONTINUE));
 	m_radio_overwrite.SetWindowText(_S(NFTD_IDS_OVERWRITE));
@@ -219,6 +236,12 @@ BOOL CExistFileDlg::PreTranslateMessage(MSG* pMsg)
 		// relay mouse event before deleting old tool
 		m_tooltip.SendMessage(TTM_RELAYEVENT, 0, (LPARAM)&msg);
 	}
+
+	if (pMsg->message == WM_KEYDOWN)
+	{
+		TRACE(_T("CExistFileDlg keydown\n"));
+	}
+
 
 	return CDialogEx::PreTranslateMessage(pMsg);
 }

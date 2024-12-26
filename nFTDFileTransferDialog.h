@@ -8,13 +8,12 @@
 #include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 //#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 #include "../../Common/ResizeCtrl.h"
-#include "../../Common/CWnd/WndShadow/WndShadow.h"
-#include "../../Common/CButton/SCSystemButtons/SCSystemButtons.h"
-
+//#include "../../Common/CWnd/WndShadow/WndShadow.h"
+#include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
 
 // CnFTDFileTransferDialog 대화 상자
 
-class CnFTDFileTransferDialog : public CDialogEx
+class CnFTDFileTransferDialog : public CSCThemeDlg
 {
 	DECLARE_DYNAMIC(CnFTDFileTransferDialog)
 
@@ -48,11 +47,10 @@ protected:
 
 	CWnd				*m_parent = NULL;
 	CResizeCtrl			m_resize;
-	CSCSystemButtons	m_sys_buttons;
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
-	CWndShadow			m_shadow;
+	//CWndShadow			m_shadow;
 	void				init_shadow();
 
 	bool				m_thread_transfer_started = false;
@@ -73,8 +71,8 @@ protected:
 
 	std::deque<WIN32_FIND_DATA>	m_filelist;
 
-	void		KeepConnection();
-	void		KeepDataConnection();
+	void				KeepConnection();
+	void				KeepDataConnection();
 
 	//LRESULT		on_message_server_socket(WPARAM wParam, LPARAM lParam);
 
@@ -94,10 +92,9 @@ public:
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
 	afx_msg void OnPaint();
-	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
-	CGdiButton m_button_cancel;
 	CSCStatic m_static_index_bytes;
 	CSCStatic m_static_remain_speed;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 };

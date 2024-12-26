@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "nFTDServer.h"
 #include "nFTDServerManager.h"
 #include "../../Common/Functions.h"
 
@@ -70,7 +71,7 @@ BOOL CnFTDServerManager::SetConnectionService()
 		m_strViewerPrivateIP = __targv[13];
 		m_nClientOSType = _ttoi(__targv[14]);
 
-		m_strStatusbarTitle.Format(_T("FileTransfer"), m_strDeviceName);
+		m_strStatusbarTitle.Format(_S(IDS_TRANSFER), m_strDeviceName);
 		m_strStatusbarTitle += _T(" (고속전송 모드)");
 		m_strTitle = m_strDeviceName + _T(" (고속전송 모드)");
 
@@ -99,7 +100,7 @@ BOOL CnFTDServerManager::SetConnectionService()
 		m_strViewerPrivateIP = __targv[13];
 		m_nClientOSType = _ttoi(__targv[14]);
 
-		m_strStatusbarTitle.Format(_T("FileTransfer"), m_strDeviceName);
+		m_strStatusbarTitle.Format(_S(IDS_TRANSFER), m_strDeviceName);
 		//m_strStatusbarTitle += _T(" (AP2P)");
 		m_strTitle = m_strDeviceName;
 

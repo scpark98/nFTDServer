@@ -1,6 +1,6 @@
 #pragma pack(push, 1)
 
-#define BUFFER_SIZE							1024 * 1024 * 4
+#define BUFFER_SIZE							1024 * 1024//1024 * 1024 * 4
 
 #define		nFTD_OK							0
 #define		nFTD_ERROR						1

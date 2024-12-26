@@ -52,7 +52,7 @@ public:
 	BOOL create_directory(LPCTSTR lpPathName);
 
 	//열기(open), 이름변경(rename), 삭제(delete), 속성보기(property), 새 폴더 생성(new folder) 등의 파일명령은 파라미터만 다를 뿐이므로 하나의 함수로 통일한다.
-	bool file_command(int cmd, LPCTSTR param0, LPCTSTR param1 = NULL);
+	bool file_command(int cmd, LPCTSTR param0, LPCTSTR param1 = NULL, void* dqlist = NULL);
 
 	BOOL ExecuteFile(LPCTSTR lpDirName);
 	BOOL Rename(LPCTSTR lpOldName, LPCTSTR lpNewName);

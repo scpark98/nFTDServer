@@ -12,7 +12,9 @@
 
 #include "../../Common/system/ShellImageList/ShellImageList.h"
 
-#define	TITLEBAR_HEIGHT		26
+//메인창을 제외한 메시지박스, 전송창 등의 타이틀바는 메인창의 타이틀바보다는 작게 표시한다.
+#define TOOLBAR_TITLE_HEIGHT			24
+#define TOOLBAR_TITLE_BUTTON_WIDTH		26
 
 // CnFTDServerApp:
 // 이 클래스의 구현에 대해서는 nFTDServer.cpp을(를) 참조하세요.

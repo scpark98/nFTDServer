@@ -17,10 +17,10 @@ extern HMODULE g_hRes;
 
 // CnFTDFileTransferDialog 대화 상자
 
-IMPLEMENT_DYNAMIC(CnFTDFileTransferDialog, CDialogEx)
+IMPLEMENT_DYNAMIC(CnFTDFileTransferDialog, CSCThemeDlg)
 
 CnFTDFileTransferDialog::CnFTDFileTransferDialog(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_FILETRANSFER, pParent)
+	: CSCThemeDlg(IDD_FILETRANSFER, pParent)
 {
 	m_ProgressData.nTime = 0;
 	m_ProgressData.nTransferedFile = 0;
@@ -41,13 +41,12 @@ void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_MESSAGE, m_static_message);
 	DDX_Control(pDX, IDC_PROGRESS, m_progress);
 	DDX_Control(pDX, IDC_LIST, m_list);
-	DDX_Control(pDX, IDCANCEL, m_button_cancel);
 	DDX_Control(pDX, IDC_STATIC_INDEX_BYTES, m_static_index_bytes);
 	DDX_Control(pDX, IDC_STATIC_REMAIN_SPEED, m_static_remain_speed);
 }
 
 
-BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CDialogEx)
+BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CSCThemeDlg)
 	ON_BN_CLICKED(IDOK, &CnFTDFileTransferDialog::OnBnClickedOk)
 	ON_BN_CLICKED(IDCANCEL, &CnFTDFileTransferDialog::OnBnClickedCancel)
 	ON_WM_LBUTTONDOWN()
@@ -55,7 +54,6 @@ BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CDialogEx)
 	ON_WM_SETCURSOR()
 	ON_WM_GETMINMAXINFO()
 	ON_WM_PAINT()
-	ON_WM_SIZE()
 	ON_WM_ERASEBKGND()
 	//ON_REGISTERED_MESSAGE(Message_CnFTDServerSocket, &CnFTDFileTransferDialog::on_message_server_socket)
 	ON_WM_TIMER()
@@ -66,11 +64,11 @@ END_MESSAGE_MAP()
 
 BOOL CnFTDFileTransferDialog::OnInitDialog()
 {
-	CDialogEx::OnInitDialog();
+	CSCThemeDlg::OnInitDialog();
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
 	init_list();
-	init_shadow();
+	//init_shadow();
 
 	m_resize.Create(this);
 	m_resize.SetMinimumTrackingSize(CSize(400, 320));
@@ -78,14 +76,15 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Add(IDC_STATIC_INDEX_BYTES, 0, 0, 50, 0);
 	m_resize.Add(IDC_STATIC_REMAIN_SPEED, 50, 0, 50, 0);
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
-	m_resize.Add(IDCANCEL, 100, 0, 0, 0);
+	//m_resize.Add(IDCANCEL, 100, 0, 0, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
-	Gdiplus::Color cr_back = Gdiplus::Color::White;
-	m_static_message.set_back_color(cr_back);
+	set_color_theme(CSCThemeDlg::theme_linkmemine);
+	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
+	show_titlebar_logo(false);
+	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
-	m_sys_buttons.create(this, 1, 0, 26, 26, SC_CLOSE);
-	m_sys_buttons.set_back_color(Gdiplus::Color::White);
+	m_static_message.set_back_color(m_cr_back);
 
 	m_static_index_bytes.set_back_color(Gdiplus::Color::White);
 	m_static_remain_speed.set_back_color(Gdiplus::Color::White);
@@ -120,7 +119,9 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 	if (m_thread_transfer_started)
 	{
 		m_pServerManager->m_DataSocket.set_transfer_pause(true);
-		int res = AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
+		CMessageDlg dlg(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
+
+		int res = dlg.DoModal();//AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 		if (res == IDCANCEL)
 		{
 			m_pServerManager->m_DataSocket.set_transfer_pause(false);
@@ -163,7 +164,7 @@ BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerM
 
 void CnFTDFileTransferDialog::init_list()
 {
-	m_list.set_headings(_T("파일명,100;크기,100;상태,60"));
+	m_list.set_headings(_T("파일명,200;크기,100;상태,60"));
 	//m_list.set_color_theme(CVtListCtrlEx::color_theme_dark_gray);
 	//m_list.set_line_height(theApp.GetProfileInt(_T("list name"), _T("line height"), 80));
 
@@ -196,18 +197,18 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.allow_sort(false);
 	m_list.use_indent_from_prefix_space(true);
 }
-
+/*
 void CnFTDFileTransferDialog::init_shadow()
 {
 	CWndShadow::Initialize(AfxGetInstanceHandle());
 	m_shadow.Create(GetSafeHwnd());
-	m_shadow.SetSize(4);	// -19 ~ 19
+	m_shadow.SetSize(8);	// -19 ~ 19
 	m_shadow.SetSharpness(19);	// 0 ~ 19
 	m_shadow.SetDarkness(128);	// 0 ~ 254
 	m_shadow.SetPosition(0, 0);	// -19 ~ 19
 	m_shadow.SetColor(RGB(0, 0, 0));
 }
-
+*/
 void CnFTDFileTransferDialog::thread_transfer()
 {
 	int i;
@@ -335,7 +336,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 	}
 
 	m_thread_transfer_started = true;
-	m_button_cancel.EnableWindow(true);
+	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 
 	//전송 상태를 메시지로 받아 표시해봤으나 메시지 처리 방식은 매우 딜레이가 심함.
 	//컨트롤들을 건네받아 컨트롤에서 직접 표시함.
@@ -447,7 +448,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_pServerManager->DataClose();
 
 	m_thread_transfer_started = false;
-	m_button_cancel.EnableWindow(true);
+	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 	TRACE(_T("exit thread_transfer()\n"));
 }
 
@@ -537,6 +538,8 @@ void CnFTDFileTransferDialog::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
 
 void CnFTDFileTransferDialog::OnPaint()
 {
+	CSCThemeDlg::OnPaint();
+	/*
 	CPaintDC dc1(this); // device context for painting
 					   // TODO: 여기에 메시지 처리기 코드를 추가합니다.
 					   // 그리기 메시지에 대해서는 CDialogEx::OnPaint()을(를) 호출하지 마십시오.
@@ -578,25 +581,8 @@ void CnFTDFileTransferDialog::OnPaint()
 	draw_rectangle(&dc, rc, Gdiplus::Color::RoyalBlue);
 
 	dc.SelectObject(pOldFont);
+	*/
 }
-
-
-void CnFTDFileTransferDialog::OnSize(UINT nType, int cx, int cy)
-{
-	CDialogEx::OnSize(nType, cx, cy);
-
-	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
-	CRect rc;
-	GetClientRect(rc);
-
-	if (m_sys_buttons.m_hWnd == NULL)
-		return;
-
-	m_sys_buttons.adjust(rc.top + 1, rc.right - 1);
-
-	Invalidate();
-}
-
 
 BOOL CnFTDFileTransferDialog::OnEraseBkgnd(CDC* pDC)
 {
@@ -640,4 +626,16 @@ void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
 		}
 	}
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+
+BOOL CnFTDFileTransferDialog::PreTranslateMessage(MSG* pMsg)
+{
+	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
+	if (pMsg->message == WM_KEYDOWN)
+	{
+		TRACE(_T("CnFTDFileTransferDialog keydown\n"));
+	}
+
+	return CDialogEx::PreTranslateMessage(pMsg);
 }

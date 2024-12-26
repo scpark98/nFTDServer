@@ -35,16 +35,15 @@ public:
 
 	//ui 관련
 	CSCColorTheme		m_theme = CSCColorTheme(this);
-	void				set_color_theme(int theme);
+	//void				set_color_theme(int theme);
 
 	//shadow
-	CWndShadow			m_shadow;
-	void				init_shadow();
+	//CWndShadow			m_shadow;
+	//void				init_shadow();
 
 	CResizeCtrl			m_resize;
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
-	CString				m_title = _T("FileTransfer (not connected)");
 
 	void				init_treectrl();
 	void				init_listctrl();
@@ -52,7 +51,7 @@ public:
 	void				init_progressDlg();
 	void				init_splitter();
 
-	void				laod_favorite();
+	void				init_favorite();
 	void				save_favorite();
 
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
