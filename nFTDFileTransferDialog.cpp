@@ -99,6 +99,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);
 
 	RestoreWindowPosition(&theApp, this, _T("CnFTDFileTransferDialog"));
+	CenterWindow(GetParent());
 
 	m_thread_transfer = std::thread(&CnFTDFileTransferDialog::thread_transfer, this);
 	m_thread_transfer.detach();
@@ -171,7 +172,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_font_size(theApp.GetProfileInt(_T("list"), _T("font size"), 9));
 	m_list.set_font_name(theApp.GetProfileString(_T("list"), _T("font name"), _T("맑은 고딕")));
 
-	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
+	//m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 	m_list.set_header_height(22);
 
 	//

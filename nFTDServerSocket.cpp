@@ -528,7 +528,7 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, vo
 		return false;
 	}
 
-	return false;
+	return true;
 }
 
 BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)

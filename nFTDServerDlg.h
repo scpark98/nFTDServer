@@ -16,6 +16,8 @@
 #include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 #include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 #include "../../Common/CWnd/WndShadow/WndShadow.h"
+#include "../../Common/CDialog/SCShapeDlg/SCShapeDlg.h"
+
 
 #include "nFTDServerManager.h"
 
@@ -30,7 +32,9 @@ public:
 	enum TIMER_ID
 	{
 		timer_init_remote_controls = 0,
+		timer_init_progress_and_connect,
 		timer_check_favorites,
+		timer_refresh_selection_status,
 	};
 
 	//ui 관련
@@ -42,6 +46,9 @@ public:
 	//void				init_shadow();
 
 	CResizeCtrl			m_resize;
+
+	CSCShapeDlg			m_toast_popup;
+
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 

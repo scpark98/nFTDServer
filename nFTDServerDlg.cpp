@@ -215,6 +215,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_splitter_left.SetType(CControlSplitter::CS_VERT);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_STATIC_LOCAL);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_TREE_LOCAL);
+	m_splitter_left.AddToTopOrLeftCtrls(IDC_SPLITTER_LOCAL_FAVORITE);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_LIST_LOCAL_FAVORITE);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_SLIDER_LOCAL_DISK_SPACE);
 	m_splitter_left.AddToBottomOrRightCtrls(IDC_PATH_LOCAL);
@@ -231,6 +232,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_splitter_right.SetType(CControlSplitter::CS_VERT);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_STATIC_REMOTE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_TREE_REMOTE);
+	m_splitter_right.AddToTopOrLeftCtrls(IDC_SPLITTER_REMOTE_FAVORITE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_LIST_REMOTE_FAVORITE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_SLIDER_REMOTE_DISK_SPACE);
 	m_splitter_right.AddToBottomOrRightCtrls(IDC_PATH_REMOTE);
@@ -368,19 +370,15 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//init_shadow();
 	init_favorite();
 
+	m_toast_popup.set_text(this, _T(""), 32, Gdiplus::FontStyleRegular, 0, 2.0, _T("맑은 고딕"),
+		Gdiplus::Color::RoyalBlue,
+		Gdiplus::Color::White);
+
 	RestoreWindowPosition(&theApp, this);
 
-	init_progressDlg();
-
-
-	//20241212 scpark thread_connect()에서 접속 시도 후 initialize()를 통해 remote의 CPathCtrl, CTreeCtrl, CListCtrl등을 표시하는데
-	//MFC 관련 오류가 발생한다. std::thread에서도 컨트롤에 대한 일반적인 액션들은 대부분 가능하나 생성과 관련된 뭔가 문제를 일으키는 듯 하다.
-	//따라서 connection만 thread로 돌리고 connected후에 컨트롤을 초기화하는 코드는 thread밖에서 처리한다.
-	std::thread t(&CnFTDServerDlg::thread_connect, this);
-	t.detach();
-	//thread_connect();
-
-	SetTimer(timer_init_remote_controls, 1000, NULL);
+	//timer로 init_progressDlg()를 하는 이유는 일단 메인창이 화면에 표시된 후에 접속상태창을 센터에 표시하기 위함이다.
+	//OnInitDialog()가 끝나기 전에 m_progressDlg.CenterWindow()를 해도 메인창의 중앙에 표시되지 않는다.
+	SetTimer(timer_init_progress_and_connect, 100, NULL);
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -441,8 +439,8 @@ void CnFTDServerDlg::init_progressDlg()
 	m_progressDlg.set_text_color(cr_text);
 	m_progressDlg.set_back_color(cr_back);
 	m_progressDlg.set_indeterminate();
-	m_progressDlg.CenterWindow();
 	m_progressDlg.SetWindowPos(&wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	m_progressDlg.CenterWindow(this);
 	m_progressDlg.ShowWindow(SW_SHOW);
 }
 
@@ -450,15 +448,15 @@ void CnFTDServerDlg::init_favorite()
 {
 	int i;
 	CString headings;
-	headings.Format(_T("%s,80;%s,150"), _S(IDS_FAVORITE) + _T(" ") + _S(IDS_FOLDER), _S(IDS_PATH));
+	headings.Format(_T("%s,100;%s,150"), _S(IDS_FAVORITE) + _T(" ") + _S(IDS_FOLDER), _S(IDS_PATH));
 
 	m_list_local_favorite.set_headings(headings);
-	m_list_local_favorite.set_font_size(10);
+	m_list_local_favorite.set_font_size(9);
 	m_list_local_favorite.set_header_height(22);
 	m_list_local_favorite.load_column_width(&theApp, _T("list local favorite"));
 
 	m_list_remote_favorite.set_headings(headings);
-	m_list_remote_favorite.set_font_size(10);
+	m_list_remote_favorite.set_font_size(9);
 	m_list_remote_favorite.set_header_height(22);
 	m_list_remote_favorite.load_column_width(&theApp, _T("list remote favorite"));
 
@@ -2006,6 +2004,36 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 				m_list_remote_favorite.set_text_color(i, -1, Gdiplus::Color::Firebrick);
 		}
 	}
+	else if (nIDEvent == timer_refresh_selection_status)
+	{
+		KillTimer(timer_refresh_selection_status);
+
+		CVtListCtrlEx* plist = NULL;
+		if (GetFocus() == &m_list_local)
+			plist = &m_list_local;
+		else if (GetFocus() == &m_list_remote)
+			plist = &m_list_remote;
+		else
+			return;
+
+		if (plist)
+			refresh_selection_status(plist);
+	}
+	else if (nIDEvent == timer_init_progress_and_connect)
+	{
+		KillTimer(timer_init_progress_and_connect);
+
+		init_progressDlg();
+
+		//20241212 scpark thread_connect()에서 접속 시도 후 initialize()를 통해 remote의 CPathCtrl, CTreeCtrl, CListCtrl등을 표시하는데
+		//MFC 관련 오류가 발생한다. std::thread에서도 컨트롤에 대한 일반적인 액션들은 대부분 가능하나 생성과 관련된 뭔가 문제를 일으키는 듯 하다.
+		//따라서 connection만 thread로 돌리고 connected후에 컨트롤을 초기화하는 코드는 thread밖에서 처리한다.
+		std::thread t(&CnFTDServerDlg::thread_connect, this);
+		t.detach();
+		//thread_connect();
+
+		SetTimer(timer_init_remote_controls, 1000, NULL);
+	}
 
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -2125,13 +2153,24 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				//파일인 경우
 				else
 				{
-					m_ServerManager.m_socket.file_command(file_cmd_open, param0);
-					res = true;
+					res = m_ServerManager.m_socket.file_command(file_cmd_open, param0);
+					if (res)
+					{
+						m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+						m_toast_popup.CenterWindow(this);
+						m_toast_popup.fade_in(10, 2000, true);
+					}
 				}
 				break;
 			case file_cmd_open_explorer :
 				param0 = m_list_remote.get_path();
-				m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
+				res = m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
+				if (res)
+				{
+					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.fade_in(10, 2000, true);
+				}
 				break;
 			case file_cmd_new_folder:
 			{
@@ -2192,6 +2231,13 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
 				else
 					res = true;
+
+				if (res)
+				{
+					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.fade_in(10, 2000, true);
+				}
 			}
 			break;
 			case file_cmd_favorite:
@@ -2352,7 +2398,10 @@ void CnFTDServerDlg::OnLvnItemChangedListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	
 	//선택 이벤트도 처리하지만 빈 공간을 클릭하여 선택이 안된 경우에도 status는 갱신되어야 한다.
 	//if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
-		refresh_selection_status(&m_list_local);
+	
+	//ItemChanged가 발생할때마다 바로 status를 변경하면 딜레이가 심하다. 타이머로 처리한다.
+	SetTimer(timer_refresh_selection_status, 100, NULL);
+	//refresh_selection_status(&m_list_local);
 
 	*pResult = 0;
 }
@@ -2365,7 +2414,10 @@ void CnFTDServerDlg::OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	
 	//선택 이벤트도 처리하지만 빈 공간을 클릭하여 선택이 안된 경우에도 status는 갱신되어야 한다.
 	//if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
-		refresh_selection_status(&m_list_remote);
+		
+	//ItemChanged가 발생할때마다 바로 status를 변경하면 딜레이가 심하다. 타이머로 처리한다.
+	SetTimer(timer_refresh_selection_status, 100, NULL); 
+	//refresh_selection_status(&m_list_remote);
 
 	*pResult = 0;
 }

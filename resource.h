@@ -86,6 +86,8 @@
 #define IDS_LARGER_FILE_SIZE            161
 #define IDS_CONNECT_FAIL_NO_RESPONSE    162
 #define IDS_EQUAL_FILE_SIZE             163
+#define IDS_EQUAL_FILE_SIZE2            164
+#define IDS_SHOW_ON_REMOTE              164
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -204,7 +206,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        160
+#define _APS_NEXT_RESOURCE_VALUE        166
 #define _APS_NEXT_COMMAND_VALUE         32792
 #define _APS_NEXT_CONTROL_VALUE         1032
 #define _APS_NEXT_SYMED_VALUE           101
