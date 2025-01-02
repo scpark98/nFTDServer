@@ -300,7 +300,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//set_font_size(10);
 	//set_titlebar_text_color(Gdiplus::Color::White);
 	//set_titlebar_back_color(gRGB(59, 70, 92));
-	set_color_theme(CSCThemeDlg::theme_linkmemine);
+	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
 	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
 	//m_sys_buttons.set_back_hover_color(get_color(gRGB(59, 70, 92), 32));
 

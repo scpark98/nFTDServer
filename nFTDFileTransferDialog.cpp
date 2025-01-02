@@ -79,7 +79,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	//m_resize.Add(IDCANCEL, 100, 0, 0, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
-	set_color_theme(CSCThemeDlg::theme_linkmemine);
+	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);

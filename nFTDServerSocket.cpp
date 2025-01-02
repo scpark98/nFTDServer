@@ -92,6 +92,8 @@ BOOL CnFTDServerSocket::Connection()
 
 		for (int i = 0; i < 10; i++)
 		{
+			logWrite(_T("%dth connection try..."), i + 1);
+
 			if (!m_sock.Create())
 				continue;
 

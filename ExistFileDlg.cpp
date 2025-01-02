@@ -59,7 +59,7 @@ BOOL CExistFileDlg::OnInitDialog()
 	CSCThemeDlg::OnInitDialog();
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
-	set_color_theme(CSCThemeDlg::theme_linkmemine);
+	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
@@ -113,7 +113,11 @@ BOOL CExistFileDlg::OnInitDialog()
 	dst_filesize.LowPart = m_dst_file.nFileSizeLow;
 	dst_filesize.HighPart = m_dst_file.nFileSizeHigh;
 
-	if (dst_filesize.QuadPart > src_filesize.QuadPart)
+	if (dst_filesize.QuadPart < src_filesize.QuadPart)
+	{
+		m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE));
+	}
+	else if (dst_filesize.QuadPart > src_filesize.QuadPart)
 	{
 		m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE));
 
@@ -123,9 +127,10 @@ BOOL CExistFileDlg::OnInitDialog()
 		m_radio_overwrite.SetCheck(BST_CHECKED);
 		m_radio_skip.SetCheck(BST_UNCHECKED);
 	}
-	else if (dst_filesize.QuadPart < src_filesize.QuadPart)
+	else
 	{
-		m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE));
+		m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_EQUAL_FILE_SIZE));
+		m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_EQUAL_FILE_SIZE));
 	}
 
 	m_check_apply_all.SetWindowText(_S(NFTD_IDS_CHECK_ALL));

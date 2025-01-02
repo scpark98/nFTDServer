@@ -85,6 +85,7 @@
 #define IDS_FAVORITE_REMOVE             160
 #define IDS_LARGER_FILE_SIZE            161
 #define IDS_CONNECT_FAIL_NO_RESPONSE    162
+#define IDS_EQUAL_FILE_SIZE             163
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002

@@ -58,7 +58,7 @@ BOOL CMessageDlg::OnInitDialog()
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
 	SetWindowPos(NULL, 0, 0, m_width, m_height, SWP_NOMOVE | SWP_NOZORDER);
 
-	set_color_theme(CSCThemeDlg::theme_linkmemine);
+	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
@@ -78,6 +78,7 @@ BOOL CMessageDlg::OnInitDialog()
 	CRect rc;
 	GetClientRect(rc);
 
+	//버튼 재정렬
 	int button_width = 80;
 	int button_height = 28;
 	int button_count = 2;
@@ -105,10 +106,10 @@ BOOL CMessageDlg::OnInitDialog()
 	m_button_ok.set_font_size(10);
 	m_button_ok.text_color(Gdiplus::Color::White);
 	m_button_ok.back_color(gRGB(59, 70, 92));
-	m_button_ok.set_round(10);
+	//m_button_ok.set_round(10);
 	m_button_cancel.set_font_bold();
 	m_button_cancel.set_font_size(10);
-	m_button_cancel.set_round(10);
+	//m_button_cancel.set_round(10);
 	m_button_cancel.draw_border();
 	m_button_cancel.draw_hover_rect();
 
