@@ -111,6 +111,8 @@ BOOL CnFTDServerSocket::Connection()
 			return FALSE;
 		}
 
+		logWrite(_T("connection success."));
+
 		//logWrite(_T("m_iServerNum = %d"), m_iServerNum);
 		if (m_iServerNum != 0)
 		{
@@ -425,7 +427,7 @@ BOOL CnFTDServerSocket::create_directory(LPCTSTR lpPathName)
 }
 
 //열기(open), 이름변경(rename), 삭제(delete), 속성보기(property) 등의 파일명령은 파라미터만 다를 뿐이므로 하나의 함수로 통일한다.
-bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, void* dqlist)
+bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, std::deque<CString>* dqlist)
 {
 	msg ret;
 	USHORT length;
@@ -519,12 +521,18 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, vo
 
 	if (ret.type == nFTD_OK)
 	{
-		logWriteE(_T("file_command success. cmd = %d, param0 = %s, param1 = %s."), cmd, param0, param1);
+		if (cmd == file_cmd_property && dqlist)
+			logWrite(_T("file_command success. cmd = %d, dqlist size = %d, dqlist->at(0) = %s"), cmd, dqlist->size(), dqlist->at(0));
+		else
+			logWrite(_T("file_command success. cmd = %d, param0 = %s, param1 = %s"), cmd, param0, param1);
 		return true;
 	}
 	else
 	{
-		logWriteE(_T("file_command failed. cmd = %d, param0 = %s, param1 = %s."), cmd, param0, param1);
+		if (cmd == file_cmd_property && dqlist)
+			logWrite(_T("file_command success. cmd = %d, dqlist size = %d, dqlist->at(0) = %s"), cmd, dqlist->size(), dqlist->at(0));
+		else
+			logWriteE(_T("file_command failed. cmd = %d, param0 = %s, param1 = %s"), cmd, param0, param1);
 		return false;
 	}
 

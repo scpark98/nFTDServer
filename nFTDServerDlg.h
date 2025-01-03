@@ -59,7 +59,7 @@ public:
 	void				init_splitter();
 
 	void				init_favorite();
-	void				save_favorite();
+	void				save_favorite(int dwSide);
 
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
@@ -117,7 +117,7 @@ public:
 	CString				m_transfer_from;	//전송할 파일/폴더의 src 폴더
 	CString				m_transfer_to;		//전송할 dst 폴더
 	void				file_transfer();	//위의 값들에 따라 전송 시작
-	void				add_transfered_file_to_list(int dstSide, WIN32_FIND_DATA);
+	void				add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DATA);
 
 	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
 	bool				is_transfer_enable(int srcSide);

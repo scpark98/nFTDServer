@@ -86,8 +86,10 @@
 #define IDS_LARGER_FILE_SIZE            161
 #define IDS_CONNECT_FAIL_NO_RESPONSE    162
 #define IDS_EQUAL_FILE_SIZE             163
-#define IDS_EQUAL_FILE_SIZE2            164
 #define IDS_SHOW_ON_REMOTE              164
+#define IDS_OPEN_WITH_EXPLORER          165
+#define IDS_SRC_DST_SAME_PATH           166
+#define IDS_CLOSE_ALL_TRANSFER_SUCCESS  167
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002

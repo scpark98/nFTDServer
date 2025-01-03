@@ -381,6 +381,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 		filesize.LowPart = 0;
 		filesize.HighPart = 0;
 
+		bool is_same_device = false;
+		if (get_my_ip().Compare(__targv[4]) == 0)
+			is_same_device = true;
+
 		//폴더 전송. 폴더는 실제 폴더를 전송하지 않고 동일한 이름으로 폴더를 생성해주면 된다.
 		if (m_filelist[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 		{
@@ -399,7 +403,22 @@ void CnFTDFileTransferDialog::thread_transfer()
 			filesize.LowPart = m_filelist[i].nFileSizeLow;
 			filesize.HighPart = m_filelist[i].nFileSizeHigh;
 
-			logWrite(_T("send %3d / %3d (%s)"), i + 1, m_filelist.size(), m_filelist[i].cFileName);
+			logWrite(_T("send %d/%d %s to %s"), i + 1, m_filelist.size(), m_filelist[i].cFileName, to.cFileName);
+
+			//한 PC에서 실행할 경우 src와 dst가 동일한 폴더/파일이라면 당연히 전송할 수 없다.
+			if (is_same_device && CString(m_filelist[i].cFileName).CompareNoCase(CString(to.cFileName)) == 0)
+			{
+				m_list.set_text(i, col_status, _S(IDS_SRC_DST_SAME_PATH));
+				logWrite(_T("fullpath가 동일하므로 스킵."));
+
+				ULARGE_INTEGER filesize;
+				filesize.HighPart = m_filelist[i].nFileSizeHigh;
+				filesize.LowPart = m_filelist[i].nFileSizeLow;
+				m_ProgressData.ulReceivedSize.QuadPart += filesize.QuadPart;
+				m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
+					get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+				continue;
+			}
 
 			//받기 전에 리스트는 해당 폴더로 자동 변경되도록? 너무 산만할 듯 하다.
 			//송신
@@ -431,17 +450,13 @@ void CnFTDFileTransferDialog::thread_transfer()
 					m_list.set_text(i, col_status, _T("fail"));
 					m_list.set_text_color(i, col_status, Gdiplus::Color::Red);
 			}
-
 		}
 
 		//전송이 완료되면 리스트를 새로고침하거나
 		//해당 항목을 수동으로 리스트에 추가하고 선택상태로 표시, 스크롤되게 보여줘야 한다.
 		if ((res == transfer_result_success || res == transfer_result_overwrite) && insert_item_after_transfer_success)
 		{
-			//WIN32_FIND_DATA data = m_filelist[i];
-			//_tcscpy(data.cFileName, to);
-
-			((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->add_transfered_file_to_list(m_dstSide, to);
+			((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->add_transfered_file_to_dst_list(m_dstSide, to);
 		}
 	}
 

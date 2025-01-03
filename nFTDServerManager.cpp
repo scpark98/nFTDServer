@@ -553,7 +553,7 @@ void CnFTDServerManager::KeepDataConnection()
 
 bool CnFTDServerManager::change_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket)
 {
-	logWrite(_T("Path : %s"), lpPath);
+	logWrite(_T("dwSide = %d, path = %s"), dwSide, lpPath);
 
 	bool bRet;
 

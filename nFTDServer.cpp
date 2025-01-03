@@ -77,6 +77,9 @@ BOOL CnFTDServerApp::InitInstance()
 	//gLog.set(_T("..\\bin\\Log"));
 	logWrite(_T("\n==================== Program Start ===================="));
 
+	//개발 단계에서만 필요하며 실제 배포시에는 주석처리 할 것!
+	gLog.set_log_level(SCLOG_LEVEL_DEBUG);
+
 	g_hRes = AfxGetInstanceHandle();
 	SocketsInitializer socketsInitializer;
 
