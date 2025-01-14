@@ -89,9 +89,28 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_static_dst_filesize.set_back_color(m_cr_back);
 	m_static_dst_mtime.set_back_color(m_cr_back);
 
+
 	m_radio_succeed.SetWindowText(_S(NFTD_IDS_CONTINUE));
+	m_radio_succeed.set_text_color(m_cr_text);
+	m_radio_succeed.set_back_color(m_cr_back, false);
+	m_radio_succeed.use_hover(false);
+
 	m_radio_overwrite.SetWindowText(_S(NFTD_IDS_OVERWRITE));
+	m_radio_overwrite.set_text_color(m_cr_text);
+	m_radio_overwrite.set_back_color(m_cr_back, false);
+	m_radio_overwrite.use_hover(false);
+
 	m_radio_skip.SetWindowText(_S(NFTD_IDS_PASS));
+	m_radio_skip.set_text_color(m_cr_text);
+	m_radio_skip.set_back_color(m_cr_back, false);
+	m_radio_skip.use_hover(false);
+
+	m_check_apply_all.SetWindowText(_S(NFTD_IDS_CHECK_ALL));
+	m_check_apply_all.SetCheck(theApp.GetProfileInt(_T("setting\\ExistFileDlg"), _T("apply all"), BST_CHECKED));
+	m_check_apply_all.set_text_color(m_cr_text);
+	m_check_apply_all.set_back_color(m_cr_back, false);
+	m_check_apply_all.use_hover(false);
+
 
 	if (theApp.GetProfileInt(_T("setting\\ExistFileDlg"), _T("exist file. succeed"), BST_CHECKED) == BST_CHECKED)
 		m_radio_succeed.SetCheck(BST_CHECKED);
@@ -133,9 +152,6 @@ BOOL CExistFileDlg::OnInitDialog()
 		m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_EQUAL_FILE_SIZE));
 	}
 
-	m_check_apply_all.SetWindowText(_S(NFTD_IDS_CHECK_ALL));
-	m_check_apply_all.SetCheck(theApp.GetProfileInt(_T("setting\\ExistFileDlg"), _T("apply all"), BST_CHECKED));
-	
 	//src와 dst 파일크기가 동일하면 파란색으로 표시, 그렇지 않으면 기본색으로 표시.
 	m_static_src_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_src_file.cFileName);
 	m_static_dst_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_dst_file.cFileName);

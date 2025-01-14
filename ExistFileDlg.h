@@ -3,6 +3,7 @@
 #include "nFTDServerSocket.h"
 #include "../../Common/CStatic/SCStatic/SCStatic.h"
 #include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
+#include "../../Common/CButton/GdiButton/GdiButton.h"
 
 // CExistFileDlg 대화 상자
 
@@ -32,10 +33,10 @@ protected:
 public:
 	afx_msg void OnBnClickedOk();
 	afx_msg void OnBnClickedCancel();
-	CButton m_radio_succeed;
-	CButton m_radio_overwrite;
-	CButton m_radio_skip;
-	CButton m_check_apply_all;
+	CGdiButton m_radio_succeed;
+	CGdiButton m_radio_overwrite;
+	CGdiButton m_radio_skip;
+	CGdiButton m_check_apply_all;
 	CSCStatic m_static_message;
 	afx_msg void OnBnClickedRadioSucceed();
 	afx_msg void OnBnClickedRadioOverwrite();

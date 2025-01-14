@@ -51,9 +51,6 @@
     <ClInclude Include="nFTDProtocol.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="nFTDFileManager.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="nFTDFileTransferDialog.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -176,9 +173,6 @@
     <ClCompile Include="nFTDServerSocket.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="nFTDFileManager.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="nFTDFileTransferDialog.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -286,6 +280,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="res\nFTDServer.rc2">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="res\images\copy.bin">
+      <Filter>리소스 파일</Filter>
+    </None>
+    <None Include="res\images\delete.bin">
       <Filter>리소스 파일</Filter>
     </None>
   </ItemGroup>

@@ -61,7 +61,6 @@
 #define IDS_SELECT_ALL                  147
 #define IDS_RENAME                      148
 #define IDS_PROPERTY                    149
-#define IDB_LEFT_ARROW                  149
 #define IDS_ITEM_COUNT                  150
 #define IDB_LOCAL_PC                    150
 #define IDS_ITEM_SELECTED_COUNT         151
@@ -72,7 +71,6 @@
 #define IDB_REMOTE_PC                   153
 #define IDB_REMOTE_PC1                  154
 #define IDS_FAVORITE                    154
-#define IDB_RIGHT_ARROW                 155
 #define IDS_SET                         155
 #define IDB_DRAG_SINGLE_FILE            156
 #define IDS_RESET                       156
@@ -89,7 +87,9 @@
 #define IDS_SHOW_ON_REMOTE              164
 #define IDS_OPEN_WITH_EXPLORER          165
 #define IDS_SRC_DST_SAME_PATH           166
+#define IDR_GIF_COPY                    166
 #define IDS_CLOSE_ALL_TRANSFER_SUCCESS  167
+#define IDR_GIF_DELETE                  167
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -208,7 +208,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        166
+#define _APS_NEXT_RESOURCE_VALUE        168
 #define _APS_NEXT_COMMAND_VALUE         32792
 #define _APS_NEXT_CONTROL_VALUE         1032
 #define _APS_NEXT_SYMED_VALUE           101

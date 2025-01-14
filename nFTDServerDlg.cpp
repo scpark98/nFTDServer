@@ -75,7 +75,6 @@ void CnFTDServerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_LIST_REMOTE, m_list_remote);
 	DDX_Control(pDX, IDC_PATH_LOCAL, m_path_local);
 	DDX_Control(pDX, IDC_PATH_REMOTE, m_path_remote);
-	DDX_Control(pDX, IDC_SPLITTER_CENTER, m_splitter_center);
 	DDX_Control(pDX, IDC_SPLITTER_LEFT, m_splitter_left);
 	DDX_Control(pDX, IDC_SPLITTER_RIGHT, m_splitter_right);
 	DDX_Control(pDX, IDC_STATIC_COUNT_LOCAL, m_static_count_local);
@@ -85,7 +84,6 @@ void CnFTDServerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CHECK_CLOSE_AFTER_ALL, m_check_close_after_all);
 	DDX_Control(pDX, IDC_BUTTON_LOCAL_TO_REMOTE, m_button_local_to_remote);
 	DDX_Control(pDX, IDC_BUTTON_REMOTE_TO_LOCAL, m_button_remote_to_local);
-	DDX_Control(pDX, IDC_SPLITTER_CENTER2, m_splitter_center2);
 	DDX_Control(pDX, IDC_LIST_LOCAL_FAVORITE, m_list_local_favorite);
 	DDX_Control(pDX, IDC_LIST_REMOTE_FAVORITE, m_list_remote_favorite);
 	DDX_Control(pDX, IDC_SPLITTER_LOCAL_FAVORITE, m_splitter_local_favorite);
@@ -103,10 +101,11 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_WINDOWPOSCHANGED()
 	ON_BN_CLICKED(IDOK, &CnFTDServerDlg::OnBnClickedOk)
 	ON_BN_CLICKED(IDCANCEL, &CnFTDServerDlg::OnBnClickedCancel)
-	ON_WM_SETCURSOR()
+	//ON_WM_SETCURSOR()
 	ON_WM_LBUTTONDOWN()
-	ON_WM_LBUTTONUP()
-	ON_WM_LBUTTONDBLCLK()
+	ON_WM_RBUTTONDOWN()
+	//ON_WM_LBUTTONUP()
+	//ON_WM_LBUTTONDBLCLK()
 	ON_WM_GETMINMAXINFO()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
@@ -115,8 +114,8 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_REGISTERED_MESSAGE(Message_CSCTreeCtrl, &CnFTDServerDlg::on_message_CSCTreeCtrl)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_LOCAL, &CnFTDServerDlg::OnTvnSelchangedTreeLocal)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_REMOTE, &CnFTDServerDlg::OnTvnSelchangedTreeRemote)
-	ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMDblclkListRemote)
-	ON_NOTIFY(NM_DBLCLK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMDblclkListLocal)
+	//ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMDblclkListRemote)
+	//ON_NOTIFY(NM_DBLCLK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMDblclkListLocal)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE_LOCAL, &CnFTDServerDlg::OnNMRClickTreeLocal)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE_REMOTE, &CnFTDServerDlg::OnNMRClickTreeRemote)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMRClickListLocal)
@@ -145,6 +144,8 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_REMOTE_FAVORITE, &CnFTDServerDlg::OnNMRClickListRemoteFavorite)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnEndlabelEditListLocal)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnEndlabelEditListRemote)
+	ON_WM_ACTIVATE()
+	ON_WM_ACTIVATEAPP()
 END_MESSAGE_MAP()
 
 
@@ -184,6 +185,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//pWnd->ShowWindow(SW_SHOW);
 
 	m_resize.Create(this);
+	m_resize.SetMinimumTrackingSize(CSize(800, 600));
 	m_resize.Add(IDC_STATIC_LOCAL, 0, 0, 0, 0);
 	m_resize.Add(IDC_PATH_LOCAL, 0, 0, 50, 0);
 	m_resize.Add(IDC_TREE_LOCAL, 0, 0, 0, 100);
@@ -213,39 +215,48 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_resize.Add(IDC_BUTTON_LOCAL_TO_REMOTE, 50, 50, 0, 0);
 	m_resize.Add(IDC_BUTTON_REMOTE_TO_LOCAL, 50, 50, 0, 0);
 
+	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
+	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
+
 	//init_splitter();
+	int min_size = 120;
+
 	//왼쪽 트리와 리스트 스플리터
-	m_splitter_left.SetType(CControlSplitter::CS_VERT);
-	m_splitter_left.AddToTopOrLeftCtrls(IDC_STATIC_LOCAL);
-	m_splitter_left.AddToTopOrLeftCtrls(IDC_TREE_LOCAL);
+	m_splitter_left.set_type(CControlSplitter::CS_VERT, true, Gdiplus::Color::LightGray);
+	m_splitter_left.set_back_color(m_cr_back);
+	m_splitter_left.AddToTopOrLeftCtrls(IDC_STATIC_LOCAL, min_size);			//static은 cx만 제한하면 되지만
+	m_splitter_left.AddToTopOrLeftCtrls(IDC_TREE_LOCAL, min_size, min_size);	//tree는 cx, cy 둘 다 제한시켜야 한다.
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_SPLITTER_LOCAL_FAVORITE);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_LIST_LOCAL_FAVORITE);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_SLIDER_LOCAL_DISK_SPACE);
 	m_splitter_left.AddToBottomOrRightCtrls(IDC_PATH_LOCAL);
-	m_splitter_left.AddToBottomOrRightCtrls(IDC_LIST_LOCAL);
+	m_splitter_left.AddToBottomOrRightCtrls(IDC_LIST_LOCAL, min_size, min_size);
 	m_splitter_left.AddToBottomOrRightCtrls(IDC_STATIC_COUNT_LOCAL);
 
 	//왼쪽 트리와 즐겨찾기 리스트 스플리터
-	m_splitter_local_favorite.SetType(CControlSplitter::CS_HORZ);
-	m_splitter_local_favorite.AddToTopOrLeftCtrls(IDC_TREE_LOCAL);
-	m_splitter_local_favorite.AddToBottomOrRightCtrls(IDC_LIST_LOCAL_FAVORITE);
+	m_splitter_local_favorite.set_type(CControlSplitter::CS_HORZ, true, Gdiplus::Color::LightGray);
+	m_splitter_local_favorite.set_back_color(m_cr_back);
+	m_splitter_local_favorite.AddToTopOrLeftCtrls(IDC_TREE_LOCAL, min_size, min_size);
+	m_splitter_local_favorite.AddToBottomOrRightCtrls(IDC_LIST_LOCAL_FAVORITE, min_size, min_size);
 
 
 	//오른쪽 트리와 리스트 스플리터
-	m_splitter_right.SetType(CControlSplitter::CS_VERT);
-	m_splitter_right.AddToTopOrLeftCtrls(IDC_STATIC_REMOTE);
-	m_splitter_right.AddToTopOrLeftCtrls(IDC_TREE_REMOTE);
+	m_splitter_right.set_type(CControlSplitter::CS_VERT, true, Gdiplus::Color::LightGray);
+	m_splitter_right.set_back_color(m_cr_back);
+	m_splitter_right.AddToTopOrLeftCtrls(IDC_STATIC_REMOTE, min_size);
+	m_splitter_right.AddToTopOrLeftCtrls(IDC_TREE_REMOTE, min_size, min_size);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_SPLITTER_REMOTE_FAVORITE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_LIST_REMOTE_FAVORITE);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_SLIDER_REMOTE_DISK_SPACE);
 	m_splitter_right.AddToBottomOrRightCtrls(IDC_PATH_REMOTE);
-	m_splitter_right.AddToBottomOrRightCtrls(IDC_LIST_REMOTE);
+	m_splitter_right.AddToBottomOrRightCtrls(IDC_LIST_REMOTE, min_size, min_size);
 	m_splitter_right.AddToBottomOrRightCtrls(IDC_STATIC_COUNT_REMOTE);
 
 	//오른쪽 트리와 즐겨찾기 리스트 스플리터
-	m_splitter_remote_favorite.SetType(CControlSplitter::CS_HORZ);
-	m_splitter_remote_favorite.AddToTopOrLeftCtrls(IDC_TREE_REMOTE);
-	m_splitter_remote_favorite.AddToBottomOrRightCtrls(IDC_LIST_REMOTE_FAVORITE);
+	m_splitter_remote_favorite.set_type(CControlSplitter::CS_HORZ, true, Gdiplus::Color::LightGray);
+	m_splitter_remote_favorite.set_back_color(m_cr_back);
+	m_splitter_remote_favorite.AddToTopOrLeftCtrls(IDC_TREE_REMOTE, min_size, min_size);
+	m_splitter_remote_favorite.AddToBottomOrRightCtrls(IDC_LIST_REMOTE_FAVORITE, min_size, min_size);
 
 	/*
 	//중앙 splitter
@@ -295,7 +306,9 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//작업표시줄에서 해당 앱을 shift+우클릭하여 SYSMENU를 표시할 수 있다.
 	//또한 CResizeCtrl을 이용하면 resize할 때 모든 컨트롤들의 레이아웃을 자동으로 맞춰주는데
 	//아래 코드를 사용하지 않으면 타이틀바가 없는 dlg는 상단에 흰색 여백 공간이 생기는 부작용이 생긴다.
-	SetWindowLong(m_hWnd, GWL_STYLE, WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN);
+	//resizable dlg이므로 WS_THICKFRAME을 넣어주고 그래야만 윈도우 기본 shadow가 표시된다.(CWndShadow 불필요)
+	//또한 WS_CLIPCHILDREN을 넣지 않으면 깜빡임이 많이 발생한다.
+	SetWindowLong(m_hWnd, GWL_STYLE, WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CLIPCHILDREN);
 
 	//set_titlebar_height(32);
 	//m_sys_buttons.set_button_width(44);
@@ -305,8 +318,6 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//set_font_size(10);
 	//set_titlebar_text_color(Gdiplus::Color::White);
 	//set_titlebar_back_color(gRGB(59, 70, 92));
-	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
-	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
 	//m_sys_buttons.set_back_hover_color(get_color(gRGB(59, 70, 92), 32));
 
 	m_static_local.set_header_images(IDB_LOCAL_PC1);
@@ -317,9 +328,16 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_static_remote.set_font_bold();
 
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
+	m_button_local_to_remote.fit_to_image(false);
+	m_button_local_to_remote.set_back_color(m_cr_back, false);
+	//m_button_local_to_remote.set_round(4);
+	//m_button_local_to_remote.draw_hover_rect(true, Gdiplus::Color::LightGray);
+
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
-	m_button_local_to_remote.back_color(m_cr_back);
-	m_button_remote_to_local.back_color(m_cr_back);
+	m_button_remote_to_local.fit_to_image(false);
+	m_button_remote_to_local.set_back_color(m_cr_back, false);
+	//m_button_remote_to_local.set_round(4);
+	//m_button_remote_to_local.draw_hover_rect(true, Gdiplus::Color::LightGray);
 
 	//for test
 	//while (get_process_running_count(_T("nFTDClient.exe")) > 0)
@@ -348,12 +366,20 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	m_check_close_after_all.SetWindowText(_S(IDS_CLOSE_AFTER_TRANSFER));			//전송 완료 후 창 닫기
 	m_check_close_after_all.set_tooltip_text(_S(IDS_CLOSE_ALL_TRANSFER_SUCCESS));	//모든 전송이 성공해야만 창 닫기 옵션이 적용됨. 하나라도 실패하면 닫지 않음
-	m_check_close_after_all.text_color(m_cr_back);
-	m_check_close_after_all.back_color(m_cr_titlebar_back, false);
+	m_check_close_after_all.set_text_color(m_cr_back);
+	m_check_close_after_all.set_back_color(m_cr_titlebar_back, false);
 	m_check_close_after_all.use_hover(false);
 	m_check_close_after_all.set_font_bold();
 	int auto_close = theApp.GetProfileInt(_T("setting"), _T("auto close after all"), BST_CHECKED);
 	m_check_close_after_all.SetCheck(auto_close);
+	CRect rz = m_check_close_after_all.calc_rect();
+	CRect rc;
+	GetClientRect(rc);
+	m_check_close_after_all.SetWindowPos(NULL,
+										rc.right - m_sys_buttons.get_size().cx - 12 - rz.Width(),
+										(get_titlebar_height() - rz.Height()) / 2 + 1,
+										rz.Width(),
+										rz.Height(), SWP_NOZORDER);
 
 
 	//for test
@@ -373,11 +399,13 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	init_listctrl();
 	init_pathctrl();
 	//init_shadow();
-	init_favorite();
 
-	m_toast_popup.set_text(this, _T(""), 32, Gdiplus::FontStyleRegular, 0, 2.0, _T("맑은 고딕"),
+	//text 내용만 없을 뿐 폰트 크기 등을 미리 세팅해놓고 시작한다.
+	//팝업 메시지가 필요할 경우 set_text(_T("text message"));와 같이 텍스트만 변경해주면 된다.
+	m_toast_popup.set_text(this, _T(""), 32, Gdiplus::FontStyleBold, 2, 2.0, _T("맑은 고딕"),
 		Gdiplus::Color::RoyalBlue,
 		Gdiplus::Color::White);
+	m_toast_popup.use_control(false);
 
 	RestoreWindowPosition(&theApp, this);
 
@@ -393,7 +421,7 @@ void CnFTDServerDlg::init_treectrl()
 	//m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
-	//m_tree_local.set_path(_T("c:\\"));
+	m_tree_local.set_use_popup_menu();
 
 }
 
@@ -408,14 +436,13 @@ void CnFTDServerDlg::init_listctrl()
 	auto drive_list = theApp.m_shell_imagelist.m_volume[0].get_drive_list();
 	for (int i = 0; i < drive_list->size(); i++)
 	{
-		logWrite(_T("local drive[%d] = %s, %s"), i, drive_list->at(i),
-			convert_special_folder_to_real_path(drive_list->at(i), &theApp.m_shell_imagelist, 0));
+		logWrite(_T("local drive[%d] = %s, %s"), i, drive_list->at(i).label, drive_list->at(i).path);
 	}
 }
 
 void CnFTDServerDlg::init_pathctrl()
 {
-	m_path_local.set_shell_imagelist(&theApp.m_shell_imagelist);
+	m_path_local.set_shell_imagelist(&theApp.m_shell_imagelist, true);
 	//m_path_local.back_color(Gdiplus::Color::Bisque);
 }
 /*
@@ -707,16 +734,19 @@ BOOL CnFTDServerDlg::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 void CnFTDServerDlg::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	if (!IsZoomed() && (m_corner_index >= corner_left) && (m_corner_index <= corner_bottomright))
-	{
-		DefWindowProc(WM_SYSCOMMAND, SC_SIZE + m_corner_index, MAKELPARAM(point.x, point.y));
-	}
-	else if (!IsZoomed() && (m_corner_index == corner_inside))
-	{
-		DefWindowProc(WM_NCLBUTTONDOWN, HTCAPTION, MAKEWORD(point.x, point.y));
-	}
+	m_path_local.edit_end();
+	m_path_remote.edit_end();
 
-	CDialogEx::OnLButtonDown(nFlags, point);
+	//if (!IsZoomed() && (m_corner_index >= corner_left) && (m_corner_index <= corner_bottomright))
+	//{
+	//	DefWindowProc(WM_SYSCOMMAND, SC_SIZE + m_corner_index, MAKELPARAM(point.x, point.y));
+	//}
+	//else if (!IsZoomed() && (m_corner_index == corner_inside))
+	//{
+	//	DefWindowProc(WM_NCLBUTTONDOWN, HTCAPTION, MAKEWORD(point.x, point.y));
+	//}
+
+	CSCThemeDlg::OnLButtonDown(nFlags, point);
 }
 
 
@@ -737,6 +767,16 @@ void CnFTDServerDlg::OnLButtonDblClk(UINT nFlags, CPoint point)
 	}
 
 	CDialogEx::OnLButtonDblClk(nFlags, point);
+}
+
+
+void CnFTDServerDlg::OnRButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
+	m_path_local.edit_end();
+	m_path_remote.edit_end();
+
+	CSCThemeDlg::OnRButtonDown(nFlags, point);
 }
 
 
@@ -866,6 +906,7 @@ void CnFTDServerDlg::initialize()
 	InitServerManager();		// Server Manager 설정
 
 	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false);
+	m_tree_remote.set_use_popup_menu();
 	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false);
@@ -873,7 +914,7 @@ void CnFTDServerDlg::initialize()
 	m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	m_list_remote.load_column_width(&theApp, _T("list remote"));
 
-	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist);
+	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist, false);
 	m_path_remote.set_is_local_device(false);
 	//m_path_remote.back_color(Gdiplus::Color::Turquoise);
 
@@ -917,8 +958,8 @@ void CnFTDServerDlg::initialize()
 	//m_tree_remote.update_drive_list(path, &drive_list);
 
 
-	//즐겨찾기로 등록된 폴더들이 유효한지 검사
-	SetTimer(timer_check_favorites, 1000, NULL);
+	//즐겨찾기 로딩 및 체크
+	SetTimer(timer_init_favorites, 1000, NULL);
 }
 
 
@@ -935,15 +976,14 @@ void CnFTDServerDlg::InitServerManager()
 	theApp.m_shell_imagelist.set_system_path(CLIENT_SIDE, &map);
 
 
-	std::deque<CString> drive_list;
-	m_ServerManager.DriveList(&drive_list);
+	std::deque<CDiskDriveInfo> drive_list;
+	m_ServerManager.get_remote_drive_list(&drive_list);
 	theApp.m_shell_imagelist.set_drive_list(CLIENT_SIDE, &drive_list);
 
 	drive_list = *(theApp.m_shell_imagelist.m_volume[1].get_drive_list());
 	for (int i = 0; i < drive_list.size(); i++)
 	{
-		logWrite(_T("remote drive[%d] = %s, %s"), i, drive_list.at(i),
-			convert_special_folder_to_real_path(drive_list.at(i), &theApp.m_shell_imagelist, 1));
+		logWrite(_T("remote drive[%d] = %s, %s"), i, drive_list[i].label, drive_list[i].path);
 	}
 
 	//theApp.m_shell_imagelist.m_volumeadd_drive_list(&drive_list);
@@ -995,9 +1035,9 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 		TRACE(_T("keydown on CnFTDServerDlg\n"));
 		switch (pMsg->wParam)
 		{
-			case VK_RETURN :
-				OnBnClickedOk();
-				return TRUE;
+			//case VK_RETURN :
+			//	OnBnClickedOk();
+			//	return TRUE;
 			case VK_DELETE :
 				if (GetFocus() == &m_list_local_favorite)
 				{
@@ -1012,13 +1052,13 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 
 				//삭제 시 물어보고 지우거나 아예 키를 이용한 삭제는 방지
 				//file_command(file_cmd_delete);
-				return TRUE;
+				break;
 			case '1' :
 				if (IsCtrlPressed() && IsShiftPressed())
 				{
 					ShellExecute(m_hWnd, _T("open"), gLog.get_log_full_path(), 0, 0, SW_SHOWNORMAL);
 					CString client_log;
-					client_log.Format(_T("%s\\Log\\nFTDClient_%s.log"), get_exe_directory(), get_cur_datetime_string(0, false));
+					client_log.Format(_T("%s\\Log\\nFTDClient_%s.log"), get_exe_directory(), get_cur_datetime_str(0, false));
 					ShellExecute(m_hWnd, _T("open"), client_log, 0, 0, SW_SHOWNORMAL);
 					return TRUE;
 				}
@@ -1051,6 +1091,30 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			change_directory(pMsg->cur_path, CLIENT_SIDE);
 			m_tree_remote.set_path(pMsg->cur_path);
 		}
+		else if (pMsg->message == CPathCtrl::message_pathctrl_request_remote_subfolders)
+		{
+			std::deque<CString>* folder_list = (std::deque<CString>*)lParam;
+			folder_list->clear();
+
+			logWriteD(_T("CPathCtrl::message_pathctrl_request_remote_subfolders. cur_path = %s"), pMsg->cur_path);
+			if (pMsg->cur_path.IsEmpty())
+			{
+				folder_list->push_back(theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DRIVES));
+				folder_list->push_back(theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_MYDOCUMENTS));
+				folder_list->push_back(theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DESKTOP));
+			}
+			else
+			{
+				std::deque<WIN32_FIND_DATA> dq;
+				m_ServerManager.get_folderlist(pMsg->cur_path, &dq, true);
+
+				for (int i = 0; i < dq.size(); i++)
+				{
+					logWriteD(_T("CPathCtrl::message_pathctrl_request_remote_subfolders. %d = %s"), i, dq[i].cFileName);
+					folder_list->push_back(dq[i].cFileName);
+				}
+			}
+		}
 	}
 
 	return 0;
@@ -1072,8 +1136,8 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		}
 		else if (msg->pThis == &m_list_remote)
 		{
-			m_tree_remote.set_path(path);
-			m_path_remote.set_path(path);
+			//m_tree_remote.set_path(path);
+			//m_path_remote.set_path(path);
 			change_directory(path, CLIENT_SIDE);
 		}
 	}
@@ -1126,11 +1190,11 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 				if (pDropListCtrl == &m_list_local)
 				{
 					m_dstSide = SERVER_SIDE;
-					dropped_path = pDropListCtrl->get_path() + _T("\\") + droppedItemText;
+					dropped_path = concat_path(pDropListCtrl->get_path(), droppedItemText);
 				}
 				else if (pDropListCtrl == &m_list_remote)
 				{
-					dropped_path = m_remoteCurrentPath + _T("\\") + droppedItemText;
+					dropped_path = concat_path(m_remoteCurrentPath, droppedItemText);
 				}
 
 				//만약 dropped_path가 폴더가 아닌 파일이라면 dropped_path는 폴더명까지만 취한다.
@@ -1189,6 +1253,41 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 
 		file_transfer();
 	}
+	else if (msg->message == CVtListCtrlEx::message_get_remote_free_space)
+	{
+		ULARGE_INTEGER* ul_free_space = (ULARGE_INTEGER*)lParam;
+		m_ServerManager.m_socket.RemainSpace(ul_free_space, msg->param0[0]);
+	}
+	else if (msg->message == CVtListCtrlEx::message_get_remote_total_space)
+	{
+		ULARGE_INTEGER* ul_total_space = (ULARGE_INTEGER*)lParam;
+		m_ServerManager.m_socket.TotalSpace(ul_total_space, msg->param0[0]);
+	}
+	else if (msg->message == CVtListCtrlEx::message_request_rename)
+	{
+		bool* res = (bool*)lParam;
+		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1);
+		if (*res == false)
+		{
+			CString folder = get_part(msg->param1, fn_folder);
+			CString name = get_part(msg->param1, fn_name);
+			CString msg;
+
+			msg.Format(_T("%s 경로에 이름이 '%s'인 항목 이미 있습니다."), folder, name);
+			CMessageDlg dlg(msg, MB_OK);
+			dlg.DoModal();
+		}
+	}
+	else if (msg->message == CVtListCtrlEx::message_rename_duplicated)
+	{
+		CString folder = get_part(msg->param1, fn_folder);
+		CString name = get_part(msg->param1, fn_name);
+		CString msg;
+
+		msg.Format(_T("%s 경로에 이름이 '%s'인 항목이 이미 있습니다."), folder, name);
+		CMessageDlg dlg(msg, MB_OK);
+		dlg.DoModal();
+	}
 
 	return 0;
 }
@@ -1236,7 +1335,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			}
 			else
 			{
-				m_transfer_to = pDropListCtrl->get_path() + _T("\\") + droppedItemText;
+				m_transfer_to = concat_path(pDropListCtrl->get_path(), droppedItemText);
 				TRACE(_T("dropped on = %s\n"), m_transfer_to);
 			}
 
@@ -1269,8 +1368,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		//path가 "내 PC"이면 DriveList()를, 그렇지 않으면 refresh_tree_folder()를 호출한다.
 		if (path == theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES))
 		{
-			std::deque<CString> drive_list;
-			m_ServerManager.DriveList(&drive_list);
+			std::deque<CDiskDriveInfo> drive_list;
+			m_ServerManager.get_remote_drive_list(&drive_list);
 			theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].set_drive_list(&drive_list);
 			m_tree_remote.update_drive_list(path, &drive_list);
 		}
@@ -1307,6 +1406,95 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 					m_tree_remote.insert_folder(&dq[i], has_child);
 				}
 			}
+		}
+	}
+	else if (msg->message == CSCTreeCtrl::message_path_changed)
+	{
+		if (msg->pThis == &m_tree_local)
+		{
+			m_path_local.set_path(m_tree_local.get_path());
+			m_list_local.set_path(m_tree_local.get_path());
+		}
+		else if (msg->pThis == &m_tree_remote)
+		{
+			m_path_remote.set_path(m_tree_remote.get_path());
+			m_list_remote.set_path(m_tree_remote.get_path());
+		}
+	}
+	else if (msg->message == CSCTreeCtrl::message_request_new_folder_index)
+	{
+		int* index = (int*)lParam;
+		bool res = m_ServerManager.m_socket.get_new_folder_index(msg->param0, msg->param1, index);
+	}
+	else if (msg->message == CSCTreeCtrl::message_request_new_folder)
+	{
+		bool* res = (bool*)lParam;
+		*res = m_ServerManager.m_socket.create_directory(msg->param0);
+		/*
+		bool* res = (bool*)lParam;
+
+		param0 = convert_special_folder_to_real_path(m_list_remote.get_path(), &theApp.m_shell_imagelist, CLIENT_SIDE);
+		int new_folder_index = m_list_remote.get_file_index(param0, _S(IDS_NEW_FOLDER));
+		if (new_folder_index == 1)
+			param0.Format(_T("%s\\%s"), param0, _S(IDS_NEW_FOLDER));
+		else if (new_folder_index > 1)
+			param0.Format(_T("%s\\%s (%d)"), param0, _S(IDS_NEW_FOLDER), new_folder_index);
+		else
+			break;
+		res = m_ServerManager.m_socket.file_command(file_cmd_new_folder, param0);
+		if (res)
+		{
+			int index = m_list_remote.insert_folder(-1, get_part(param0, fn_name));
+			if (index < 0)
+			{
+				res = false;
+				break;
+			}
+			m_list_remote.select_item(index, true, true, true);
+			m_list_remote.edit_item(index, 0);
+		}
+		*/
+	}
+	else if (msg->message == CSCTreeCtrl::message_request_rename)
+	{
+		bool* res = (bool*)lParam;
+		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1);
+		if (*res == false)
+		{
+			CString folder = get_part(msg->param1, fn_folder);
+			CString folder_name = get_part(msg->param1, fn_name);
+			CString msg;
+
+			msg.Format(_T("%s 경로에 이름이 '%s'인 폴더가 이미 있습니다."), folder, folder_name);
+			CMessageDlg dlg(msg, MB_OK);
+			dlg.DoModal();
+		}
+	}
+	else if (msg->message == CSCTreeCtrl::message_rename_duplicated)
+	{
+		CString folder = get_part(msg->param1, fn_folder);
+		CString folder_name = get_part(msg->param1, fn_name);
+		CString msg;
+
+		msg.Format(_T("%s 경로에 이름이 '%s'인 폴더가 이미 있습니다."), folder, folder_name);
+		CMessageDlg dlg(msg, MB_OK);
+		dlg.DoModal();
+	}
+	else if (msg->message == CSCTreeCtrl::message_request_property)
+	{
+		std::deque<CString> dq_fullpath{ msg->param0 };
+		
+		bool res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
+		if (res)
+		{
+			m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+			m_toast_popup.CenterWindow(this);
+			m_toast_popup.fade_in(10, 2000, true);
+		}
+		else
+		{
+			CMessageDlg dlg(msg->param0 + _T("\n") + _T("위 폴더의 속성을 얻어오지 못했습니다."));
+			dlg.DoModal();
 		}
 	}
 
@@ -1359,6 +1547,7 @@ void CnFTDServerDlg::OnTvnSelchangedTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	*pResult = 0;
 }
 
+#if 0
 void CnFTDServerDlg::OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
@@ -1370,22 +1559,23 @@ void CnFTDServerDlg::OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 
 	if (path == get_system_label(CSIDL_DRIVES))
 	{
-		new_path = convert_special_folder_to_real_path(m_list_local.get_text(index, CVtListCtrlEx::col_filename));// , theApp.m_shell_imagelist.m_volume[SERVER_SIDE].get_label_map());
-		m_list_local.set_path(new_path);
-		m_path_local.set_path(new_path);
-		m_tree_local.set_path(new_path);
+		//new_path = convert_special_folder_to_real_path(m_list_local.get_text(index, CVtListCtrlEx::col_filename));// , theApp.m_shell_imagelist.m_volume[SERVER_SIDE].get_label_map());
+		//m_list_local.set_path(new_path);
+		//m_path_local.set_path(new_path);
+		//m_tree_local.set_path(new_path);
 	}
 	else
 	{
 		//빈 공간을 더블클릭한 경우는 상위 폴더로의 이동으로 동작한다.
 		if (index < 0)
 		{
-			new_path = GetParentDirectory(m_list_local.get_path());
+			new_path = GetParentDirectory(path);
 			change_directory(new_path, SERVER_SIDE);
 		}
 		else
 		{
-			new_path = m_list_local.get_path() + _T("\\") + m_list_local.get_text(index, CVtListCtrlEx::col_filename);
+			new_path = concat_path(path, m_list_local.get_text(index, CVtListCtrlEx::col_filename));
+
 			if (PathIsDirectory(new_path))
 			{
 				m_list_local.set_path(new_path);
@@ -1404,6 +1594,7 @@ void CnFTDServerDlg::OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 
 void CnFTDServerDlg::OnNMDblclkListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
+
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	int index = pNMItemActivate->iItem;
@@ -1423,11 +1614,12 @@ void CnFTDServerDlg::OnNMDblclkListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 			return;
 
 		//내 PC가 선택된 상태에서 디스크 드라이브를 더블클릭하거나 파일을 더블클릭 한 경우 외에는 폴더이므로 폴더 이동시킨다.
-		change_directory(m_remoteCurrentPath + _T("\\") + m_list_remote.get_text(index, CVtListCtrlEx::col_filename), CLIENT_SIDE);
+		change_directory(concat_path(m_remoteCurrentPath, m_list_remote.get_text(index, CVtListCtrlEx::col_filename)), CLIENT_SIDE);
 	}
 
 	*pResult = 0;
 }
+#endif
 
 BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 {
@@ -1488,7 +1680,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 				m_list_remote.add_file(&dq[i], true);
 			}
 
-			m_list_remote.display_list(path);
+			m_list_remote.display_filelist(path);
 
 			//path ctrl 갱신. dq에서 파일들을 제외하고 폴더 목록을 넘겨준다.
 			std::deque<CString> folder_list;
@@ -1498,8 +1690,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 				if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 					folder_list.push_back(FindFileData.cFileName);
 			}
-			m_path_remote.set_path(path, &folder_list);
 
+			m_path_remote.set_path(path, &folder_list);
 			m_tree_remote.set_path(path, false);
 
 			refresh_selection_status(&m_list_remote);
@@ -1744,10 +1936,10 @@ bool CnFTDServerDlg::is_transfer_enable(int dwSide)
 			return false;
 
 		//선택된 아이템이 드라이브 루트라면 전송 불가
-		for (auto drive_volume : *theApp.m_shell_imagelist.m_volume[dwSide].get_drive_list())
+		for (auto drive_list : *theApp.m_shell_imagelist.m_volume[dwSide].get_drive_list())
 		{
-			CString drive_root = convert_special_folder_to_real_path(drive_volume, &theApp.m_shell_imagelist, dwSide);
-			if (path == drive_root)
+			//CString drive_root = convert_special_folder_to_real_path(drive_volume, &theApp.m_shell_imagelist, dwSide);
+			if (path.CompareNoCase(drive_list.path) == 0)
 				return false;
 		}
 
@@ -1823,6 +2015,10 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_RENAME, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_RENAME, _S(IDS_RENAME) + _T("(&M)") + _T("\tF2"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SELECT_ALL, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SELECT_ALL, _S(IDS_SELECT_ALL) + _T("(&A)") + _T("\tCtrl+A"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
+
+	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
+	if (m_list_local.get_path() == theApp.m_shell_imagelist.m_volume[0].get_label(CSIDL_DRIVES))
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
 
 	//선택된 항목이 없을 경우
 	if (item == -1)
@@ -1903,6 +2099,10 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_RENAME, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_RENAME, _S(IDS_RENAME) + _T("(&M)") + _T("\tF2"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SELECT_ALL, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SELECT_ALL, _S(IDS_SELECT_ALL) + _T("(&A)") + _T("\tCtrl+A"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
+
+	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
+	if (m_list_remote.get_path() == theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DRIVES))
+		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
 
 	//선택된 항목이 없을 경우
 	if (item == -1)
@@ -1998,10 +2198,12 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
 	if (nIDEvent == timer_init_remote_controls)
 	{
+		TRACE(_T("timer0. start\n"));
 		if (m_ServerManager.is_connected() == false)
 			return;
 
 		KillTimer(timer_init_remote_controls);
+		TRACE(_T("killtimer0.\n"));
 
 		initialize();
 		Invalidate();
@@ -2009,9 +2211,11 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 		m_show_main_ui = true;
 		m_progressDlg.ShowWindow(SW_HIDE);
 	}
-	else if (nIDEvent == timer_check_favorites)
+	else if (nIDEvent == timer_init_favorites)
 	{
-		KillTimer(timer_check_favorites);
+		KillTimer(timer_init_favorites);
+
+		init_favorite();
 
 		int i;
 		CString path;
@@ -2027,6 +2231,8 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 		{
 			path = m_list_remote_favorite.get_text(i, 1);
 
+			//remote에 해당 경로가 존재하는지 검사하기 위해 해당 폴더내의 파일/폴더를 검색시켜서
+			//그 결과값으로 판단한다.
 			std::deque<WIN32_FIND_DATA> dq;
 			if (!m_ServerManager.get_folderlist(path, &dq, false))
 				m_list_remote_favorite.set_text_color(i, -1, Gdiplus::Color::Firebrick);
@@ -2062,6 +2268,14 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 
 		SetTimer(timer_init_remote_controls, 1000, NULL);
 	}
+	else if (nIDEvent == timer_refresh_title_area)
+	{
+		KillTimer(nIDEvent);
+		TRACE(_T("timer id = %d\n"), nIDEvent);
+		Invalidate();
+		m_check_close_after_all.Invalidate();
+		m_sys_buttons.Invalidate();
+	}
 
 	CDialogEx::OnTimer(nIDEvent);
 }
@@ -2072,12 +2286,12 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	int dwSide = SERVER_SIDE;
 	CVtListCtrlEx* plist;
 	
-	if (GetFocus() == &m_list_local)
+	if (GetFocus() == &m_list_local || GetFocus() == &m_tree_local)
 	{
 		dwSide = SERVER_SIDE;
 		plist = &m_list_local;
 	}
-	else if (GetFocus() == &m_list_remote)
+	else if (GetFocus() == &m_list_remote || GetFocus() == &m_tree_remote)
 	{
 		dwSide = CLIENT_SIDE;
 		plist = &m_list_remote;
@@ -2136,23 +2350,36 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				{
 					int deleted_count = 0;
 
+					EnableWindow(FALSE);
+
+					m_toast_popup.load(this, _T("GIF"), IDR_GIF_DELETE);
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.ShowWindow(SW_SHOW);
+
 					for (auto item : dq)
 					{
 						//item 위치의 항목을 제거하면 그 뒤 item들의 index는 당겨져야 한다.
 						item -= deleted_count;
 
 						res = m_list_local.delete_item(item, true);
+
 						if (res)
-						{
 							deleted_count++;
-						}
+
+						Wait(10);
 					}
+
+					m_toast_popup.ShowWindow(SW_HIDE);
+					EnableWindow(TRUE);
 				}
 				break;
 			case file_cmd_property :
 			{
 				std::deque<CString> dq_fullpath;
 				m_list_local.get_selected_items(&dq_fullpath, true);
+				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
+				for (auto item : dq_fullpath)
+					logWrite(_T("%s"), item);
 				res = show_property_window(dq_fullpath);
 			}
 			break;
@@ -2232,6 +2459,12 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				{
 					int deleted_count = 0;
 
+					EnableWindow(FALSE);
+
+					m_toast_popup.load(this, _T("GIF"), IDR_GIF_DELETE);
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.ShowWindow(SW_SHOW);
+
 					for (auto item : dq)
 					{
 						//item 위치의 항목을 제거하면 그 뒤 item들의 index는 당겨져야 한다.
@@ -2244,7 +2477,12 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 							res = m_list_remote.delete_item(item);
 							deleted_count++;
 						}
+
+						Wait(10);
 					}
+
+					m_toast_popup.ShowWindow(SW_HIDE);
+					EnableWindow(TRUE);
 
 					//m_list_remote.refresh_list();
 					refresh_disk_usage(true);
@@ -2339,6 +2577,9 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 
 void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 {
+	static TCHAR last_local_drive = 0;
+	static TCHAR last_remote_drive = 0;
+
 	CVtListCtrlEx* plist = (is_remote_side ? &m_list_remote : &m_list_local);
 	CSCSliderCtrl* pslider = (is_remote_side ? &m_slider_remote_disk_space : &m_slider_local_disk_space);
 	CSCStatic* pstatic = (is_remote_side ? &m_static_remote_disk_space : &m_static_local_disk_space);
@@ -2346,7 +2587,7 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 	CString path = convert_special_folder_to_real_path(plist->get_path(), m_list_local.get_shell_imagelist(), is_remote_side);
 	
 	//내 PC를 선택한 경우는 용량표시는 숨긴다.
-	if (!PathFileExists(path))
+	if (path == theApp.m_shell_imagelist.m_volume[is_remote_side].get_path(CSIDL_DRIVES))
 	{
 		pslider->ShowWindow(SW_HIDE);
 		pstatic->ShowWindow(SW_HIDE);
@@ -2371,16 +2612,26 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 
 	if (is_remote_side)
 	{
-		m_ServerManager.m_socket.RemainSpace(&ulFree);
-		m_ServerManager.m_socket.TotalSpace(&ulTotal);
-		//m_ServerManager.KeepConnection();
-		ulFree.QuadPart = ulFree.QuadPart;
-		ulTotal.QuadPart = ulTotal.QuadPart;
+		if (drive[0] == last_remote_drive)
+			return;
+
+		theApp.m_shell_imagelist.m_volume[1].get_drive_space(drive, &ulTotal, &ulFree);
+
+		//m_ServerManager.m_socket.RemainSpace(&ulFree, drive[0]);
+		//m_ServerManager.m_socket.TotalSpace(&ulTotal, drive[0]);
+
+		//ulFree.QuadPart = ulFree.QuadPart;
+		//ulTotal.QuadPart = ulTotal.QuadPart;
+		//last_remote_drive = drive[0];
 	}
 	else
 	{
+		if (drive[0] == last_local_drive)
+			return;
+
 		ulFree.QuadPart = get_disk_free_size(drive);
 		ulTotal.QuadPart = get_disk_total_size(drive);
+		last_local_drive = drive[0];
 	}
 
 	double free_ratio = (((double)ulFree.QuadPart / (double)ulTotal.QuadPart)) * 100.0;
@@ -2541,7 +2792,7 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 		if (fullpath.IsEmpty())
 			fullpath = plist->get_path();
 
-		fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, (side ? 0 : 1));
+		fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, side);
 
 		if (fullpath.Right(1) != '\\')
 			fullpath += '\\';
@@ -2744,7 +2995,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-
+	/*
 	int item = pDispInfo->item.iItem;
 	int sub_item = pDispInfo->item.iSubItem;
 
@@ -2757,13 +3008,39 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 	if (path.GetLength() > 1 && path.Right(1) != '\\')
 		path += '\\';
 
-	old_name.Format(_T("%s%s"), path, m_list_remote.get_old_text());
+	old_name.Format(_T("%s%s"), path, m_list_remote.get_edit_old_text());
 	new_name.Format(_T("%s%s"), path, m_list_remote.get_text(item, sub_item));
 
 	if (!m_ServerManager.m_socket.Rename(old_name, new_name))
 	{
+		CMessageDlg	dlg(_T("이름을 변경할 수 없습니다."));
+		dlg.DoModal();
 		m_list_remote.undo_edit_label();
 	}
-
+	*/
 	*pResult = 0;
 }
+
+
+void CnFTDServerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
+{
+	CSCThemeDlg::OnActivate(nState, pWndOther, bMinimized);
+
+	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+	TRACE(_T("nState = %d\n"), nState);
+
+	//deactivate 될 때 타이틀바의 체크박스와 m_sys_buttons에 잔상이 발생하여 이를 Invalidate()하도록 넣은 코드.
+	if (nState == 0)
+	{
+		SetTimer(timer_refresh_title_area, 10, NULL);	//이 타이머는 왜 동작하지 않나...
+	}
+}
+
+
+void CnFTDServerDlg::OnActivateApp(BOOL bActive, DWORD dwThreadID)
+{
+	CSCThemeDlg::OnActivateApp(bActive, dwThreadID);
+
+	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+}
+

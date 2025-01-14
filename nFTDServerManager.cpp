@@ -425,6 +425,7 @@ void CnFTDServerManager::refresh_list(std::deque<WIN32_FIND_DATA> *dq, bool is_s
 	}
 }
 
+/*
 void CnFTDServerManager::refresh_tree(CSCTreeCtrl* pTreeCtrl, bool is_server_side)
 {
 	UINT DriveType;
@@ -517,6 +518,7 @@ void CnFTDServerManager::refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CStrin
 
 	} while (m_socket.NextFileList(&FindFileData));
 }
+*/
 
 void CnFTDServerManager::KeepConnection()
 {
@@ -706,7 +708,7 @@ bool CnFTDServerManager::create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDa
 	return false;
 }
 
-
+#if 0
 // 실질적인 화일전송부분. recursive 하게 구현되었다
 // depth : recursive 의 깊이. 하위폴더인지판별하기위해사용
 BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath)
@@ -884,6 +886,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 	}
 	return TRUE;
 }
+#endif
 
 //scpark add
 bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive)
@@ -1002,17 +1005,15 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 		TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
 	}
 
-	//client에서 넘어올 때 폴더목록이 fullpath로 넘어오므로 path길이만큼 앞에서 잘라준다.
+	//client에서 넘어올 때 폴더목록이 fullpath로 넘어오므로 폴더명을 추출해서 다시 넣어준다.
 	if (dq->size() > 0 && !fullpath)
 	{
-		CString sPath = GetParentDirectory(CString(dq->at(0).cFileName));
-		int folder_length = sPath.GetLength() + 1;
+		CString folder = dq->at(0).cFileName;
+		folder = folder.Mid(folder.ReverseFind('\\') + 1);
 
 		for (int i = 0; i < dq->size(); i++)
 		{
-			TCHAR* p = (data.cFileName);
-			p += folder_length;
-			_tcscpy(data.cFileName, p);
+			_tcscpy(dq->at(0).cFileName, folder);
 		}
 	}
 
@@ -1030,6 +1031,14 @@ bool CnFTDServerManager::get_remote_system_label(std::map<int, CString> *map)
 bool CnFTDServerManager::get_remote_system_path(std::map<int, CString>* map)
 {
 	if (m_socket.get_remote_system_path(map))
+		return true;
+
+	return false;
+}
+
+bool CnFTDServerManager::get_remote_drive_list(std::deque<CDiskDriveInfo>* drive_list)
+{
+	if (m_socket.get_remote_drive_list(drive_list))
 		return true;
 
 	return false;

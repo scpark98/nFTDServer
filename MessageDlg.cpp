@@ -70,8 +70,8 @@ BOOL CMessageDlg::OnInitDialog()
 	//set_titlebar_text_color(Gdiplus::Color::White);
 	//set_titlebar_back_color(gRGB(59, 70, 92));
 
-	m_static_message.set_font_bold();
-	m_static_message.set_font_size(10);
+	//m_static_message.set_font_bold();
+	//m_static_message.set_font_size(10);
 	m_static_message.set_text(m_message);
 	m_static_message.set_back_color(m_cr_back);
 	
@@ -100,17 +100,18 @@ BOOL CMessageDlg::OnInitDialog()
 		m_button_cancel.MoveWindow(bx, rc.bottom - bottom_margin - button_height, button_width, button_height);
 	}
 
-	m_static_message.MoveWindow(4, m_titlebar_height + 12, rc.Width() - 8, rc.Height() - m_titlebar_height - 12 - bottom_margin - button_height - 2);
+	int margin = 24;
+	m_static_message.MoveWindow(margin, m_titlebar_height + 12, rc.Width() - margin*2, rc.Height() - m_titlebar_height - 12 - bottom_margin - button_height - 2);
 
 	m_button_ok.set_font_bold();
-	m_button_ok.set_font_size(10);
-	m_button_ok.text_color(Gdiplus::Color::White);
-	m_button_ok.back_color(gRGB(59, 70, 92));
+	//m_button_ok.set_font_size(10);
+	m_button_ok.set_text_color(Gdiplus::Color::White);
+	m_button_ok.set_back_color(gRGB(59, 70, 92));
 	//m_button_ok.set_round(10);
 	m_button_cancel.set_font_bold();
-	m_button_cancel.set_font_size(10);
+	//m_button_cancel.set_font_size(10);
 	//m_button_cancel.set_round(10);
-	m_button_cancel.draw_border();
+	//m_button_cancel.draw_border();
 	m_button_cancel.draw_hover_rect();
 
 	CenterWindow(AfxGetApp()->GetMainWnd());

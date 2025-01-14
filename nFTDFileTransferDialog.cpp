@@ -104,6 +104,9 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_thread_transfer = std::thread(&CnFTDFileTransferDialog::thread_transfer, this);
 	m_thread_transfer.detach();
 
+	//모든 전송이 완료된 후 옵션에 따라 전송창을 닫아야하는데 위 thread가 언제 종료되었는지
+	//현재는 알 수 없다. m_thread_transfer_started 플래그로 우선 판단한다.
+	//단, 모든 전송이 완료되었어도 1건이라도 실패가 발생했다면 창을 닫지 않도록 한다.
 	SetTimer(timer_check_thread_transfer, 2000, NULL);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -221,6 +224,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//폴더인 항목은 그 항목을 유지한 채 하위 모든 폴더, 파일 목록을 찾아서 추가시킨다.
 	for (i = 0; i < m_filelist.size(); i++)
 	{
+		logWriteD(_T("%s 분석중..."), m_filelist[i].cFileName);
+
 		if (m_filelist[i].dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
 		{
 			std::deque<WIN32_FIND_DATA> dq;
@@ -228,15 +233,21 @@ void CnFTDFileTransferDialog::thread_transfer()
 			//로컬인 경우는 직접 찾지만 remote인 경우는 요청해서 채워야 한다.
 			if (m_srcSide == SERVER_SIDE)
 			{
+				logWriteD(_T("find_all_files for local"));
 				find_all_files(m_filelist[i].cFileName, &dq, _T(""), true, true);
 			}
 			else
 			{
+				logWriteD(_T("get_filelist for remote"));
 				m_pServerManager->get_filelist(m_filelist[i].cFileName, &dq, true);
 			}
 
-			m_filelist.insert(m_filelist.begin() + i + 1, dq.begin(), dq.end());
-			i = i + dq.size() + 1;
+			logWriteD(_T("insert dq. total = %d"), dq.size());
+			if (dq.size() > 0)
+			{
+				m_filelist.insert(m_filelist.begin() + i + 1, dq.begin(), dq.end());
+				i = i + dq.size() + 1;
+			}
 		}
 	}
 
@@ -446,6 +457,9 @@ void CnFTDFileTransferDialog::thread_transfer()
 					logWrite(_T("overwrite."));
 					break;
 				default :
+					//전송 완료 후 창 닫기 옵션이 true라고 해도 fail이 1건이라도 발생하면 창을 닫지 않아야만
+					//사용자가 이를 인지할 수 있다.
+					m_auto_close = false;
 					logWriteE(_T("fail."));
 					m_list.set_text(i, col_status, _T("fail"));
 					m_list.set_text_color(i, col_status, Gdiplus::Color::Red);

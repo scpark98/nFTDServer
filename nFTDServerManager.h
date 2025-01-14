@@ -2,7 +2,7 @@
 
 #include <afxwin.h>
 #include "nFTDServerSocket.h"
-#include "nFTDFileManager.h"
+//#include "nFTDFileManager.h"
 
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
 #include "../../Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
@@ -25,7 +25,7 @@ public:
 
 	void	DriveList(std::deque<CString> *dq);
 	void	refresh_list(std::deque<WIN32_FIND_DATA> *dq, bool is_server_side);
-	void	refresh_tree(CSCTreeCtrl* pTreeCtrl, bool is_server_side);
+	//void	refresh_tree(CSCTreeCtrl* pTreeCtrl, bool is_server_side);
 
 	//scpark add
 	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive);
@@ -36,7 +36,7 @@ public:
 	//이전 코드 함수명 : GetFileList(CShellTreeCtrl* pShellTreeCtrl)
 	//tree에서 해당 path folder의 sub folder 목록을 refresh한다.
 	//선택할 때가 아니라 폴더를 처음 펼칠 때, 새로고침 할 때 사용된다.
-	void	refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CString path);
+	//void	refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CString path);
 
 	bool	change_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
 	bool	create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
@@ -47,10 +47,12 @@ public:
 
 	bool	get_remote_system_label(std::map<int, CString> *map);
 	bool	get_remote_system_path(std::map<int, CString>* map);
+	bool	get_remote_drive_list(std::deque<CDiskDriveInfo>* drive_list);
+
 	CString GetRemoteDesktopPath();
 	CString GetRemoteDocumentPath();
 
-	BOOL	FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath);
+	//BOOL	FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath);
 	BOOL	FileTransfer(HWND hWnd, CVtListCtrlEx& XList, INT iIndex, LPCTSTR lpFrom, LPCTSTR lpTo, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, DWORD dwSide);
 
 	int		m_is_server_side = SERVER_SIDE;
@@ -74,7 +76,7 @@ public:
 
 	CnFTDServerSocket m_socket;
 	CnFTDServerSocket m_DataSocket;
-	CnFTDFileManager m_FileManager;
+	//CnFTDFileManager m_FileManager;
 
 private :
 	void KeepConnection();

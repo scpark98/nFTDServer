@@ -365,7 +365,6 @@
     <ClInclude Include="ExistFileDlg.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MessageDlg.h" />
-    <ClInclude Include="nFTDFileManager.h" />
     <ClInclude Include="nFTDFileTransferDialog.h" />
     <ClInclude Include="nFTDProtocol.h" />
     <ClInclude Include="nFTDServer.h" />
@@ -619,14 +618,6 @@
     </ClCompile>
     <ClCompile Include="ExistFileDlg.cpp" />
     <ClCompile Include="MessageDlg.cpp" />
-    <ClCompile Include="nFTDFileManager.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='LMMSE_SERVICE_Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="nFTDFileTransferDialog.cpp" />
     <ClCompile Include="nFTDServer.cpp" />
     <ClCompile Include="nFTDServerDlg.cpp" />
@@ -645,6 +636,8 @@
     <ResourceCompile Include="nFTDServer.rc" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="res\images\copy.bin" />
+    <None Include="res\images\delete.bin" />
     <None Include="res\nFTDServer.rc2" />
   </ItemGroup>
   <ItemGroup>

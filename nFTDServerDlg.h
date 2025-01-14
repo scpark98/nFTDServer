@@ -33,8 +33,9 @@ public:
 	{
 		timer_init_remote_controls = 0,
 		timer_init_progress_and_connect,
-		timer_check_favorites,
+		timer_init_favorites,
 		timer_refresh_selection_status,
+		timer_refresh_title_area,
 	};
 
 	//ui 관련
@@ -48,7 +49,6 @@ public:
 	CResizeCtrl			m_resize;
 
 	CSCShapeDlg			m_toast_popup;
-
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
@@ -210,4 +210,7 @@ public:
 	CSCStatic m_static_remote_disk_space;
 	afx_msg void OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
+	afx_msg void OnActivateApp(BOOL bActive, DWORD dwThreadID);
+	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 };

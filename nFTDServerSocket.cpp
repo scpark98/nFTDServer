@@ -539,6 +539,59 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 	return true;
 }
 
+bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_title, int* index)
+{
+	msg ret;
+	USHORT length;
+
+	//프로토콜 명령 코드 전송
+	ret.type = nFTD_new_folder_index;
+	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return false;
+	}
+
+	//path 길이 전송
+	length = _tcslen(path) * 2;
+	if (!m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return false;
+	}
+
+	//path 전송
+	if (!m_sock.SendExact((LPSTR)(LPCTSTR)path, _tcslen(path) * 2, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return false;
+	}
+
+	//new_folder_title 길이 전송
+	length = _tcslen(new_folder_title) * 2;
+	if (!m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return false;
+	}
+
+	//new_folder_title 전송
+	if (!m_sock.SendExact((LPSTR)(LPCTSTR)new_folder_title, _tcslen(new_folder_title) * 2, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return false;
+	}
+
+	//index 수신
+	if (!m_sock.RecvExact((LPSTR)index, sizeof(int), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-4 : %d"), GetLastError());
+		return FALSE;
+	}
+
+	return true;
+}
+
 BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)
 {
 	msgString2 str2;
@@ -665,20 +718,20 @@ BOOL CnFTDServerSocket::change_directory(LPCTSTR lpDirName)
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return FALSE;
 	}
+
 	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return FALSE;
 	}
-	if (ret.type == nFTD_OK)
-	{
-		return TRUE;
-	}
-	else
+
+	if (ret.type != nFTD_OK)
 	{
 		logWriteE(_T("Receive Not OK"));
 		return FALSE;
 	}
+
+	return TRUE;
 }
 
 BOOL CnFTDServerSocket::ExecuteFile(LPCTSTR lpDirName)
@@ -715,7 +768,7 @@ BOOL CnFTDServerSocket::ExecuteFile(LPCTSTR lpDirName)
 	}
 }
 
-BOOL CnFTDServerSocket::TotalSpace(PULARGE_INTEGER lpTotalNumberOfFreeBytes)
+BOOL CnFTDServerSocket::TotalSpace(PULARGE_INTEGER lpTotalNumberOfFreeBytes, TCHAR drive)
 {
 	msg ret;
 	msgDiskSpace msgTotalNumberOfFreeBytes;
@@ -726,6 +779,13 @@ BOOL CnFTDServerSocket::TotalSpace(PULARGE_INTEGER lpTotalNumberOfFreeBytes)
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
 		return FALSE;
 	}
+
+	if (!m_sock.SendExact((LPSTR)&drive, sizeof(TCHAR), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return FALSE;
+	}
+
 	if (!m_sock.RecvExact((LPSTR)&msgTotalNumberOfFreeBytes, sz_msgDiskSpace, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
@@ -743,7 +803,7 @@ BOOL CnFTDServerSocket::TotalSpace(PULARGE_INTEGER lpTotalNumberOfFreeBytes)
 	}
 }
 
-BOOL CnFTDServerSocket::RemainSpace(PULARGE_INTEGER lpTotalNumberOfRemainBytes)
+BOOL CnFTDServerSocket::RemainSpace(PULARGE_INTEGER lpTotalNumberOfRemainBytes, TCHAR drive)
 {
 	msg ret;
 	msgDiskSpace msgTotalNumberOfRemainBytes;
@@ -754,6 +814,13 @@ BOOL CnFTDServerSocket::RemainSpace(PULARGE_INTEGER lpTotalNumberOfRemainBytes)
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
 		return FALSE;
 	}
+
+	if (!m_sock.SendExact((LPSTR)&drive, sizeof(TCHAR), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return FALSE;
+	}
+
 	if (!m_sock.RecvExact((LPSTR)&msgTotalNumberOfRemainBytes, sz_msgDiskSpace, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
@@ -897,6 +964,41 @@ BOOL CnFTDServerSocket::get_remote_system_path(std::map<int, CString>* map)
 	}
 
 	return TRUE;
+}
+
+bool CnFTDServerSocket::get_remote_drive_list(std::deque<CDiskDriveInfo>* drive_list)
+{
+	drive_list->clear();
+
+	msg ret;
+	ret.type = nFTD_get_drive_list;
+	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return FALSE;
+	}
+
+	while (true)
+	{
+		int len = 0;
+		CDiskDriveInfo drive_info;
+		
+		ZeroMemory(&drive_info, sizeof(CDiskDriveInfo));
+
+		if (!m_sock.RecvExact((LPSTR)&drive_info, sizeof(CDiskDriveInfo), BLASTSOCK_BUFFER))
+		{
+			logWriteE(_T("CODE-1 : %d "), GetLastError());
+			return false;
+		}
+
+		//DRIVE_UNKNOWN이 넘어오면 끝신호로 처리한다.
+		if (drive_info.type == DRIVE_UNKNOWN)
+			break;
+
+		drive_list->push_back(drive_info);
+	}
+
+	return true;
 }
 
 BOOL CnFTDServerSocket::GetDesktopPath(WIN32_FIND_DATA* pFileInfo)
@@ -1238,7 +1340,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_string(remain_sec), d2S(Bps / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_str(remain_sec), d2S(Bps / 1024.0, true, 0));
 			}
 		}
 
@@ -1557,7 +1659,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_string(remain_sec), d2S(Bps / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_str(remain_sec), d2S(Bps / 1024.0, true, 0));
 			}
 		}
 
