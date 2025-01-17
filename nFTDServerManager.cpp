@@ -941,7 +941,7 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 			break;
 
 		dq->push_back(data);
-		TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
+		//TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
 	}
 
 	return true;
@@ -1002,18 +1002,16 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 			break;
 
 		dq->push_back(data);
-		TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
+		//TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
 	}
 
 	//client에서 넘어올 때 폴더목록이 fullpath로 넘어오므로 폴더명을 추출해서 다시 넣어준다.
 	if (dq->size() > 0 && !fullpath)
 	{
-		CString folder = dq->at(0).cFileName;
-		folder = folder.Mid(folder.ReverseFind('\\') + 1);
-
 		for (int i = 0; i < dq->size(); i++)
 		{
-			_tcscpy(dq->at(0).cFileName, folder);
+			CString leaf_folder = get_part(dq->at(i).cFileName, fn_name);
+			_tcscpy(dq->at(i).cFileName, leaf_folder);
 		}
 	}
 

@@ -84,6 +84,7 @@
 #define IDS_LARGER_FILE_SIZE            161
 #define IDS_CONNECT_FAIL_NO_RESPONSE    162
 #define IDS_EQUAL_FILE_SIZE             163
+#define IDS_SAME_FILE_SIZE              163
 #define IDS_SHOW_ON_REMOTE              164
 #define IDS_OPEN_WITH_EXPLORER          165
 #define IDS_SRC_DST_SAME_PATH           166
@@ -139,6 +140,7 @@
 #define IDC_BUTTON_REMOTE_TO_LOCAL      1030
 #define IDC_SLIDER_LOCAL_DISK_SPACE     1031
 #define IDC_SLIDER_REMOTE_DISK_SPACE    1032
+#define IDC_STATIC_COPY                 1032
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -210,7 +212,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        168
 #define _APS_NEXT_COMMAND_VALUE         32792
-#define _APS_NEXT_CONTROL_VALUE         1032
+#define _APS_NEXT_CONTROL_VALUE         1033
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

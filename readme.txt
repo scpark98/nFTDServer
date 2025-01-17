@@ -32,6 +32,17 @@ Delete키방지 필요
 
 
 [수정한 내용]
+*20250117
+- 최대화 시 상단이 -2정도 잘려 표시되는 현상 수정
+  (CSCThemeDlg의 OnGetMinMaxInfo()에서 lpMMI->ptMaxPosition.y = 0;으로 세팅)
+- 모니터가 100%가 아닌 배율일 때 최대화 시 모니터 영역보다 크게 최대화 되던 오류 수정
+- "전송 완료 후 전송창 닫기" 체크박스를 텍스트 길이와 유사하게 자동 resize되도록 수정
+  영문윈도우에서는 텍스트 너비가 넓으므로 크게 잡았으나 그럴 경우 한국어일때는 불필요한 우측 공백이 남음
+  그 공백은 사용자 입장에서 보면 타이틀바 영역으로 보이나 체크박스 영역임
+- 트리에서 "내 PC"를 선택한 상태에서 리스트에서 "탐색기로 현재 경로 열기" 명령 수행 시 실행되지 않던 오류 수정
+- 전송 시 local to remote인지, remote to local인지를 알 수 있도록 파일복사 gif 이미지로 방향 표시 추가
+
+
 *20250114
 - 전송 완료 후 창 닫기 버튼의 크기와 위치를 재조정하여 표시
 - 트리에서 새 폴더, 속성 메뉴 추가
@@ -93,6 +104,7 @@ Delete키방지 필요
 nFTDClient.exe -p 13.124.64.192 7002 351
 
 SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
+SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode "13.125.4.150" 7002 406 "C4BDE5622FFF428745499944" "SCPARK-KOINO-LG" "apple@linkmemine.com" "17" "de1ce65b3f163b6e89526b4232b75142909047d7" "" "192.168.74.1" 1
 SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 E0E1A9351FF9913636543560 "SCPARK-KOINO" "apple" "1" b4cf3f3509f42d5bb1e049bba39438e9b034435a "192.168.74.1" "192.168.74.1" 1
 
 [P2P 단독 테스트 시 파라미터]

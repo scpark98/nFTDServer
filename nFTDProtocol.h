@@ -62,6 +62,7 @@ enum FILE_COMMAND
 	file_cmd_rename,
 	file_cmd_property,
 	file_cmd_favorite,
+	file_cmd_check_exist,
 };
 
 

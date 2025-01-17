@@ -106,7 +106,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_RBUTTONDOWN()
 	//ON_WM_LBUTTONUP()
 	//ON_WM_LBUTTONDBLCLK()
-	ON_WM_GETMINMAXINFO()
+	//ON_WM_GETMINMAXINFO()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
 	ON_REGISTERED_MESSAGE(Message_CPathCtrl, &CnFTDServerDlg::on_message_CPathCtrl)
@@ -146,6 +146,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnEndlabelEditListRemote)
 	ON_WM_ACTIVATE()
 	ON_WM_ACTIVATEAPP()
+	ON_MESSAGE(MESSAGE_CONNECT_FAIL, &CnFTDServerDlg::on_message)
 END_MESSAGE_MAP()
 
 
@@ -185,7 +186,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//pWnd->ShowWindow(SW_SHOW);
 
 	m_resize.Create(this);
-	m_resize.SetMinimumTrackingSize(CSize(800, 600));
+	m_resize.SetMinimumTrackingSize(CSize(900, 600));
 	m_resize.Add(IDC_STATIC_LOCAL, 0, 0, 0, 0);
 	m_resize.Add(IDC_PATH_LOCAL, 0, 0, 50, 0);
 	m_resize.Add(IDC_TREE_LOCAL, 0, 0, 0, 100);
@@ -390,8 +391,8 @@ BOOL CnFTDServerDlg::OnInitDialog()
 		{
 			//대상 IP가 my_ip와 같고 실행중인 nFTDClient.exe가 없다면 실행시켜준다.
 			//만약 nFTDClient.exe도 trace mode로 돌려야한다면 nFTDClient.exe를 먼저 trace mode로 실행시켜서 테스트해야 한다.
-			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient.exe")) == 0)
-				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
+			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
+				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-l 7002"), 0, SW_SHOWNORMAL);
 		}
 	}
 
@@ -872,20 +873,10 @@ int CnFTDServerDlg::connect()
 	if (!m_ServerManager.Connection())
 	{
 		m_progressDlg.ShowWindow(SW_HIDE);
-		CMessageDlg	dlg(_S(IDS_CONNECT_FAIL_NO_RESPONSE), MB_OK);
-		dlg.DoModal();
-		/*
-		CString message;
-		message.LoadString(NFTD_IDS_MSGBOX_RUN_2);
 
-		CMessageDlg dlgMessage;
-		dlgMessage.SetMessage(MsgType::TypeOK, message);
-		dlgMessage.DoModal();
-
-		delete[] lpCmdLine;
-		ExitProcess(0);
-		*/
-		CDialogEx::OnCancel();
+		//DoModal()로 실행했으나 modeless처럼 동작한다. thread내에서 호출해서 그런듯하다.
+		//메인에 메시지로 보내서 에러창을 표시하고 종료시킨다.
+		SendMessage(MESSAGE_CONNECT_FAIL);
 		return 0;
 	}
 
@@ -1078,9 +1069,22 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 		TRACE(_T("on_message_pathctrl from m_path_local\n"));
 		if (pMsg->message == CPathCtrl::message_pathctrl_path_changed)
 		{
-			m_list_local.set_path(pMsg->cur_path);
-			m_tree_local.set_path(pMsg->cur_path);
-			change_directory(pMsg->cur_path, SERVER_SIDE);
+			bool* res = (bool*)lParam;
+
+			//내 PC, 바탕 화면 등과 같은 경로일 경우는 PathFileExists()로 검사가 안되므로 다른 방법으로 유효한 패스인지 검사해야 한다.
+			if (true)//PathFileExists(pMsg->cur_path))
+			{
+				if (res)
+					*res = true;
+				m_list_local.set_path(pMsg->cur_path);
+				m_tree_local.set_path(pMsg->cur_path);
+				//change_directory(pMsg->cur_path, SERVER_SIDE);
+			}
+			else
+			{
+				if (res)
+					*res = false;
+			}
 		}
 	}
 	else if (pMsg->pThis == &m_path_remote)
@@ -1088,8 +1092,22 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 		TRACE(_T("on_message_pathctrl from m_path_remote\n"));
 		if (pMsg->message == CPathCtrl::message_pathctrl_path_changed)
 		{
-			change_directory(pMsg->cur_path, CLIENT_SIDE);
-			m_tree_remote.set_path(pMsg->cur_path);
+			bool* res = (bool*)lParam;
+
+			if (change_directory(pMsg->cur_path, CLIENT_SIDE))
+			{
+				if (res)
+					*res = true;
+
+				//tree에서 set_path()를 호출하면 list도 자동 갱신되므로
+				//별도로 호출하지 않는다.
+				m_tree_remote.set_path(pMsg->cur_path);
+			}
+			else
+			{
+				if (res)
+					*res = false;
+			}
 		}
 		else if (pMsg->message == CPathCtrl::message_pathctrl_request_remote_subfolders)
 		{
@@ -1099,9 +1117,9 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			logWriteD(_T("CPathCtrl::message_pathctrl_request_remote_subfolders. cur_path = %s"), pMsg->cur_path);
 			if (pMsg->cur_path.IsEmpty())
 			{
-				folder_list->push_back(theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DRIVES));
-				folder_list->push_back(theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_MYDOCUMENTS));
-				folder_list->push_back(theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DESKTOP));
+				folder_list->push_back(theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES));
+				folder_list->push_back(theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_MYDOCUMENTS));
+				folder_list->push_back(theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DESKTOP));
 			}
 			else
 			{
@@ -1485,7 +1503,9 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		std::deque<CString> dq_fullpath{ msg->param0 };
 		
 		bool res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
-		if (res)
+		bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
+
+		if (res && !viewer_is_running)
 		{
 			m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 			m_toast_popup.CenterWindow(this);
@@ -2224,7 +2244,7 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 		{
 			path = m_list_local_favorite.get_text(i, 1);
 			if (!PathFileExists(path))
-				m_list_local_favorite.set_text_color(i, -1, Gdiplus::Color::Gray);
+				m_list_local_favorite.set_text_color(i, -1, Gdiplus::Color::Firebrick);
 		}
 
 		for (i = 0; i < m_list_remote_favorite.size(); i++)
@@ -2271,13 +2291,22 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 	else if (nIDEvent == timer_refresh_title_area)
 	{
 		KillTimer(nIDEvent);
-		TRACE(_T("timer id = %d\n"), nIDEvent);
+		//TRACE(_T("timer id = %d\n"), nIDEvent);
 		Invalidate();
 		m_check_close_after_all.Invalidate();
 		m_sys_buttons.Invalidate();
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
+}
+
+LRESULT CnFTDServerDlg::on_message(WPARAM wParam, LPARAM lParam)
+{
+	CMessageDlg	dlg(_S(IDS_CONNECT_FAIL_NO_RESPONSE), MB_OK);
+	dlg.DoModal();
+	CDialogEx::OnCancel();
+
+	return 0;
 }
 
 bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
@@ -2336,7 +2365,13 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				break;
 			case file_cmd_open_explorer :
 				param0 = m_list_local.get_path();
-				ShellExecute(NULL, _T("explore"), param0, 0, 0, SW_SHOWNORMAL);
+
+				//내 PC가 선택된 경우 param0도 "내 PC"라는 값을 가지는데 그대로 열면 "문서" 폴더가 열린다.
+				//empty로 만들어줘고 열어야 실제 "내 PC"가 탐색기로 열린다.
+				if (param0 == theApp.m_shell_imagelist.m_volume[0].get_label(CSIDL_DRIVES))
+					param0 = _T("");
+
+				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
 			case file_cmd_new_folder :
 				//list의 현재 폴더에 새 폴더를 생성한다.
@@ -2379,7 +2414,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				m_list_local.get_selected_items(&dq_fullpath, true);
 				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
 				for (auto item : dq_fullpath)
-					logWrite(_T("%s"), item);
+					logWriteD(_T("%s"), item);
 				res = show_property_window(dq_fullpath);
 			}
 			break;
@@ -2397,6 +2432,8 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	}
 	else
 	{
+		bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
+
 		switch (cmd)
 		{
 			case file_cmd_open:
@@ -2409,7 +2446,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				else
 				{
 					res = m_ServerManager.m_socket.file_command(file_cmd_open, param0);
-					if (res)
+					if (res && !viewer_is_running)
 					{
 						m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 						m_toast_popup.CenterWindow(this);
@@ -2420,7 +2457,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 			case file_cmd_open_explorer :
 				param0 = m_list_remote.get_path();
 				res = m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
-				if (res)
+				if (res && !viewer_is_running)
 				{
 					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 					m_toast_popup.CenterWindow(this);
@@ -2493,12 +2530,17 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 			{
 				std::deque<CString> dq_fullpath;
 				m_list_remote.get_selected_items(&dq_fullpath, true);
+
+				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
+				for (auto item : dq_fullpath)
+					logWriteD(_T("%s"), item);
+
 				if (dq_fullpath.size())
 					res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
 				else
 					res = true;
 
-				if (res)
+				if (res && !viewer_is_running)
 				{
 					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 					m_toast_popup.CenterWindow(this);
@@ -2616,13 +2658,7 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 			return;
 
 		theApp.m_shell_imagelist.m_volume[1].get_drive_space(drive, &ulTotal, &ulFree);
-
-		//m_ServerManager.m_socket.RemainSpace(&ulFree, drive[0]);
-		//m_ServerManager.m_socket.TotalSpace(&ulTotal, drive[0]);
-
-		//ulFree.QuadPart = ulFree.QuadPart;
-		//ulTotal.QuadPart = ulTotal.QuadPart;
-		//last_remote_drive = drive[0];
+		last_remote_drive = drive[0];
 	}
 	else
 	{
@@ -2768,8 +2804,13 @@ void CnFTDServerDlg::OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResul
 	{
 		if (m_ServerManager.is_connected())
 		{
-			std::deque<WIN32_FIND_DATA> dq;
-			bool res = m_ServerManager.get_folderlist(m_list_remote_favorite.get_text(item, 1), &dq, false);
+			//std::deque<WIN32_FIND_DATA> dq;
+			//bool res = m_ServerManager.get_folderlist(m_list_remote_favorite.get_text(item, 1), &dq, false);
+
+			//remote에 해당 경로가 존재하는지만 검사하면 된다.
+			CString path = m_list_remote_favorite.get_text(item, 1);
+			bool res = m_ServerManager.m_socket.file_command(file_cmd_check_exist, path);
+
 			if (!res)
 				m_list_remote_favorite.set_text_color(item, -1, Gdiplus::Color::Firebrick);
 			else
@@ -3027,7 +3068,7 @@ void CnFTDServerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 	CSCThemeDlg::OnActivate(nState, pWndOther, bMinimized);
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
-	TRACE(_T("nState = %d\n"), nState);
+	//TRACE(_T("nState = %d\n"), nState);
 
 	//deactivate 될 때 타이틀바의 체크박스와 m_sys_buttons에 잔상이 발생하여 이를 Invalidate()하도록 넣은 코드.
 	if (nState == 0)

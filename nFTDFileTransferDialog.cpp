@@ -43,6 +43,7 @@ void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_LIST, m_list);
 	DDX_Control(pDX, IDC_STATIC_INDEX_BYTES, m_static_index_bytes);
 	DDX_Control(pDX, IDC_STATIC_REMAIN_SPEED, m_static_remain_speed);
+	DDX_Control(pDX, IDC_STATIC_COPY, m_static_copy);
 }
 
 
@@ -72,6 +73,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 	m_resize.Create(this);
 	m_resize.SetMinimumTrackingSize(CSize(400, 320));
+	m_resize.Add(IDC_STATIC_COPY, 50, 0, 0, 0);
 	m_resize.Add(IDC_STATIC_MESSAGE, 0, 0, 100, 0);
 	m_resize.Add(IDC_STATIC_INDEX_BYTES, 0, 0, 50, 0);
 	m_resize.Add(IDC_STATIC_REMAIN_SPEED, 50, 0, 50, 0);
@@ -83,6 +85,10 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
+
+
+	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY, Gdiplus::Color::White);
+	m_static_copy.fit_to_back_image(false);
 
 	m_static_message.set_back_color(m_cr_back);
 
@@ -122,17 +128,20 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 {
 	if (m_thread_transfer_started)
 	{
+		m_static_copy.pause_animation(-1);
 		m_pServerManager->m_DataSocket.set_transfer_pause(true);
 		CMessageDlg dlg(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 
 		int res = dlg.DoModal();//AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 		if (res == IDCANCEL)
 		{
+			m_static_copy.play_animation();
 			m_pServerManager->m_DataSocket.set_transfer_pause(false);
 			return;
 		}
 
 		TRACE(_T("파일전송 취소 처리\n"));
+		m_static_copy.stop_animation();
 		m_pServerManager->m_DataSocket.set_transfer_stop();
 		m_pServerManager->m_DataSocket.Close();
 		m_thread_transfer_started = false;
@@ -140,7 +149,7 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 		//취소 처리 플래그에 따라 정상적인 취소 절차가 모두 처리된 후에 창이 종료되어야 하므로
 		//여기서 CDialogEx::OnCancel();까지 가서는 안된다. 그냥 리턴한다.
 		//return;
-		Wait(1000);
+		Wait(500);
 	}
 
 	m_list.save_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
@@ -284,7 +293,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		if (is_folder)
 		{
 			size_str.Empty();
-			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(_T("c:\\windows"), true);
+			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(0, _T("c:\\windows"), true);
 			folder_count++;
 		}
 		else
@@ -295,7 +304,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 			size_str = get_size_str(file_size.QuadPart);
 
-			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(m_filelist[i].cFileName, false);
+			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(0, m_filelist[i].cFileName, false);
 			file_count++;
 		}
 
@@ -355,10 +364,13 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//m_pServerManager->m_DataSocket.set_ui_controls(this, &m_progress, &m_list);
 	m_pServerManager->m_DataSocket.SetFileWriteMode(WRITE_UNKNOWN);
 
+
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
 		res = transfer_result_fail;
+
+		m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
 
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
 		if (m_thread_transfer_started == false)
@@ -434,9 +446,13 @@ void CnFTDFileTransferDialog::thread_transfer()
 			//받기 전에 리스트는 해당 폴더로 자동 변경되도록? 너무 산만할 듯 하다.
 			//송신
 			if (m_dstSide == CLIENT_SIDE)
+			{
 				res = m_pServerManager->m_DataSocket.send_file(this, i, m_filelist[i], to, m_ProgressData);
+			}
 			else
+			{
 				res = m_pServerManager->m_DataSocket.recv_file(this, i, m_filelist[i], to, m_ProgressData);
+			}
 
 			switch (res)
 			{
@@ -645,6 +661,8 @@ void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
 
 		if (!m_thread_transfer_started)
 		{
+			m_static_copy.stop_animation();
+
 			if (m_auto_close)
 			{
 				CDialogEx::OnCancel();

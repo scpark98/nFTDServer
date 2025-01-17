@@ -52,4 +52,5 @@ public:
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	CSCStatic m_static_src_mtime;
 	CSCStatic m_static_dst_mtime;
+	CGdiButton m_button_ok;
 };

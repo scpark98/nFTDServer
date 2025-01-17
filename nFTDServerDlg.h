@@ -21,6 +21,7 @@
 
 #include "nFTDServerManager.h"
 
+#define MESSAGE_CONNECT_FAIL	WM_USER + 862
 
 // CnFTDServerDlg 대화 상자
 class CnFTDServerDlg : public CSCThemeDlg
@@ -64,6 +65,8 @@ public:
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
+
+	LRESULT				on_message(WPARAM wParam, LPARAM lParam);
 
 	CVtListCtrlEx*		m_pDropListCtrl;
 

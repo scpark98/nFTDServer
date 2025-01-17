@@ -74,8 +74,8 @@ BOOL CnFTDServerApp::InitInstance()
 	// 적절한 내용으로 수정해야 합니다.
 	SetRegistryKey(_T("Koino"));
 
-	//gLog.set(_T("..\\bin\\Log"));
-	logWrite(_T("\n==================== Program Start ===================="));
+	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMineSE\\Log\\FileTransfer"), get_exe_file_title());
+	gLog.write_start_log();
 
 	//개발 단계에서만 필요하며 실제 배포시에는 주석처리 할 것!
 	gLog.set_log_level(SCLOG_LEVEL_DEBUG);
@@ -130,7 +130,6 @@ BOOL CnFTDServerApp::InitInstance()
 int CnFTDServerApp::ExitInstance()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
-	logWrite(_T("==================== Program Exit ====================\n"));
 
 	return CWinApp::ExitInstance();
 }

@@ -109,6 +109,7 @@ BOOL CMessageDlg::OnInitDialog()
 	m_button_ok.set_back_color(gRGB(59, 70, 92));
 	//m_button_ok.set_round(10);
 	m_button_cancel.set_font_bold();
+	m_button_cancel.set_back_color(Gdiplus::Color::White);
 	//m_button_cancel.set_font_size(10);
 	//m_button_cancel.set_round(10);
 	//m_button_cancel.draw_border();

@@ -97,4 +97,5 @@ public:
 	CSCStatic m_static_remain_speed;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	CSCStatic m_static_copy;
 };

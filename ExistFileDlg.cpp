@@ -39,6 +39,7 @@ void CExistFileDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_STATIC_DST_FILESIZE, m_static_dst_filesize);
 	DDX_Control(pDX, IDC_STATIC_SRC_MTIME, m_static_src_mtime);
 	DDX_Control(pDX, IDC_STATIC_DST_MTIME, m_static_dst_mtime);
+	DDX_Control(pDX, IDOK, m_button_ok);
 }
 
 
@@ -65,6 +66,11 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
 	SetDlgItemText(IDOK, _S(NFTD_IDS_OK));
+
+	m_button_ok.set_font_bold();
+	m_button_ok.set_text_color(Gdiplus::Color::White);
+	m_button_ok.set_back_color(gRGB(59, 70, 92));
+
 
 	m_static_message.set_text_color(Gdiplus::Color(0, 51, 153));
 	m_static_message.set_back_color(m_cr_back);
