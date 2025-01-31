@@ -51,6 +51,7 @@ enum FTD_PROTOCOL
 	nFTD_total_disk_space,
 	nFTD_remain_disk_space,
 	nFTD_new_folder_index,
+	nFTD_get_subfolder_count,
 };
 
 enum FILE_COMMAND

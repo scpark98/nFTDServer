@@ -80,6 +80,8 @@ BOOL CnFTDServerApp::InitInstance()
 	//개발 단계에서만 필요하며 실제 배포시에는 주석처리 할 것!
 	gLog.set_log_level(SCLOG_LEVEL_DEBUG);
 
+	logWrite(_T("cmdline = %s"), GetCommandLine());
+
 	g_hRes = AfxGetInstanceHandle();
 	SocketsInitializer socketsInitializer;
 

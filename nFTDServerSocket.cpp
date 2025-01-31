@@ -42,7 +42,7 @@ BOOL CnFTDServerSocket::Connection()
 
 	m_transfer_pause = false;
 	m_transfer_stop = false;
-
+	BOOL isCryptInit = FALSE;
 
 	if (m_dwConnection == CONNECTION_CONNECT)
 	{
@@ -117,7 +117,7 @@ BOOL CnFTDServerSocket::Connection()
 		if (m_iServerNum != 0)
 		{
 			//scpark 20240411 timeout 추가. timeout은 .Create() 후, CryptInit()전에 설정해줘야 한다.
-			m_sock.SetTimeout(1000);
+			m_sock.SetTimeout(30000);
 
 			// N2N 일 경우에는 일단 N2N서버와 암호화를 한다
 			//logWrite(_T("before m_sock.CryptInit(BLASTSOCK_CRYPT_RECVAESKEY)"));
@@ -153,9 +153,9 @@ BOOL CnFTDServerSocket::Connection()
 #else
 		//client와의 암호화 초기화
 		//logWrite(_T("before m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY)"));
-		bool b = m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY);
+		isCryptInit = m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY);
 		//logWrite(_T("after m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY)"));
-		TRACE(_T("b = %d\n"), b);
+		TRACE(_T("isCryptInit = %d\n"), isCryptInit);
 #endif
 
 	}
@@ -172,7 +172,7 @@ BOOL CnFTDServerSocket::Connection()
 #ifdef _NO_CRYPT
 		m_sock.CryptInit(BLASTSOCK_NO_CRYPT);
 #else
-		m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY);
+		isCryptInit = m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY);
 #endif
 	}
 
@@ -183,12 +183,14 @@ BOOL CnFTDServerSocket::Connection()
 	// 컴파일하려면 mstcpip.h 헤더 파일이 필요하다(platform sdk 참조).
 	WSAIoctl(m_sock.GetSocket(), SIO_KEEPALIVE_VALS, &keepAlive, sizeof(keepAlive), 0, 0, &dwTmp, NULL, NULL);
 
-	return TRUE;
+	return isCryptInit;
 }
 
 BOOL CnFTDServerSocket::ConnectionRequest()
 {
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
+
 	ret.type = nFTD_OpenDataConnection;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -233,6 +235,9 @@ BOOL CnFTDServerSocket::FileSize(LPTSTR lpPathName, ULARGE_INTEGER* ulFileSize)
 	msgString1 str1;
 	msgFileSize MsgFileSize;
 
+	memset(&str1, 0, sizeof(str1));
+	memset(&MsgFileSize, 0, sizeof(MsgFileSize));
+
 	str1.type = nFTD_FileSize;
 	str1.length = _tcslen(lpPathName) * 2;
 
@@ -273,6 +278,7 @@ BOOL CnFTDServerSocket::FileSize(LPTSTR lpPathName, ULARGE_INTEGER* ulFileSize)
 BOOL CnFTDServerSocket::FileList(WIN32_FIND_DATA* pFileInfo)
 {
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
 
 	ret.type = nFTD_FileList;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -287,6 +293,7 @@ BOOL CnFTDServerSocket::FileList(WIN32_FIND_DATA* pFileInfo)
 BOOL CnFTDServerSocket::FileList2(WIN32_FIND_DATA* pFileInfo, LPCTSTR lpPath)
 {
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
 
 	ret.type = nFTD_FileList2;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -314,6 +321,7 @@ BOOL CnFTDServerSocket::FileList2(WIN32_FIND_DATA* pFileInfo, LPCTSTR lpPath)
 BOOL CnFTDServerSocket::NextFileList(WIN32_FIND_DATA* pFileInfo)
 {
 	msgFileInfo msgFindFileData;
+	memset(&msgFindFileData, 0, sizeof(msgFindFileData));
 
 	if (!m_sock.RecvExact((LPSTR)&msgFindFileData, sz_msgFileInfo, BLASTSOCK_BUFFER))
 	{
@@ -356,6 +364,8 @@ BOOL CnFTDServerSocket::NextFileList(WIN32_FIND_DATA* pFileInfo)
 BOOL CnFTDServerSocket::DriveList(PUINT pDriveType, LPTSTR lpDriveName)
 {
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
+
 	ret.type = nFTD_DriveList;
 
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -370,6 +380,7 @@ BOOL CnFTDServerSocket::DriveList(PUINT pDriveType, LPTSTR lpDriveName)
 BOOL CnFTDServerSocket::NextDriveList(PUINT pDriveType, LPTSTR lpDriveName)
 {
 	msgDriveInfo msgFindDriveData;
+	memset(&msgFindDriveData, 0, sizeof(msgFindDriveData));
 
 	if (!m_sock.RecvExact((LPSTR)&msgFindDriveData, sz_msgDriveInfo, BLASTSOCK_BUFFER))
 	{
@@ -388,7 +399,9 @@ BOOL CnFTDServerSocket::NextDriveList(PUINT pDriveType, LPTSTR lpDriveName)
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return FALSE;
 	}
+
 	*pDriveType = msgFindDriveData.driveType;
+
 	return TRUE;
 }
 
@@ -396,6 +409,9 @@ BOOL CnFTDServerSocket::create_directory(LPCTSTR lpPathName)
 {
 	msgString1 str;
 	msg ret;
+
+	memset(&str, 0, sizeof(str));
+	memset(&ret, 0, sizeof(ret));
 
 	str.type = nFTD_CreateDirectory;
 	str.length = _tcslen(lpPathName) * 2;
@@ -431,6 +447,8 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 {
 	msg ret;
 	USHORT length;
+
+	memset(&ret, 0, sizeof(ret));
 
 	//프로토콜 명령 코드 전송
 	ret.type = nFTD_file_command;
@@ -544,6 +562,8 @@ bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_ti
 	msg ret;
 	USHORT length;
 
+	memset(&ret, 0, sizeof(ret));
+
 	//프로토콜 명령 코드 전송
 	ret.type = nFTD_new_folder_index;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -561,7 +581,7 @@ bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_ti
 	}
 
 	//path 전송
-	if (!m_sock.SendExact((LPSTR)(LPCTSTR)path, _tcslen(path) * 2, BLASTSOCK_BUFFER))
+	if (!m_sock.SendExact((LPSTR)(LPCTSTR)path, length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return false;
@@ -576,14 +596,14 @@ bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_ti
 	}
 
 	//new_folder_title 전송
-	if (!m_sock.SendExact((LPSTR)(LPCTSTR)new_folder_title, _tcslen(new_folder_title) * 2, BLASTSOCK_BUFFER))
+	if (!m_sock.SendExact((LPSTR)(LPCTSTR)new_folder_title, length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return false;
 	}
 
 	//index 수신
-	if (!m_sock.RecvExact((LPSTR)index, sizeof(int), BLASTSOCK_BUFFER))
+	if (!m_sock.RecvExact((LPSTR)&index, sizeof(int), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-4 : %d"), GetLastError());
 		return FALSE;
@@ -596,6 +616,9 @@ BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)
 {
 	msgString2 str2;
 	msg ret;
+
+	memset(&str2, 0, sizeof(str2));
+	memset(&ret, 0, sizeof(ret));
 
 	str2.type = nFTD_Rename;
 	str2.length1 = _tcslen(lpOldName) * 2;
@@ -637,6 +660,9 @@ BOOL CnFTDServerSocket::delete_directory(LPCTSTR lpPath)
 	msgString1 str1;
 	msg ret;
 
+	memset(&str1, 0, sizeof(str1));
+	memset(&ret, 0, sizeof(ret));
+
 	str1.type = nFTD_DeleteDirectory;
 	str1.length = _tcslen(lpPath) * 2;
 
@@ -670,6 +696,9 @@ BOOL CnFTDServerSocket::delete_file(LPCTSTR lpPathName)
 {
 	msgString1 str1;
 	msg ret;
+
+	memset(&str1, 0, sizeof(str1));
+	memset(&ret, 0, sizeof(ret));
 
 	str1.type = nFTD_DeleteFile;
 	str1.length = _tcslen(lpPathName) * 2;
@@ -705,6 +734,9 @@ BOOL CnFTDServerSocket::change_directory(LPCTSTR lpDirName)
 	msgString1 str1;
 	msg ret;
 
+	memset(&str1, 0, sizeof(str1));
+	memset(&ret, 0, sizeof(ret));
+
 	str1.type = nFTD_ChangeDirectory;
 	str1.length = _tcslen(lpDirName) * 2;
 
@@ -738,6 +770,9 @@ BOOL CnFTDServerSocket::ExecuteFile(LPCTSTR lpDirName)
 {
 	msgString1 str1;
 	msg ret;
+
+	memset(&str1, 0, sizeof(str1));
+	memset(&ret, 0, sizeof(ret));
 
 	str1.type = nFTD_ExecuteFile;
 	str1.length = _tcslen(lpDirName) * 2;
@@ -773,6 +808,9 @@ BOOL CnFTDServerSocket::TotalSpace(PULARGE_INTEGER lpTotalNumberOfFreeBytes, TCH
 	msg ret;
 	msgDiskSpace msgTotalNumberOfFreeBytes;
 
+	memset(&ret, 0, sizeof(ret));
+	memset(&msgTotalNumberOfFreeBytes, 0, sizeof(msgTotalNumberOfFreeBytes));
+
 	ret.type = nFTD_TotalSpace;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -807,6 +845,9 @@ BOOL CnFTDServerSocket::RemainSpace(PULARGE_INTEGER lpTotalNumberOfRemainBytes, 
 {
 	msg ret;
 	msgDiskSpace msgTotalNumberOfRemainBytes;
+
+	memset(&ret, 0, sizeof(ret));
+	memset(&msgTotalNumberOfRemainBytes, 0, sizeof(msgTotalNumberOfRemainBytes));
 
 	ret.type = nFTD_RemainSpace;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -844,6 +885,10 @@ BOOL CnFTDServerSocket::CurrentPath(DWORD nBufferLength, LPTSTR lpCurrentPath)
 	msg ret;
 	msgString1 str1;
 
+	memset(&ret, 0, sizeof(ret));
+	memset(&str1, 0, sizeof(str1));
+
+
 	ret.type = nFTD_CurrentPath;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -872,9 +917,14 @@ BOOL CnFTDServerSocket::CurrentPath(DWORD nBufferLength, LPTSTR lpCurrentPath)
 
 BOOL CnFTDServerSocket::get_remote_system_label(std::map<int, CString>* map)
 {
+	logWrite(_T(""));
+
 	map->clear();
 
 	msg ret;
+
+	memset(&ret, 0, sizeof(ret));
+
 	ret.type = nFTD_get_system_label;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -906,7 +956,7 @@ BOOL CnFTDServerSocket::get_remote_system_label(std::map<int, CString>* map)
 			return false;
 		}
 
-		if (!m_sock.RecvExact((LPSTR)&label, len, BLASTSOCK_BUFFER))
+		if (!m_sock.RecvExact((LPSTR)label, len, BLASTSOCK_BUFFER))
 		{
 			logWriteE(_T("CODE-2 : %d "), GetLastError());
 			return false;
@@ -923,6 +973,8 @@ BOOL CnFTDServerSocket::get_remote_system_path(std::map<int, CString>* map)
 	map->clear();
 
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
+
 	ret.type = nFTD_get_system_path;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -954,7 +1006,7 @@ BOOL CnFTDServerSocket::get_remote_system_path(std::map<int, CString>* map)
 			return false;
 		}
 
-		if (!m_sock.RecvExact((LPSTR)&path, len, BLASTSOCK_BUFFER))
+		if (!m_sock.RecvExact((LPSTR)path, len, BLASTSOCK_BUFFER))
 		{
 			logWriteE(_T("CODE-2 : %d "), GetLastError());
 			return false;
@@ -971,6 +1023,8 @@ bool CnFTDServerSocket::get_remote_drive_list(std::deque<CDiskDriveInfo>* drive_
 	drive_list->clear();
 
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
+
 	ret.type = nFTD_get_drive_list;
 	if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -1005,6 +1059,8 @@ BOOL CnFTDServerSocket::GetDesktopPath(WIN32_FIND_DATA* pFileInfo)
 {
 	msg ret;
 	msgFileInfo msgFindFileData;
+
+	memset(&ret, 0, sizeof(ret));
 	memset(&msgFindFileData, 0, sizeof(msgFileInfo));
 
 	ret.type = nFTD_DesktopPath;
@@ -1033,6 +1089,8 @@ BOOL CnFTDServerSocket::GetDocumentPath(WIN32_FIND_DATA* pFileInfo)
 {
 	msg ret;
 	msgFileInfo msgFindFileData;
+
+	memset(&ret, 0, sizeof(ret));
 	memset(&msgFindFileData, 0, sizeof(msgFileInfo));
 
 	ret.type = nFTD_DocumentPath;
@@ -1072,6 +1130,8 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	CnFTDFileTransferDialog* parent = (CnFTDFileTransferDialog*)parent_dlg;
 	WIN32_FIND_DATA exist_file;
 	ULARGE_INTEGER	exist_filesize;
+
+	memset(&ret, 0, sizeof(ret));
 
 	hFile = CreateFile(from.cFileName, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hFile == INVALID_HANDLE_VALUE)
@@ -1265,6 +1325,8 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 	do
 	{
+		memset(packet, 0, sizeof(CHAR) * BUFFER_SIZE);
+
 		while (m_transfer_pause)
 		{
 			Wait(1000);
@@ -1381,12 +1443,14 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress)
 {
 	msg ret;
-	msgString1 str1;
+	//msgString1 str1;
 	HANDLE		hFile;
 	ULARGE_INTEGER	src_filesize;
 	CnFTDFileTransferDialog* parent = (CnFTDFileTransferDialog*)parent_dlg;
 	WIN32_FIND_DATA exist_file;
 	ULARGE_INTEGER	exist_filesize;
+
+	memset(&ret, 0, sizeof(ret));
 
 	src_filesize.HighPart = from.nFileSizeHigh;
 	src_filesize.LowPart = from.nFileSizeLow;
@@ -1594,6 +1658,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 	do
 	{
+		memset(packet, 0, sizeof(CHAR) * BUFFER_SIZE);
+
 		while (m_transfer_pause)
 		{
 			Wait(1000);

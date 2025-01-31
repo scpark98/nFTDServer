@@ -7,8 +7,6 @@
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
 #include "../../Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
 
-static CRITICAL_SECTION m_CS;
-
 class CnFTDServerManager
 {
 public:
@@ -30,6 +28,10 @@ public:
 	//scpark add
 	bool	get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive);
 	bool	get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath);
+
+	//해당 경로의 폴더에 child가 있다면 트리에서 확장버튼을 표시해줘야한다.
+	//0:없음, 1이상:있음, 음수:에러
+	int		get_subfolder_count(LPCTSTR path);
 
 	bool	get_disk_space(ULARGE_INTEGER* ulRemain, ULARGE_INTEGER* ulTotal);
 

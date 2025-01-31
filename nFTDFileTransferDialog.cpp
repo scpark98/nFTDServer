@@ -78,7 +78,6 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Add(IDC_STATIC_INDEX_BYTES, 0, 0, 50, 0);
 	m_resize.Add(IDC_STATIC_REMAIN_SPEED, 50, 0, 50, 0);
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
-	//m_resize.Add(IDCANCEL, 100, 0, 0, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
 	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
@@ -98,13 +97,11 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_progress.set_style(CSCSliderCtrl::style_progress_line);
 	m_progress.set_active_color(RGB(0, 134, 218));
 	m_progress.set_back_color(white);
-	//m_progress.set_text_style(CSCSliderCtrl::text_style_dual_text);
-	//m_progress.set_text_color(white);
-	//m_progress.set_font_size(8);
 
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);
 
 	RestoreWindowPosition(&theApp, this, _T("CnFTDFileTransferDialog"));
+	Wait(10);
 	CenterWindow(GetParent());
 
 	m_thread_transfer = std::thread(&CnFTDFileTransferDialog::thread_transfer, this);
@@ -177,12 +174,15 @@ BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerM
 
 void CnFTDFileTransferDialog::init_list()
 {
-	m_list.set_headings(_T("파일명,200;크기,100;상태,60"));
+	CString headings;
+
+	headings.Format(_T("%s,200;%s,100;%s,60"), _S(NFTD_IDS_LISTCTRL_NAME), _S(NFTD_IDS_LISTCTRL_SIZE), _S(NFTD_IDS_LISTCTRL_STATUS));
+	m_list.set_headings(headings);
 	//m_list.set_color_theme(CVtListCtrlEx::color_theme_dark_gray);
 	//m_list.set_line_height(theApp.GetProfileInt(_T("list name"), _T("line height"), 80));
 
 	m_list.set_font_size(theApp.GetProfileInt(_T("list"), _T("font size"), 9));
-	m_list.set_font_name(theApp.GetProfileString(_T("list"), _T("font name"), _T("맑은 고딕")));
+	m_list.set_font_name(theApp.GetProfileString(_T("list"), _T("font name"), _S(IDS_FONT)));
 
 	//m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 	m_list.set_header_height(22);
@@ -202,6 +202,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_column_data_type(col_status, CVtListCtrlEx::column_data_type_progress);
 	m_list.show_progress_text();
 	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
+	m_list.set_back_alternate_color(true, Gdiplus::Color(242, 242, 242));
 	//m_list.set_progress_text_color(Gdiplus::Color::Black);
 
 	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
@@ -228,15 +229,15 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	m_thread_transfer_started = true;
 
-	m_static_message.set_text(_T("파일, 폴더 목록을 생성중입니다..."));
+	m_static_message.set_text(_S(IDS_MAKE_FILE_FOLDER_LIST));
 
 	//폴더인 항목은 그 항목을 유지한 채 하위 모든 폴더, 파일 목록을 찾아서 추가시킨다.
 	for (i = 0; i < m_filelist.size(); i++)
 	{
-		logWriteD(_T("%s 분석중..."), m_filelist[i].cFileName);
-
 		if (m_filelist[i].dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
 		{
+			logWriteD(_T("Analyze %s folder for the prepare transfering..."), m_filelist[i].cFileName);
+
 			std::deque<WIN32_FIND_DATA> dq;
 
 			//로컬인 경우는 직접 찾지만 remote인 경우는 요청해서 채워야 한다.

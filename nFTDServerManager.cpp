@@ -5,7 +5,7 @@
 
 CnFTDServerManager::CnFTDServerManager()
 {
-	InitializeCriticalSection(&m_CS);
+	InitializeCriticalSection(&g_cs);
 
 	m_strServerIP = _T("");
 	m_strDeviceID = _T("");
@@ -21,7 +21,7 @@ CnFTDServerManager::~CnFTDServerManager()
 {
 	m_socket.Close();
 	m_DataSocket.Close();
-	DeleteCriticalSection(&m_CS);
+	DeleteCriticalSection(&g_cs);
 }
 
 BOOL CnFTDServerManager::SetConnectionService()
@@ -72,8 +72,8 @@ BOOL CnFTDServerManager::SetConnectionService()
 		m_nClientOSType = _ttoi(__targv[14]);
 
 		m_strStatusbarTitle.Format(_S(IDS_TRANSFER), m_strDeviceName);
-		m_strStatusbarTitle += _T(" (고속전송 모드)");
-		m_strTitle = m_strDeviceName + _T(" (고속전송 모드)");
+		m_strStatusbarTitle += _S(IDS_HIGH_SPEED_MODE);
+		m_strTitle = m_strDeviceName + _S(IDS_HIGH_SPEED_MODE);
 
 		//neturoService::SetServiceMode(TRUE);
 	}
@@ -141,6 +141,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 
 	if (strlen(lpCmdLine) < 2)
 	{
+		delete[] lpCmdLine;
 		return FALSE;
 	}
 
@@ -176,6 +177,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	}
 	else
 	{
+		delete[] lpCmdLine;
 		return FALSE;
 	}
 
@@ -255,7 +257,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 			m_nClientOSType = atoi(strtok(NULL, " "));
 
 
-			TCHAR wDeviceName[50];
+			TCHAR wDeviceName[50] = { 0, };;
 			MultiByteToWideChar(CP_ACP, 0, deviceName, -1, wDeviceName, 50);
 
 			m_strDeviceName.Format(_T("%s"), wDeviceName);
@@ -263,7 +265,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 #endif
 			//m_isStatisticsMode = TRUE;
 
-			TCHAR wDeviceID[50];
+			TCHAR wDeviceID[50] = { 0, };;
 			MultiByteToWideChar(CP_ACP, 0, deviceID, -1, wDeviceID, 50);
 
 			m_strDeviceID.Format(_T("%s"), wDeviceID);
@@ -290,6 +292,8 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 #endif
 		}
 	}
+
+	delete[] lpCmdLine;
 
 	m_socket.SetConnection(dwConnectionMode);
 	m_socket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, isStandAlone);
@@ -370,6 +374,8 @@ void CnFTDServerManager::DriveList(std::deque<CString>* dq)
 void CnFTDServerManager::refresh_list(std::deque<WIN32_FIND_DATA> *dq, bool is_server_side)
 {
 	WIN32_FIND_DATA FindFileData;
+	memset(&FindFileData, 0, sizeof(FindFileData));
+
 	dq->clear();
 	//pListCtrl->delete_all_items(true);
 
@@ -892,6 +898,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> *dq, bool recursive)
 {
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
 
 	//명령 전송
 	ret.type = nFTD_filelist_all;
@@ -950,6 +957,7 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath)
 {
 	msg ret;
+	memset(&ret, 0, sizeof(ret));
 
 	//명령 전송
 	ret.type = nFTD_folderlist_all;
@@ -1018,6 +1026,52 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 	return true;
 }
 
+//해당 경로의 폴더에 child가 있다면 트리에서 확장버튼을 표시해줘야한다.
+//0:없음, 1이상:있음, 음수:에러
+int CnFTDServerManager::get_subfolder_count(LPCTSTR path)
+{
+	msg ret;
+	memset(&ret, 0, sizeof(ret));
+
+	//명령 전송
+	ret.type = nFTD_get_subfolder_count;
+	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-1 : %d"), GetLastError());
+		return false;
+	}
+
+	USHORT length = _tcslen(path) * 2;
+
+	//path 길이 전송
+	if (!m_socket.m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return false;
+	}
+
+	//path 전송
+	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-3 : %d"), GetLastError());
+		return false;
+	}
+
+	//응답 수신
+	int sub_folder_count = -1;
+
+	if (!m_socket.m_sock.RecvExact((LPSTR)&sub_folder_count, sizeof(int), BLASTSOCK_BUFFER))
+	{
+		logWriteE(_T("CODE-4 : %d"), GetLastError());
+		return false;
+	}
+
+	if (sub_folder_count < 0)
+		return -1;
+
+	return sub_folder_count;
+}
+
 bool CnFTDServerManager::get_remote_system_label(std::map<int, CString> *map)
 {
 	if (m_socket.get_remote_system_label(map))
@@ -1045,6 +1099,8 @@ bool CnFTDServerManager::get_remote_drive_list(std::deque<CDiskDriveInfo>* drive
 CString CnFTDServerManager::GetRemoteDesktopPath()
 {
 	WIN32_FIND_DATA data;
+	memset(&data, 0, sizeof(data));
+
 	if (m_socket.GetDesktopPath(&data))
 	{
 		return data.cFileName;
@@ -1057,6 +1113,8 @@ CString CnFTDServerManager::GetRemoteDesktopPath()
 CString CnFTDServerManager::GetRemoteDocumentPath()
 {
 	WIN32_FIND_DATA data;
+	memset(&data, 0, sizeof(data));
+
 	if (m_socket.GetDocumentPath(&data))
 	{
 		return data.cFileName;

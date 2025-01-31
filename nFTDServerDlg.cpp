@@ -9,6 +9,7 @@
 #include "afxdialogex.h"
 
 #include <thread>
+#include <memory>
 
 #include "../../Common/Functions.h"
 #include "../../Common/MemoryDC.h"
@@ -182,8 +183,6 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-	//CWnd* pWnd = NULL;
-	//pWnd->ShowWindow(SW_SHOW);
 
 	m_resize.Create(this);
 	m_resize.SetMinimumTrackingSize(CSize(900, 600));
@@ -311,38 +310,22 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//또한 WS_CLIPCHILDREN을 넣지 않으면 깜빡임이 많이 발생한다.
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CLIPCHILDREN);
 
-	//set_titlebar_height(32);
-	//m_sys_buttons.set_button_width(44);
-	//set_back_color(Gdiplus::Color::White);
-	//set_title(_T("LinkMeMine File Manager"));
-	//set_title_bold(true);
-	//set_font_size(10);
-	//set_titlebar_text_color(Gdiplus::Color::White);
-	//set_titlebar_back_color(gRGB(59, 70, 92));
-	//m_sys_buttons.set_back_hover_color(get_color(gRGB(59, 70, 92), 32));
-
 	m_static_local.set_header_images(IDB_LOCAL_PC1);
-	m_static_remote.set_header_images(IDB_REMOTE_PC1);
 	m_static_local.set_back_color(m_cr_back);
-	m_static_remote.set_back_color(m_cr_back);
 	m_static_local.set_font_bold();
+	m_static_local.set_text(_S(NFTD_IDS_AGENT));
+	m_static_remote.set_header_images(IDB_REMOTE_PC1);
+	m_static_remote.set_back_color(m_cr_back);
 	m_static_remote.set_font_bold();
+	m_static_remote.set_text(_S(NFTD_IDS_REMOTE_PC));
 
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
 	m_button_local_to_remote.fit_to_image(false);
 	m_button_local_to_remote.set_back_color(m_cr_back, false);
-	//m_button_local_to_remote.set_round(4);
-	//m_button_local_to_remote.draw_hover_rect(true, Gdiplus::Color::LightGray);
 
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
 	m_button_remote_to_local.fit_to_image(false);
 	m_button_remote_to_local.set_back_color(m_cr_back, false);
-	//m_button_remote_to_local.set_round(4);
-	//m_button_remote_to_local.draw_hover_rect(true, Gdiplus::Color::LightGray);
-
-	//for test
-	//while (get_process_running_count(_T("nFTDClient.exe")) > 0)
-	//	kill_process_by_fullpath(_T("nFTDClient.exe"));
 
 	m_slider_local_disk_space.set_style(CSCSliderCtrl::style_progress);
 	m_slider_local_disk_space.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
@@ -399,7 +382,6 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	init_treectrl();
 	init_listctrl();
 	init_pathctrl();
-	//init_shadow();
 
 	//text 내용만 없을 뿐 폰트 크기 등을 미리 세팅해놓고 시작한다.
 	//팝업 메시지가 필요할 경우 set_text(_T("text message"));와 같이 텍스트만 변경해주면 된다.
@@ -532,6 +514,11 @@ void CnFTDServerDlg::init_favorite()
 		//index = m_list_remote_favorite.insert_item(-1, get_part(dq[i], fn_leaf_folder));
 		//m_list_remote_favorite.set_text(index, 1, dq[i]);
 	}
+
+	//header text가 수직 중앙에 제대로 표시되지 않는 현상이 있어 강제로 Invalidate()을 호출함.
+	//set_header_height()를 호출했으나 그 적용이 된 후에도 정상표시되지 않고 있음.
+	m_list_local_favorite.Invalidate();
+	m_list_remote_favorite.Invalidate();
 }
 
 void CnFTDServerDlg::save_favorite(int dwSide)
@@ -1291,7 +1278,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			CString name = get_part(msg->param1, fn_name);
 			CString msg;
 
-			msg.Format(_T("%s 경로에 이름이 '%s'인 항목 이미 있습니다."), folder, name);
+			msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_ITEM), folder, name);
 			CMessageDlg dlg(msg, MB_OK);
 			dlg.DoModal();
 		}
@@ -1302,7 +1289,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		CString name = get_part(msg->param1, fn_name);
 		CString msg;
 
-		msg.Format(_T("%s 경로에 이름이 '%s'인 항목이 이미 있습니다."), folder, name);
+		msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_ITEM), folder, name);
 		CMessageDlg dlg(msg, MB_OK);
 		dlg.DoModal();
 	}
@@ -1380,8 +1367,16 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_folder_list)
 	{
+		EnableWindow(FALSE);
+		m_tree_remote.SetRedraw(FALSE);
+
+		long t0 = clock();
+
+		TRACE(_T("received msg = CSCTreeCtrl::message_request_folder_list\n"));
 		int i;
 		CString path = *(CString*)lParam;
+
+		EnterCriticalSection(&g_cs);
 
 		//path가 "내 PC"이면 DriveList()를, 그렇지 않으면 refresh_tree_folder()를 호출한다.
 		if (path == theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES))
@@ -1403,6 +1398,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 				for (i = 0; i < dq.size(); i++)
 				{
+					TRACE(_T("add folder %d = %s\n"), i, dq[i].cFileName);
 					bool has_child = false;
 
 					if (is_drive_root(dq[i].cFileName))
@@ -1412,19 +1408,27 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 					else
 					{
 						//검색된 폴더의 sub folder 유무에 따라 확장버튼 유무도 정해진다.
-						std::deque<WIN32_FIND_DATA> dq_sub_folder;
-						m_ServerManager.get_folderlist(dq[i].cFileName, &dq_sub_folder, true);
-						has_child = (dq_sub_folder.size() > 0);
+						//has_child = true;// (m_ServerManager.get_subfolder_count(dq[i].cFileName) > 0);
+						has_child = (dq[i].nFileSizeLow > 0);
+
+						//임시적으로 nFileSizeLow에 subfolder count를 넘겨받은 것이므로 0으로 다시 리셋시켜준다.
+						dq[i].nFileSizeLow = 0;
 					}
 
 					//dq가 fullpath로 넘어오므로 폴더명만 넣어줘야 한다.
 					TCHAR* p = dq[i].cFileName;
 					p += folder_length;
 					_tcscpy(dq[i].cFileName, p);
-					m_tree_remote.insert_folder(&dq[i], has_child);
+					m_tree_remote.insert_folder(m_tree_remote.get_expanding_item(), &dq[i], has_child);
 				}
 			}
 		}
+
+		LeaveCriticalSection(&g_cs);
+		TRACE(_T("tree expanding elapsed for %s = %ld\n"), path, clock() - t0);
+
+		m_tree_remote.SetRedraw(TRUE);
+		EnableWindow(TRUE);
 	}
 	else if (msg->message == CSCTreeCtrl::message_path_changed)
 	{
@@ -1483,7 +1487,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			CString folder_name = get_part(msg->param1, fn_name);
 			CString msg;
 
-			msg.Format(_T("%s 경로에 이름이 '%s'인 폴더가 이미 있습니다."), folder, folder_name);
+			msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_FOLDER), folder, folder_name);
 			CMessageDlg dlg(msg, MB_OK);
 			dlg.DoModal();
 		}
@@ -1494,7 +1498,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		CString folder_name = get_part(msg->param1, fn_name);
 		CString msg;
 
-		msg.Format(_T("%s 경로에 이름이 '%s'인 폴더가 이미 있습니다."), folder, folder_name);
+		msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_FOLDER), folder, folder_name);
 		CMessageDlg dlg(msg, MB_OK);
 		dlg.DoModal();
 	}
@@ -1503,9 +1507,9 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		std::deque<CString> dq_fullpath{ msg->param0 };
 		
 		bool res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
-		bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
+		//bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
 
-		if (res && !viewer_is_running)
+		if (res)// && !viewer_is_running)
 		{
 			m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 			m_toast_popup.CenterWindow(this);
@@ -1513,7 +1517,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		}
 		else
 		{
-			CMessageDlg dlg(msg->param0 + _T("\n") + _T("위 폴더의 속성을 얻어오지 못했습니다."));
+			CMessageDlg dlg(msg->param0 + _T("\n") + _S(IDS_FAIL_TO_GET_PROPERTY));
 			dlg.DoModal();
 		}
 	}
@@ -1648,6 +1652,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 	int i;
 	BOOL result = FALSE;
 
+	EnableWindow(FALSE);
+
 	if (dwSide == SERVER_SIDE)
 	{
 		m_path_local.set_path(path);
@@ -1656,7 +1662,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 
 		refresh_selection_status(&m_list_local);
 		refresh_disk_usage(false);
-		return true;
+		result = true;
 	}
 	else
 	{
@@ -1672,6 +1678,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			}
 		}
 
+		//EnterCriticalSection(&g_cs);
+		//std::lock_guard<mutex> lock(g_mutex);
 
 		result = m_ServerManager.change_directory(path, dwSide, false);
 		if (result)
@@ -1718,8 +1726,12 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			refresh_disk_usage(true);
 		}
 
+		//LeaveCriticalSection(&g_cs);
+
 		result = TRUE;
 	}
+
+	EnableWindow(TRUE);
 
 	return result;
 }
@@ -2314,16 +2326,19 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	bool res = false;
 	int dwSide = SERVER_SIDE;
 	CVtListCtrlEx* plist;
+	CSCTreeCtrl* ptree;
 	
 	if (GetFocus() == &m_list_local || GetFocus() == &m_tree_local)
 	{
 		dwSide = SERVER_SIDE;
 		plist = &m_list_local;
+		ptree = &m_tree_local;
 	}
 	else if (GetFocus() == &m_list_remote || GetFocus() == &m_tree_remote)
 	{
 		dwSide = CLIENT_SIDE;
 		plist = &m_list_remote;
+		ptree = &m_tree_remote;
 	}
 	else
 	{
@@ -2374,8 +2389,19 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
 			case file_cmd_new_folder :
-				//list의 현재 폴더에 새 폴더를 생성한다.
-				res = m_list_local.new_folder(_S(IDS_NEW_FOLDER));
+				{
+					//list의 현재 폴더에 새 폴더를 생성한다.
+					CString new_folder = m_list_local.new_folder(_S(IDS_NEW_FOLDER));
+					if (!new_folder.IsEmpty())
+					{
+						res = true;
+						m_tree_local.add_new_item(m_tree_local.GetSelectedItem(), new_folder);
+					}
+					else
+					{
+						res = false;
+					}
+				}
 				break;
 			case file_cmd_rename :
 				m_list_local.edit_item(dq[0], CVtListCtrlEx::col_filename);
@@ -2406,6 +2432,11 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 
 					m_toast_popup.ShowWindow(SW_HIDE);
 					EnableWindow(TRUE);
+
+					m_tree_local.refresh(m_tree_local.GetSelectedItem());
+
+					refresh_disk_usage(false);
+					refresh_selection_status(&m_list_local);
 				}
 				break;
 			case file_cmd_property :
@@ -2432,7 +2463,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	}
 	else
 	{
-		bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
+		//bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
 
 		switch (cmd)
 		{
@@ -2446,7 +2477,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				else
 				{
 					res = m_ServerManager.m_socket.file_command(file_cmd_open, param0);
-					if (res && !viewer_is_running)
+					if (res)// && !viewer_is_running)
 					{
 						m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 						m_toast_popup.CenterWindow(this);
@@ -2457,7 +2488,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 			case file_cmd_open_explorer :
 				param0 = m_list_remote.get_path();
 				res = m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
-				if (res && !viewer_is_running)
+				if (res)// && !viewer_is_running)
 				{
 					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 					m_toast_popup.CenterWindow(this);
@@ -2485,6 +2516,8 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					}
 					m_list_remote.select_item(index, true, true, true);
 					m_list_remote.edit_item(index, 0);
+
+					m_tree_remote.add_new_item(m_tree_remote.GetSelectedItem(), get_part(param0, fn_name));
 				}
 			}
 			break;
@@ -2521,7 +2554,8 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					m_toast_popup.ShowWindow(SW_HIDE);
 					EnableWindow(TRUE);
 
-					//m_list_remote.refresh_list();
+					m_tree_remote.refresh(m_tree_remote.GetSelectedItem());
+
 					refresh_disk_usage(true);
 					refresh_selection_status(&m_list_remote);
 				}
@@ -2540,7 +2574,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				else
 					res = true;
 
-				if (res && !viewer_is_running)
+				if (res)// && !viewer_is_running)
 				{
 					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 					m_toast_popup.CenterWindow(this);
@@ -2681,7 +2715,11 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 		pslider->set_active_color(RGB(36, 160, 212));
 
 	pslider->SetPos(100 - (int)free_ratio);
-	pstatic->set_textf(Gdiplus::Color::DimGray, _T("%s 중 %s 사용 가능"), get_size_str(ulTotal.QuadPart, -1), get_size_str(ulFree.QuadPart, -1));
+
+	if (GetUserDefaultUILanguage() == 1042)
+		pstatic->set_textf(Gdiplus::Color::DimGray, _T("%s 중 %s 사용 가능"), get_size_str(ulTotal.QuadPart, -1), get_size_str(ulFree.QuadPart, -1));
+	else
+		pstatic->set_textf(Gdiplus::Color::DimGray, _T("%s free of %s"), get_size_str(ulFree.QuadPart, -1), get_size_str(ulTotal.QuadPart, -1));
 }
 
 void CnFTDServerDlg::OnListContextMenuOpen()
@@ -3028,6 +3066,16 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+
+	int item = m_list_local.get_recent_edit_item();
+	int subitem = m_list_local.get_recent_edit_subitem();
+
+	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
+	if (m_list_local.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
+	{
+		m_tree_local.rename_child_item(m_tree_local.GetSelectedItem(), m_list_local.get_edit_old_text(), m_list_local.get_edit_new_text());
+	}
+
 	*pResult = 0;
 }
 
@@ -3036,29 +3084,16 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	/*
-	int item = pDispInfo->item.iItem;
-	int sub_item = pDispInfo->item.iSubItem;
 
-	//remote rename일 경우 실제 파일/폴더를 rename 성공한 후 변경해줘야 한다.
-	CString path;
-	CString old_name;
-	CString new_name;
+	int item = m_list_remote.get_recent_edit_item();
+	int subitem = m_list_remote.get_recent_edit_subitem();
 
-	path = convert_special_folder_to_real_path(m_list_remote.get_path(), &theApp.m_shell_imagelist, CLIENT_SIDE);
-	if (path.GetLength() > 1 && path.Right(1) != '\\')
-		path += '\\';
-
-	old_name.Format(_T("%s%s"), path, m_list_remote.get_edit_old_text());
-	new_name.Format(_T("%s%s"), path, m_list_remote.get_text(item, sub_item));
-
-	if (!m_ServerManager.m_socket.Rename(old_name, new_name))
+	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
+	if (m_list_remote.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
 	{
-		CMessageDlg	dlg(_T("이름을 변경할 수 없습니다."));
-		dlg.DoModal();
-		m_list_remote.undo_edit_label();
+		m_tree_remote.rename_child_item(m_tree_remote.GetSelectedItem(), m_list_remote.get_edit_old_text(), m_list_remote.get_edit_new_text());
 	}
-	*/
+
 	*pResult = 0;
 }
 

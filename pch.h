@@ -15,4 +15,6 @@ extern CSCLog gLog;
 //20241010 scpark 연결모드 기억을 위해 추가
 extern int g_FT_mode;
 
+extern CRITICAL_SECTION g_cs;
+extern std::mutex g_mutex;
 #endif //PCH_H
