@@ -130,7 +130,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_TIMER()
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN, &CnFTDServerDlg::OnListContextMenuOpen)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_PROPERTY, &CnFTDServerDlg::OnListContextMenuProperty)
-	ON_WM_CONTEXTMENU()
+	//ON_WM_CONTEXTMENU()
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnItemChangedListLocal)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnItemChangedListRemote)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnListContextMenuOpenExplorer)
@@ -148,6 +148,12 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_ACTIVATE()
 	ON_WM_ACTIVATEAPP()
 	ON_MESSAGE(MESSAGE_CONNECT_FAIL, &CnFTDServerDlg::on_message)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_FAVORITE, &CnFTDServerDlg::OnTreeContextMenuFavorite)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_REFRESH, &CnFTDServerDlg::OnTreeContextMenuRefresh)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_NEW_FOLDER, &CnFTDServerDlg::OnTreeContextMenuNewFolder)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_PROPERTY, &CnFTDServerDlg::OnTreeContextMenuProperty)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnTreeContextMenuOpenExplorer)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_SEND, &CnFTDServerDlg::OnTreeContextMenuSend)
 END_MESSAGE_MAP()
 
 
@@ -497,9 +503,10 @@ void CnFTDServerDlg::init_favorite()
 
 	for (i = 0; i < dq.size(); i++)
 	{
+		//기존 즐겨찾기 폴더끝에 붙은 '\\' 제거.
+		if (dq[i].GetLength() > 2 && dq[i].Right(1) == '\\')
+			truncate(dq[i], 1);
 		favorite_cmd(favorite_add, SERVER_SIDE, dq[i]);
-		//index = m_list_local_favorite.insert_item(-1, get_part(dq[i], fn_leaf_folder));
-		//m_list_local_favorite.set_text(index, 1, dq[i]);
 	}
 
 	//remote. __targv[4] = IP, __targv[7] = device_id
@@ -510,9 +517,10 @@ void CnFTDServerDlg::init_favorite()
 
 	for (i = 0; i < dq.size(); i++)
 	{
+		//기존 즐겨찾기 폴더끝에 붙은 '\\' 제거.
+		if (dq[i].GetLength() > 2 && dq[i].Right(1) == '\\')
+			truncate(dq[i], 1);
 		favorite_cmd(favorite_add, CLIENT_SIDE, dq[i]);
-		//index = m_list_remote_favorite.insert_item(-1, get_part(dq[i], fn_leaf_folder));
-		//m_list_remote_favorite.set_text(index, 1, dq[i]);
 	}
 
 	//header text가 수직 중앙에 제대로 표시되지 않는 현상이 있어 강제로 Invalidate()을 호출함.
@@ -646,7 +654,7 @@ void CnFTDServerDlg::OnWindowPosChanged(WINDOWPOS* lpwndpos)
 
 void CnFTDServerDlg::OnBnClickedOk()
 {
-	file_command(file_cmd_open);
+	file_command_on_list(file_cmd_open);
 }
 
 
@@ -1029,7 +1037,7 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 				}
 
 				//삭제 시 물어보고 지우거나 아예 키를 이용한 삭제는 방지
-				//file_command(file_cmd_delete);
+				//file_command_on_list(file_cmd_delete);
 				break;
 			case '1' :
 				if (IsCtrlPressed() && IsShiftPressed())
@@ -1507,7 +1515,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		std::deque<CString> dq_fullpath{ msg->param0 };
 		
 		bool res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
-		//bool viewer_is_running = (get_process_running_count(_T("C:\\Users\\Public\\Documents\\LinkMeMineSE\\LMMViewer\\LMMLauncher\\LMMViewer.exe")) > 0);
 
 		if (res)// && !viewer_is_running)
 		{
@@ -1920,7 +1927,17 @@ void CnFTDServerDlg::file_transfer()
 		m_FileTransferDlg.DoModal();
 		
 		//전송이 모두 끝나면 해당 폴더를 refresh해준다.
-		change_directory(m_transfer_to, m_dstSide);
+		//change_directory(m_transfer_to, m_dstSide);
+		if (m_dstSide == SERVER_SIDE)
+		{
+			m_tree_local.refresh(m_tree_local.GetSelectedItem());
+			m_list_local.refresh_list();
+		}
+		else if (m_dstSide == CLIENT_SIDE)
+		{
+			m_tree_remote.refresh(m_tree_remote.GetSelectedItem());
+			m_list_remote.refresh_list();
+		}
 	}
 	else
 	{
@@ -1940,7 +1957,7 @@ void CnFTDServerDlg::add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DAT
 }
 
 //상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
-bool CnFTDServerDlg::is_transfer_enable(int dwSide)
+bool CnFTDServerDlg::is_transfer_enable_for_list(int dwSide)
 {
 	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 
@@ -1948,7 +1965,7 @@ bool CnFTDServerDlg::is_transfer_enable(int dwSide)
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
 
-	if (dq.size() == 0)
+	if (dq.size() == 0)// && hItem == NULL)
 		return false;
 
 	for (int i = 0; i < dq.size(); i++)
@@ -1991,18 +2008,167 @@ bool CnFTDServerDlg::is_transfer_enable(int dwSide)
 	return true;
 }
 
+//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
+bool CnFTDServerDlg::is_transfer_enable_for_tree(int dwSide)
+{
+	CSCTreeCtrl* ptree = (dwSide == SERVER_SIDE ? &m_tree_local : &m_tree_remote);
+	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+
+	//선택된 항목이 없다면 불가.
+	CString path = ptree->get_path();
+
+	path = convert_special_folder_to_real_path(path, &theApp.m_shell_imagelist, dwSide);
+	if (path.IsEmpty())
+		return false;
+
+	//내 PC에서 우클릭 한 경우는 전송 불가
+	if (path == theApp.m_shell_imagelist.get_system_path(dwSide, CSIDL_DRIVES))
+		return false;
+
+	//상대가 내 PC를 열고 있다면 전송 불가
+	if (dwSide == SERVER_SIDE && m_list_remote.get_path() == theApp.m_shell_imagelist.get_system_path(!dwSide, CSIDL_DRIVES))
+		return false;
+
+	//상대가 내 PC를 열고 있다면 전송 불가
+	if (dwSide == CLIENT_SIDE && m_list_local.get_path() == theApp.m_shell_imagelist.get_system_path(!dwSide, CSIDL_DRIVES))
+		return false;
+
+	//선택된 아이템이 드라이브 루트라면 전송 불가
+	for (auto drive_list : *theApp.m_shell_imagelist.m_volume[dwSide].get_drive_list())
+	{
+		if (path.CompareNoCase(drive_list.path) == 0)
+			return false;
+	}
+
+	//윈도우와 관계된 주요 폴더는 전송 대상에서 제외한다.
+	if (path == _T("C:\\Program Files") ||
+		path == _T("C:\\Program Files (x86)") ||
+		path == _T("C:\\Windows") ||
+		path == _T("C:\\Users") ||
+		path == _T("C:\\Documents and Settings") ||
+		path == _T("C:\\Program Files") ||
+		path == _T("C:\\Program Files (x86)") ||
+		path == _T("C:\\ProgramData") ||
+		path == _T("C:\\Recovery") ||
+		path == _T("C:\\System Volume Information"))
+		return false;
+
+	return true;
+}
 
 void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	TRACE("CnFTDServerDlg::OnNMRClickTreeLocal\n");
 	*pResult = 0;
+
+	HTREEITEM hItem = NULL;// = pNMTreeView->itemNew.hItem;	//얻어오지 못한다.
+	CPoint pt;
+	::GetCursorPos(&pt);
+	m_tree_local.ScreenToClient(&pt);
+	hItem = m_tree_local.HitTest(pt);
+
+	if (!hItem)
+		return;
+
+	TRACE(_T("label = %s\n"), m_tree_local.GetItemText(hItem));
+
+	//우클릭을 하면 일단 해당 노드를 선택상태로 만들어줘야 한다.
+	m_tree_local.SelectItem(hItem);
+
+
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_TREE_CONTEXT);
+
+	CMenu* pMenu = menu.GetSubMenu(0);
+
+	CString path = m_tree_local.get_path();
+
+	//즐겨찾기에 등록된 폴더인지 확인한다.
+	int favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, path);
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, _S(IDS_OPEN_WITH_EXPLORER) + _T("(&E)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_NEW_FOLDER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_NEW_FOLDER, _S(IDS_NEW_FOLDER) + _T("(&N)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
+
+	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
+	if (path == theApp.m_shell_imagelist.m_volume[0].get_label(CSIDL_DRIVES))
+		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
+
+	//tree에서는 빈 공간 클릭, 즉 선택된 항목이 없을 경우에 대한 처리는 불필요하다.
+
+	//보호된 파일/폴더일 경우
+	if (is_protected(path, &theApp.m_shell_imagelist, SERVER_SIDE))
+	{
+		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
+		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
+	}
+
+	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
+	pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_SEND, (is_transfer_enable_for_tree(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
+
+	::GetCursorPos(&pt);
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
 }
 
 
 void CnFTDServerDlg::OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	TRACE("CnFTDServerDlg::OnNMRClickTreeRemote\n");
 	*pResult = 0;
+
+	HTREEITEM hItem = NULL;// = pNMTreeView->itemNew.hItem;	//얻어오지 못한다.
+	CPoint pt;
+	::GetCursorPos(&pt);
+	m_tree_remote.ScreenToClient(&pt);
+	hItem = m_tree_remote.HitTest(pt);
+
+	if (!hItem)
+		return;
+
+	TRACE(_T("label = %s\n"), m_tree_remote.GetItemText(hItem));
+
+	//우클릭을 하면 일단 해당 노드를 선택상태로 만들어줘야 한다.
+	m_tree_remote.SelectItem(hItem);
+
+
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_TREE_CONTEXT);
+
+	CMenu* pMenu = menu.GetSubMenu(0);
+
+	CString path = m_tree_remote.get_path();
+
+	//즐겨찾기에 등록된 폴더인지 확인한다.
+	int favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, path);
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, _S(IDS_OPEN_WITH_EXPLORER) + _T("(&E)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_NEW_FOLDER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_NEW_FOLDER, _S(IDS_NEW_FOLDER) + _T("(&N)"));
+	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
+
+	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
+	if (path == theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES))
+		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
+
+	//tree에서는 빈 공간 클릭, 즉 선택된 항목이 없을 경우에 대한 처리는 불필요하다.
+
+	//보호된 파일/폴더일 경우
+	if (is_protected(path, &theApp.m_shell_imagelist, CLIENT_SIDE))
+	{
+		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
+		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
+	}
+
+	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
+	pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_SEND, (is_transfer_enable_for_tree(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
+
+	::GetCursorPos(&pt);
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
 }
 
 
@@ -2064,8 +2230,8 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 
 
 
-	//전송 가능 상태가 아닐 경우
-	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
+	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
+	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
 
 	//보호된 파일/폴더일 경우
 	if (item >= 0 && is_protected(m_list_local.get_path(item), m_list_local.get_shell_imagelist(), 0))
@@ -2073,8 +2239,6 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
-
-	//상대편이 "내 PC"를 열고 있다면 전송할 수 없다.
 
 	//멀티 선택일 경우는 "열기" 명령을 수행하면 맨 첫 아이템에 대한 "열기"를 수행하지만 좀 애매하다. 우선 제외시킨다.
 	if (m_list_local.GetSelectedCount() > 1)
@@ -2147,7 +2311,7 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 
 	//전송 가능 상태가 아닐 경우
-	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
+	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
 
 	//보호된 파일/폴더일 경우
 	if (item >= 0 && is_protected(m_list_remote.get_path(item), m_list_remote.get_shell_imagelist(), 1))
@@ -2195,26 +2359,25 @@ void CnFTDServerDlg::OnListContextMenuSend()
 
 void CnFTDServerDlg::OnListContextMenuNewFolder()
 {
-	file_command(file_cmd_new_folder);
+	file_command_on_list(file_cmd_new_folder);
 }
 
 
 void CnFTDServerDlg::OnListContextMenuRename()
 {
-	file_command(file_cmd_rename);
+	file_command_on_list(file_cmd_rename);
 }
 
 
 void CnFTDServerDlg::OnListContextMenuDelete()
 {
-	file_command(file_cmd_delete);
+	file_command_on_list(file_cmd_delete);
 }
 
 
 void CnFTDServerDlg::OnListContextMenuRefresh()
 {
-	CVtListCtrlEx* plist = ((GetFocus() == &m_list_local ? &m_list_local : &m_list_remote));
-	plist->refresh_list();
+	file_command_on_list(file_cmd_refresh);
 }
 
 
@@ -2321,7 +2484,7 @@ LRESULT CnFTDServerDlg::on_message(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
+bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param1)
 {
 	bool res = false;
 	int dwSide = SERVER_SIDE;
@@ -2362,7 +2525,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	//이러한 처리를 기존처럼 m_ServerManager의 open_file()함수에서 일괄 처리하도록 구현할 수도 있으나
 	//m_ServerManager에서는 CnFTDServerDlg에 있는 tree, list 등을 접근하자면 별도의 처리가 필요하므로
 	//local은 그냥 이 클래스에서 처리하고 remote인 경우에만 m_ServerManager의 함수를 호출하여 처리한다.
-	if (GetFocus() == &m_list_local)
+	if (dwSide == SERVER_SIDE)
 	{
 		switch (cmd)
 		{
@@ -2379,7 +2542,7 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 				}
 				break;
 			case file_cmd_open_explorer :
-				param0 = m_list_local.get_path();
+				param0 = plist->get_path();
 
 				//내 PC가 선택된 경우 param0도 "내 PC"라는 값을 가지는데 그대로 열면 "문서" 폴더가 열린다.
 				//empty로 만들어줘고 열어야 실제 "내 PC"가 탐색기로 열린다.
@@ -2388,10 +2551,14 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 
 				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
+			case file_cmd_refresh :
+				plist->refresh_list();
+				ptree->refresh(ptree->GetSelectedItem());
+				break;
 			case file_cmd_new_folder :
 				{
 					//list의 현재 폴더에 새 폴더를 생성한다.
-					CString new_folder = m_list_local.new_folder(_S(IDS_NEW_FOLDER));
+					CString new_folder = plist->new_folder(_S(IDS_NEW_FOLDER));
 					if (!new_folder.IsEmpty())
 					{
 						res = true;
@@ -2494,6 +2661,10 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 					m_toast_popup.CenterWindow(this);
 					m_toast_popup.fade_in(10, 2000, true);
 				}
+				break;
+			case file_cmd_refresh:
+				plist->refresh_list();
+				ptree->refresh(ptree->GetSelectedItem());
 				break;
 			case file_cmd_new_folder:
 			{
@@ -2598,6 +2769,148 @@ bool CnFTDServerDlg::file_command(int cmd, CString param0, CString param1)
 	return res;
 }
 
+bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param1)
+{
+	bool res = false;
+	int dwSide = SERVER_SIDE;
+	CSCTreeCtrl* ptree;
+	CVtListCtrlEx* plist;
+
+	if (GetFocus() == &m_tree_local)
+	{
+		dwSide = SERVER_SIDE;
+		ptree = &m_tree_local;
+		plist = &m_list_local;
+	}
+	else if (GetFocus() == &m_tree_remote)
+	{
+		dwSide = CLIENT_SIDE;
+		ptree = &m_tree_remote;
+		plist = &m_list_remote;
+	}
+	else
+	{
+		return false;
+	}
+
+
+	if (param0.IsEmpty())
+		param0 = ptree->get_path();
+
+	param0 = convert_special_folder_to_real_path(param0, &theApp.m_shell_imagelist, dwSide);
+
+	//이러한 처리를 기존처럼 m_ServerManager의 open_file()함수에서 일괄 처리하도록 구현할 수도 있으나
+	//m_ServerManager에서는 CnFTDServerDlg에 있는 tree, list 등을 접근하자면 별도의 처리가 필요하므로
+	//local은 그냥 이 클래스에서 처리하고 remote인 경우에만 m_ServerManager의 함수를 호출하여 처리한다.
+	if (dwSide == SERVER_SIDE)
+	{
+		switch (cmd)
+		{
+			case file_cmd_open_explorer :
+				//내 PC가 선택된 경우 param0도 "내 PC"라는 값을 가지는데 그대로 열면 "문서" 폴더가 열린다.
+				//empty로 만들어줘고 열어야 실제 "내 PC"가 탐색기로 열린다.
+				if (param0 == theApp.m_shell_imagelist.m_volume[0].get_label(CSIDL_DRIVES))
+					param0 = _T("");
+
+				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
+				break;
+			case file_cmd_new_folder :
+				ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				break;
+			case file_cmd_refresh :
+				ptree->refresh(ptree->GetSelectedItem());
+				plist->refresh_list();
+				break;
+			case file_cmd_property :
+				show_property_window(std::deque<CString> {param0});
+				break;
+			case file_cmd_favorite :
+			{
+				//존재하는 항목이면 제거, 없던 항목이면 추가한다.
+				int index = favorite_cmd(favorite_find, SERVER_SIDE, param0);
+				if (index < 0)
+					favorite_cmd(favorite_add, SERVER_SIDE, param0);
+				else
+					favorite_cmd(favorite_delete, SERVER_SIDE, param0);
+			}
+			break;
+		}
+	}
+	else
+	{
+		switch (cmd)
+		{
+			case file_cmd_open_explorer:
+				res = m_ServerManager.m_socket.file_command(file_cmd_open_explorer, param0);
+				if (res)// && !viewer_is_running)
+				{
+					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.fade_in(10, 2000, true);
+				}
+				break;
+			case file_cmd_new_folder:
+				ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				break;
+			case file_cmd_refresh:
+				ptree->refresh(ptree->GetSelectedItem());
+				plist->refresh_list();
+				break;
+			case file_cmd_property:
+			{
+				std::deque<CString> dq_fullpath;
+				dq_fullpath.push_back(param0);
+				bool res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
+
+				if (res)// && !viewer_is_running)
+				{
+					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.fade_in(10, 2000, true);
+				}
+				else
+				{
+					//CMessageDlg dlg(msg->param0 + _T("\n") + _S(IDS_FAIL_TO_GET_PROPERTY));
+					//dlg.DoModal();
+				}
+				/*
+				std::deque<CString> dq_fullpath;
+				m_list_remote.get_selected_items(&dq_fullpath, true);
+
+				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
+				for (auto item : dq_fullpath)
+					logWriteD(_T("%s"), item);
+
+				if (dq_fullpath.size())
+					res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
+				else
+					res = true;
+
+				if (res)// && !viewer_is_running)
+				{
+					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+					m_toast_popup.CenterWindow(this);
+					m_toast_popup.fade_in(10, 2000, true);
+				}
+				*/
+			}
+			break;
+			case file_cmd_favorite:
+			{
+				//존재하는 항목이면 제거, 없던 항목이면 추가한다.
+				int index = favorite_cmd(favorite_find, CLIENT_SIDE, param0);
+				if (index < 0)
+					favorite_cmd(favorite_add, CLIENT_SIDE, param0);
+				else
+					favorite_cmd(favorite_delete, CLIENT_SIDE, param0);
+			}
+			break;
+		}
+	}
+
+	return res;
+}
+
 //목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
 void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 {
@@ -2640,14 +2953,14 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 		m_static_count_local.set_text(str);
 
 		//선택여부에 따라 송수신 버튼 상태도 변한다.
-		m_button_local_to_remote.EnableWindow(is_transfer_enable(SERVER_SIDE));
+		m_button_local_to_remote.EnableWindow(is_transfer_enable_for_list(SERVER_SIDE));
 	}
 	else if (plist == &m_list_remote)
 	{
 		m_static_count_remote.set_text(str);
 
 		//선택여부에 따라 송수신 버튼 상태도 변한다.
-		m_button_remote_to_local.EnableWindow(is_transfer_enable(CLIENT_SIDE));
+		m_button_remote_to_local.EnableWindow(is_transfer_enable_for_list(CLIENT_SIDE));
 	}
 }
 
@@ -2724,23 +3037,23 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 
 void CnFTDServerDlg::OnListContextMenuOpen()
 {
-	file_command(file_cmd_open);
+	file_command_on_list(file_cmd_open);
 }
 
 void CnFTDServerDlg::OnListContextMenuOpenExplorer()
 {
-	file_command(file_cmd_open_explorer);
+	file_command_on_list(file_cmd_open_explorer);
 }
 
 void CnFTDServerDlg::OnListContextMenuProperty()
 {
-	file_command(file_cmd_property);
+	file_command_on_list(file_cmd_property);
 }
 
 
 void CnFTDServerDlg::OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/)
 {
-	TRACE(_T("context menu\n"));
+	TRACE(_T("CnFTDServerDlg::OnContextMenu\n"));
 }
 
 
@@ -2872,11 +3185,7 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 			fullpath = plist->get_path();
 
 		fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, side);
-
-		if (fullpath.Right(1) != '\\')
-			fullpath += '\\';
-
-		index = pfavoritelist->insert_item(-1, get_part(fullpath, fn_leaf_folder));
+		index = pfavoritelist->insert_item(-1, get_part(fullpath, fn_name));
 		pfavoritelist->set_text(index, 1, fullpath);
 
 		//존재하지 않는 폴더일 경우는 붉은색으로 표시
@@ -2915,11 +3224,7 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 		//리스트에서 팝업메뉴에 의해 삭제한 경우라면 fullpath가 넘어오므로 즐겨찾기 리스트에서 인덱스를 구한다.
 		else
 		{
-			fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, (side ? 0 : 1));
-
-			if (fullpath.Right(1) != '\\')
-				fullpath += '\\';
-
+			fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, side);
 			index = favorite_cmd(favorite_find, side, fullpath);
 			dq.push_back(index);
 		}
@@ -2936,10 +3241,7 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 	}
 	else if (cmd == favorite_find)
 	{
-		fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, (side ? 0 : 1));
-
-		if (fullpath.Right(1) != '\\')
-			fullpath += '\\';
+		fullpath = convert_special_folder_to_real_path(fullpath, &theApp.m_shell_imagelist, side);
 
 		for (i = 0; i < pfavoritelist->size(); i++)
 		{
@@ -2982,11 +3284,11 @@ void CnFTDServerDlg::OnListContextMenuFavorite()
 	//파일 또는 폴더에서 우클릭하므로 즐겨찾기에 등록된 폴더인지는 폴더 경로로 비교해야 한다.
 	if (dq.size() == 0 || !(dq[0].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 	{
-		file_command(file_cmd_favorite, plist->get_path());
+		file_command_on_list(file_cmd_favorite, plist->get_path());
 	}
 	else
 	{
-		file_command(file_cmd_favorite, dq[0].cFileName);
+		file_command_on_list(file_cmd_favorite, dq[0].cFileName);
 	}
 }
 
@@ -3120,3 +3422,61 @@ void CnFTDServerDlg::OnActivateApp(BOOL bActive, DWORD dwThreadID)
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
 }
 
+void CnFTDServerDlg::OnTreeContextMenuSend()
+{
+	m_srcSide = (GetFocus() == &m_tree_remote);
+	m_dstSide = !m_srcSide;
+
+	CSCTreeCtrl* ptree = (m_srcSide == SERVER_SIDE ? &m_tree_local : &m_tree_remote);
+
+	CString path = ptree->get_path();
+	path = convert_special_folder_to_real_path(path, &theApp.m_shell_imagelist, m_srcSide);
+
+	WIN32_FIND_DATA data;
+	ZeroMemory(&data, sizeof(data));
+	data.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+	_stprintf(data.cFileName, _T("%s"), path);
+
+	m_transfer_list.clear();
+	m_transfer_list.push_back(data);
+
+	//m_transfer_from은 전송하고자 하는 폴더의 parent folder로 지정해줘야 한다.
+	m_transfer_from = GetParentDirectory(path);
+
+	if (m_srcSide == SERVER_SIDE)
+	{
+		m_transfer_to = m_list_remote.get_path();
+	}
+	else
+	{
+		m_transfer_to = m_list_local.get_path();
+	}
+
+	TRACE(_T("m_srcSide = %d, send %d items from %s to %s\n"), m_srcSide, m_transfer_list.size(), m_transfer_from, m_transfer_to);
+	file_transfer();
+}
+
+void CnFTDServerDlg::OnTreeContextMenuFavorite()
+{
+	file_command_on_tree(file_cmd_favorite);
+}
+
+void CnFTDServerDlg::OnTreeContextMenuOpenExplorer()
+{
+	file_command_on_tree(file_cmd_open_explorer);
+}
+
+void CnFTDServerDlg::OnTreeContextMenuRefresh()
+{
+	file_command_on_tree(file_cmd_refresh);
+}
+
+void CnFTDServerDlg::OnTreeContextMenuNewFolder()
+{
+	file_command_on_tree(file_cmd_new_folder);
+}
+
+void CnFTDServerDlg::OnTreeContextMenuProperty()
+{
+	file_command_on_tree(file_cmd_property);
+}

@@ -59,6 +59,7 @@ enum FILE_COMMAND
 	file_cmd_open = 0,
 	file_cmd_open_explorer,
 	file_cmd_new_folder,
+	file_cmd_refresh,				//tree 또는 list를 refresh하면 둘은 항상 같이 refresh되어야 한다.
 	file_cmd_delete,
 	file_cmd_rename,
 	file_cmd_property,

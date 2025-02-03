@@ -603,11 +603,14 @@ bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_ti
 	}
 
 	//index ¼ö½Å
-	if (!m_sock.RecvExact((LPSTR)&index, sizeof(int), BLASTSOCK_BUFFER))
+	int new_index;
+	if (!m_sock.RecvExact((LPSTR)&new_index, sizeof(int), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-4 : %d"), GetLastError());
 		return FALSE;
 	}
+
+	*index = new_index;
 
 	return true;
 }

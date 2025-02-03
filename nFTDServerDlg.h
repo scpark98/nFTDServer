@@ -7,7 +7,6 @@
 #include "../../Common/colors.h"
 #include "../../Common/ResizeCtrl.h"
 #include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
-//#include "../../Common/CButton/SCSystemButtons/SCSystemButtons.h"
 #include "../../Common/CDialog/SCProgressDlg/SCProgressDlg.h"
 #include "../../Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
 #include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
@@ -99,20 +98,22 @@ public:
 	//열기(open), 이름변경(rename), 삭제(delete), 속성보기(property), 새 폴더 생성(new folder) 등의 파일명령은 파라미터만 다를 뿐이므로 하나의 함수로 통일한다.
 	//param0가 ""이면 현재 포커스를 가진 리스트에서 선택된 항목의 값으로 채워주고
 	//param1은 rename일 경우에만 유효하다.
-	bool				file_command(int cmd, CString param0 = _T(""), CString param1 = _T(""));
+	bool				file_command_on_list(int cmd, CString param0 = _T(""), CString param1 = _T(""));
+	bool				file_command_on_tree(int cmd, CString param0 = _T(""), CString param1 = _T(""));
 	//bool				file_command_on_favorite_list()
 
 	//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
 	void				refresh_selection_status(CVtListCtrlEx* plist);
 	void				refresh_disk_usage(bool is_remote_side);
 
-	//즐겨찾기 목록
+	//즐겨찾기 관련 명령
 	enum FAVORITE_CMD
 	{
 		favorite_delete = 0,
 		favorite_add,
 		favorite_find,
 	};
+	//favorite_delete(0), favorite_add, favorite_find
 	int					favorite_cmd(int cmd, int side, CString fullpath = _T(""));
 
 	//전송시작 버튼 또는 drag&drop으로 전송을 시작한다.
@@ -123,7 +124,8 @@ public:
 	void				add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DATA);
 
 	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
-	bool				is_transfer_enable(int srcSide);
+	bool				is_transfer_enable_for_list(int srcSide);
+	bool				is_transfer_enable_for_tree(int srcSide);
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
@@ -216,4 +218,10 @@ public:
 	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
 	afx_msg void OnActivateApp(BOOL bActive, DWORD dwThreadID);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnTreeContextMenuFavorite();
+	afx_msg void OnTreeContextMenuOpenExplorer();
+	afx_msg void OnTreeContextMenuRefresh();
+	afx_msg void OnTreeContextMenuNewFolder();
+	afx_msg void OnTreeContextMenuProperty();
+	afx_msg void OnTreeContextMenuSend();
 };

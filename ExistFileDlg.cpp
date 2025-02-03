@@ -97,23 +97,19 @@ BOOL CExistFileDlg::OnInitDialog()
 
 
 	m_radio_succeed.SetWindowText(_S(NFTD_IDS_CONTINUE));
-	m_radio_succeed.set_text_color(m_cr_text);
 	m_radio_succeed.set_back_color(m_cr_back, false);
 	m_radio_succeed.use_hover(false);
 
 	m_radio_overwrite.SetWindowText(_S(NFTD_IDS_OVERWRITE));
-	m_radio_overwrite.set_text_color(m_cr_text);
 	m_radio_overwrite.set_back_color(m_cr_back, false);
 	m_radio_overwrite.use_hover(false);
 
 	m_radio_skip.SetWindowText(_S(NFTD_IDS_PASS));
-	m_radio_skip.set_text_color(m_cr_text);
 	m_radio_skip.set_back_color(m_cr_back, false);
 	m_radio_skip.use_hover(false);
 
 	m_check_apply_all.SetWindowText(_S(NFTD_IDS_CHECK_ALL));
 	m_check_apply_all.SetCheck(theApp.GetProfileInt(_T("setting\\ExistFileDlg"), _T("apply all"), BST_CHECKED));
-	m_check_apply_all.set_text_color(m_cr_text);
 	m_check_apply_all.set_back_color(m_cr_back, false);
 	m_check_apply_all.use_hover(false);
 
