@@ -64,6 +64,8 @@ public:
 	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
+	LRESULT				on_message_CControlSplitter(WPARAM wParam, LPARAM lParam);
+	void				adjust_processing_progress_ctrl();
 
 	LRESULT				on_message(WPARAM wParam, LPARAM lParam);
 
@@ -224,4 +226,6 @@ public:
 	afx_msg void OnTreeContextMenuNewFolder();
 	afx_msg void OnTreeContextMenuProperty();
 	afx_msg void OnTreeContextMenuSend();
+	CSCSliderCtrl m_progress_local;
+	CSCSliderCtrl m_progress_remote;
 };

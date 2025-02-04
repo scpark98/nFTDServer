@@ -93,6 +93,8 @@ void CnFTDServerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_SLIDER_REMOTE_DISK_SPACE, m_slider_remote_disk_space);
 	DDX_Control(pDX, IDC_STATIC_LOCAL_DISK_SPACE, m_static_local_disk_space);
 	DDX_Control(pDX, IDC_STATIC_REMOTE_DISK_SPACE, m_static_remote_disk_space);
+	DDX_Control(pDX, IDC_PROGRESS_LOCAL, m_progress_local);
+	DDX_Control(pDX, IDC_PROGRESS_REMOTE, m_progress_remote);
 }
 
 BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
@@ -113,6 +115,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_REGISTERED_MESSAGE(Message_CPathCtrl, &CnFTDServerDlg::on_message_CPathCtrl)
 	ON_REGISTERED_MESSAGE(Message_CVtListCtrlEx, &CnFTDServerDlg::on_message_CVtListCtrlEx)
 	ON_REGISTERED_MESSAGE(Message_CSCTreeCtrl, &CnFTDServerDlg::on_message_CSCTreeCtrl)
+	ON_REGISTERED_MESSAGE(Message_CControlSplitter, &CnFTDServerDlg::on_message_CControlSplitter)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_LOCAL, &CnFTDServerDlg::OnTvnSelchangedTreeLocal)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_REMOTE, &CnFTDServerDlg::OnTvnSelchangedTreeRemote)
 	//ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMDblclkListRemote)
@@ -333,19 +336,33 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_button_remote_to_local.fit_to_image(false);
 	m_button_remote_to_local.set_back_color(m_cr_back, false);
 
+	m_progress_local.set_style(CSCSliderCtrl::style_progress);
+	m_progress_local.set_track_height(4);
+	m_progress_local.set_text_style(CSCSliderCtrl::text_style_none);
+	//m_progress_local.set_inactive_color(GRAY(232));
+	m_progress_local.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
+
+	m_progress_remote.set_style(CSCSliderCtrl::style_progress);
+	m_progress_remote.set_track_height(4);
+	m_progress_remote.set_text_style(CSCSliderCtrl::text_style_none);
+	//m_progress_remote.set_inactive_color(GRAY(232));
+	m_progress_remote.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
+
 	m_slider_local_disk_space.set_style(CSCSliderCtrl::style_progress);
+	m_slider_local_disk_space.set_track_height(10);
 	m_slider_local_disk_space.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
 	m_slider_local_disk_space.set_text_color(dimgray);
-	m_slider_local_disk_space.set_text_style(CSCSliderCtrl::text_style_user_defined);
+	m_slider_local_disk_space.set_text_style(CSCSliderCtrl::text_style_none);
 	m_slider_local_disk_space.draw_progress_border();
 	m_slider_local_disk_space.SetPos(0);
 	m_static_local_disk_space.set_back_color(m_cr_back);
 	m_static_local_disk_space.set_font_size(9);
 
 	m_slider_remote_disk_space.set_style(CSCSliderCtrl::style_progress);
+	m_slider_remote_disk_space.set_track_height(10);
 	m_slider_remote_disk_space.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
 	m_slider_remote_disk_space.set_text_color(dimgray);
-	m_slider_remote_disk_space.set_text_style(CSCSliderCtrl::text_style_user_defined);
+	m_slider_remote_disk_space.set_text_style(CSCSliderCtrl::text_style_none);
 	m_slider_remote_disk_space.draw_progress_border();
 	m_slider_remote_disk_space.SetPos(0);
 	m_static_remote_disk_space.set_back_color(m_cr_back);
@@ -802,18 +819,10 @@ void CnFTDServerDlg::OnSize(UINT nType, int cx, int cy)
 	CSCThemeDlg::OnSize(nType, cx, cy);
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
-	if (m_hWnd == NULL)
+	if (m_hWnd == NULL || !m_splitter_local_favorite.m_hWnd)
 		return;
 
-/*
-	if (m_sys_buttons.m_hWnd == NULL)
-		return;
-
-	CRect rc;
-	GetClientRect(rc);
-	m_sys_buttons.adjust(rc.top, rc.right);
-*/
-	//Invalidate();
+	adjust_processing_progress_ctrl();
 }
 
 void CnFTDServerDlg::thread_connect()
@@ -1061,9 +1070,9 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 
 	if (pMsg->pThis == &m_path_local)
 	{
-		TRACE(_T("on_message_pathctrl from m_path_local\n"));
 		if (pMsg->message == CPathCtrl::message_pathctrl_path_changed)
 		{
+			TRACE(_T("message_pathctrl_path_changed from m_path_local. path = %s\n"), pMsg->cur_path);
 			bool* res = (bool*)lParam;
 
 			//내 PC, 바탕 화면 등과 같은 경로일 경우는 PathFileExists()로 검사가 안되므로 다른 방법으로 유효한 패스인지 검사해야 한다.
@@ -1084,9 +1093,9 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 	}
 	else if (pMsg->pThis == &m_path_remote)
 	{
-		TRACE(_T("on_message_pathctrl from m_path_remote\n"));
 		if (pMsg->message == CPathCtrl::message_pathctrl_path_changed)
 		{
+			TRACE(_T("message_pathctrl_path_changed from m_path_remote. path = %s\n"), pMsg->cur_path);
 			bool* res = (bool*)lParam;
 
 			if (change_directory(pMsg->cur_path, CLIENT_SIDE))
@@ -1301,6 +1310,22 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		CMessageDlg dlg(msg, MB_OK);
 		dlg.DoModal();
 	}
+	else if (msg->message == CVtListCtrlEx::message_list_processing)
+	{
+		CSCSliderCtrl* slider = (msg->pThis == &m_list_local ? &m_progress_local : &m_progress_remote);
+		if ((int)lParam < 0)
+		{
+			slider->ShowWindow(SW_SHOW);
+			slider->SetRange(0, msg->reserved);
+		}
+		else
+		{
+			TRACE(_T("list total = %d, cur = %d\n"), msg->reserved, (int)lParam);
+			slider->SetPos((int)lParam);
+			if (msg->reserved == (int)lParam)
+				slider->ShowWindow(SW_HIDE);
+		}
+	}
 
 	return 0;
 }
@@ -1375,6 +1400,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_folder_list)
 	{
+		::SetCursor(theApp.LoadStandardCursor(IDC_WAIT));
 		EnableWindow(FALSE);
 		m_tree_remote.SetRedraw(FALSE);
 
@@ -1404,8 +1430,14 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				//"C:\\" 인 경우와 "C:\\Windows" 인 경우는 처리가 달라야 한다.
 				int folder_length = path.GetLength() + (path.Right(1) == '\\' ? 0 : 1);
 
+				m_progress_remote.SetRange(0, dq.size());
+				m_progress_remote.SetPos(0);
+				m_progress_remote.ShowWindow(SW_SHOW);
+
 				for (i = 0; i < dq.size(); i++)
 				{
+					m_progress_remote.SetPos(i + 1);
+
 					TRACE(_T("add folder %d = %s\n"), i, dq[i].cFileName);
 					bool has_child = false;
 
@@ -1429,6 +1461,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 					_tcscpy(dq[i].cFileName, p);
 					m_tree_remote.insert_folder(m_tree_remote.get_expanding_item(), &dq[i], has_child);
 				}
+
+				m_progress_remote.ShowWindow(SW_HIDE);
 			}
 		}
 
@@ -1437,6 +1471,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		m_tree_remote.SetRedraw(TRUE);
 		EnableWindow(TRUE);
+		::SetCursor(theApp.LoadStandardCursor(IDC_ARROW));
 	}
 	else if (msg->message == CSCTreeCtrl::message_path_changed)
 	{
@@ -1460,30 +1495,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	{
 		bool* res = (bool*)lParam;
 		*res = m_ServerManager.m_socket.create_directory(msg->param0);
-		/*
-		bool* res = (bool*)lParam;
-
-		param0 = convert_special_folder_to_real_path(m_list_remote.get_path(), &theApp.m_shell_imagelist, CLIENT_SIDE);
-		int new_folder_index = m_list_remote.get_file_index(param0, _S(IDS_NEW_FOLDER));
-		if (new_folder_index == 1)
-			param0.Format(_T("%s\\%s"), param0, _S(IDS_NEW_FOLDER));
-		else if (new_folder_index > 1)
-			param0.Format(_T("%s\\%s (%d)"), param0, _S(IDS_NEW_FOLDER), new_folder_index);
-		else
-			break;
-		res = m_ServerManager.m_socket.file_command(file_cmd_new_folder, param0);
-		if (res)
-		{
-			int index = m_list_remote.insert_folder(-1, get_part(param0, fn_name));
-			if (index < 0)
-			{
-				res = false;
-				break;
-			}
-			m_list_remote.select_item(index, true, true, true);
-			m_list_remote.edit_item(index, 0);
-		}
-		*/
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_rename)
 	{
@@ -1528,10 +1539,43 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			dlg.DoModal();
 		}
 	}
+	else if (msg->message == CSCTreeCtrl::message_tree_processing)
+	{
+		CSCSliderCtrl* slider = (msg->pThis == &m_tree_local ? &m_progress_local : &m_progress_remote);
+		if ((int)lParam < 0)
+		{
+			slider->ShowWindow(SW_SHOW);
+			slider->SetRange(0, msg->reserved);
+		}
+		else
+		{
+			TRACE(_T("total = %d, cur = %d\n"), msg->reserved, (int)lParam);
+			slider->SetPos((int)lParam);
+			if (msg->reserved == (int)lParam)
+				slider->ShowWindow(SW_HIDE);
+		}
+	}
 
 	return 0;
 }
 
+LRESULT	CnFTDServerDlg::on_message_CControlSplitter(WPARAM wParam, LPARAM lParam)
+{
+	adjust_processing_progress_ctrl();
+	return 0;
+}
+
+void CnFTDServerDlg::adjust_processing_progress_ctrl()
+{
+	CRect r;
+	m_splitter_local_favorite.GetWindowRect(r);
+	ScreenToClient(r);
+	m_progress_local.MoveWindow(r);
+
+	m_splitter_remote_favorite.GetWindowRect(r);
+	ScreenToClient(r);
+	m_progress_remote.MoveWindow(r);
+}
 
 void CnFTDServerDlg::OnTvnSelchangedTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
@@ -1660,6 +1704,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 	BOOL result = FALSE;
 
 	EnableWindow(FALSE);
+	::SetCursor(theApp.LoadStandardCursor(IDC_WAIT));
 
 	if (dwSide == SERVER_SIDE)
 	{
@@ -1702,6 +1747,10 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			//m_ServerManager.refresh_list(&dq, false);
 			m_ServerManager.get_filelist(path, &dq, false);
 
+			m_progress_remote.SetRange(0, dq.size());
+			m_progress_remote.SetPos(0);
+			m_progress_remote.ShowWindow(SW_SHOW);
+
 			CString filename;
 			CString fullpath;
 			//bool is_disk_list = (path == theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES));
@@ -1731,6 +1780,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 
 			refresh_selection_status(&m_list_remote);
 			refresh_disk_usage(true);
+
+			m_progress_remote.ShowWindow(SW_HIDE);
 		}
 
 		//LeaveCriticalSection(&g_cs);
@@ -1739,6 +1790,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 	}
 
 	EnableWindow(TRUE);
+	::SetCursor(theApp.LoadStandardCursor(IDC_ARROW));
 
 	return result;
 }
@@ -2451,6 +2503,13 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 	else if (nIDEvent == timer_init_progress_and_connect)
 	{
 		KillTimer(timer_init_progress_and_connect);
+
+		//tree에서 폴더를 펼칠 때 특정 폴더들은 그 갯수가 몇천개를 넘는 경우도 있는데
+		//이를 프로그래스로 알려주는 컨트롤은 CResizeCtrl로 arrange하지 않고 수동으로 adjust하도록 되어 있다.
+		//트리와 즐겨찾기 컨트롤의 ControlSplitter의 위치를 공통으로 사용하는데
+		//프로그램 시작 시 그 위치가 정렬되지 않은 상태이므로 여기서 그 위치를 맞춰주기 위해 호출한다.
+		adjust_processing_progress_ctrl();
+
 
 		init_progressDlg();
 

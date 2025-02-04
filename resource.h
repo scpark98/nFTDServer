@@ -147,6 +147,8 @@
 #define IDC_SLIDER_LOCAL_DISK_SPACE     1031
 #define IDC_SLIDER_REMOTE_DISK_SPACE    1032
 #define IDC_STATIC_COPY                 1032
+#define IDC_PROGRESS_LOCAL              1033
+#define IDC_PROGRESS_REMOTE             1034
 #define NFTD_IDS_MSGBOX_TITLE           2032
 #define NFTD_IDS_MSGBOX_RUN_1           2033
 #define NFTD_IDS_MSGBOX_RUN_2           2034
@@ -225,7 +227,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        169
 #define _APS_NEXT_COMMAND_VALUE         32799
-#define _APS_NEXT_CONTROL_VALUE         1033
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
