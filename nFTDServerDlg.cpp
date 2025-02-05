@@ -665,6 +665,7 @@ void CnFTDServerDlg::OnWindowPosChanged(WINDOWPOS* lpwndpos)
 	CSCThemeDlg::OnWindowPosChanged(lpwndpos);
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+	adjust_processing_progress_ctrl();
 	SaveWindowPosition(&theApp, this);
 }
 
@@ -1076,7 +1077,7 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			bool* res = (bool*)lParam;
 
 			//내 PC, 바탕 화면 등과 같은 경로일 경우는 PathFileExists()로 검사가 안되므로 다른 방법으로 유효한 패스인지 검사해야 한다.
-			if (true)//PathFileExists(pMsg->cur_path))
+			if (PathFileExists(pMsg->cur_path))
 			{
 				if (res)
 					*res = true;
@@ -1086,6 +1087,8 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			}
 			else
 			{
+				CMessageDlg dlg(_T("\'") + pMsg->cur_path + _T("\'") + _S(IDS_NOT_EXIST_PATH));
+				dlg.DoModal();
 				if (res)
 					*res = false;
 			}
@@ -1109,6 +1112,9 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			}
 			else
 			{
+				CMessageDlg dlg(_T("\'") + pMsg->cur_path + _T("\'") + _S(IDS_NOT_EXIST_PATH));
+				dlg.DoModal();
+
 				if (res)
 					*res = false;
 			}
@@ -1284,6 +1290,16 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 	{
 		ULARGE_INTEGER* ul_total_space = (ULARGE_INTEGER*)lParam;
 		m_ServerManager.m_socket.TotalSpace(ul_total_space, msg->param0[0]);
+	}
+	else if (msg->message == CVtListCtrlEx::message_request_new_folder)
+	{
+		bool* res = (bool*)lParam;
+		*res = m_ServerManager.m_socket.create_directory(msg->param0);
+	}
+	else if (msg->message == CVtListCtrlEx::message_request_new_folder_index)
+	{
+		int* index = (int*)lParam;
+		bool res = m_ServerManager.m_socket.get_new_folder_index(msg->param0, msg->param1, index);
 	}
 	else if (msg->message == CVtListCtrlEx::message_request_rename)
 	{
@@ -1478,12 +1494,12 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		if (msg->pThis == &m_tree_local)
 		{
 			m_path_local.set_path(m_tree_local.get_path());
-			m_list_local.set_path(m_tree_local.get_path());
+			m_list_local.set_path(m_tree_local.get_path(), true);
 		}
 		else if (msg->pThis == &m_tree_remote)
 		{
 			m_path_remote.set_path(m_tree_remote.get_path());
-			m_list_remote.set_path(m_tree_remote.get_path());
+			m_list_remote.set_path(m_tree_remote.get_path(), true);
 		}
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_new_folder_index)
@@ -1783,10 +1799,6 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 
 			m_progress_remote.ShowWindow(SW_HIDE);
 		}
-
-		//LeaveCriticalSection(&g_cs);
-
-		result = TRUE;
 	}
 
 	EnableWindow(TRUE);
@@ -2621,7 +2633,17 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 					if (!new_folder.IsEmpty())
 					{
 						res = true;
-						m_tree_local.add_new_item(m_tree_local.GetSelectedItem(), new_folder);
+						//refresh하면 간단하지만 깜빡임이 발생한다.
+						//m_tree_local.refresh(m_tree_local.GetSelectedItem());
+
+						//새 항목이 추가되면 expand시켜준다.
+						UINT state = m_tree_local.GetItemState(m_tree_local.GetSelectedItem(), TVIS_EXPANDED);
+						if (!(state & TVIS_EXPANDED))
+							m_tree_local.Expand(m_tree_local.GetSelectedItem(), TVE_EXPAND);
+						
+						//expand 상태가 아니거나 처음부터 child가 없던 node라면 노드를 추가시킨다.
+						if ((state & TVIS_EXPANDED) || m_tree_local.GetChildItem(m_tree_local.GetSelectedItem()) == NULL)
+							m_tree_local.add_new_item(m_tree_local.GetSelectedItem(), new_folder);
 					}
 					else
 					{
@@ -2653,7 +2675,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 						if (res)
 							deleted_count++;
 
-						Wait(10);
+						Wait(1);
 					}
 
 					m_toast_popup.ShowWindow(SW_HIDE);
@@ -2727,27 +2749,18 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				break;
 			case file_cmd_new_folder:
 			{
-				param0 = convert_special_folder_to_real_path(m_list_remote.get_path(), &theApp.m_shell_imagelist, CLIENT_SIDE);
-				int new_folder_index = m_list_remote.get_file_index(param0, _S(IDS_NEW_FOLDER));
-				if (new_folder_index == 1)
-					param0.Format(_T("%s\\%s"), param0, _S(IDS_NEW_FOLDER));
-				else if (new_folder_index > 1)
-					param0.Format(_T("%s\\%s (%d)"), param0, _S(IDS_NEW_FOLDER), new_folder_index);
-				else
-					break;
-				res = m_ServerManager.m_socket.file_command(file_cmd_new_folder, param0);
-				if (res)
-				{
-					int index = m_list_remote.insert_folder(-1, get_part(param0, fn_name));
-					if (index < 0)
-					{
-						res = false;
-						break;
-					}
-					m_list_remote.select_item(index, true, true, true);
-					m_list_remote.edit_item(index, 0);
+				CString new_folder = plist->new_folder(_S(IDS_NEW_FOLDER));
 
-					m_tree_remote.add_new_item(m_tree_remote.GetSelectedItem(), get_part(param0, fn_name));
+				if (!new_folder.IsEmpty())
+				{
+					//새 항목이 추가되면 expand시켜준다.
+					UINT state = m_tree_remote.GetItemState(m_tree_remote.GetSelectedItem(), TVIS_EXPANDED);
+					if (!(state & TVIS_EXPANDED))
+						m_tree_remote.Expand(m_tree_remote.GetSelectedItem(), TVE_EXPAND);
+
+					//expand 상태가 아니거나 처음부터 child가 없던 node라면 노드를 추가시킨다.
+					if ((state & TVIS_EXPANDED) || m_tree_remote.GetChildItem(m_tree_remote.GetSelectedItem()) == NULL)
+						m_tree_remote.add_new_item(m_tree_remote.GetSelectedItem(), new_folder);
 				}
 			}
 			break;
@@ -2778,7 +2791,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 							deleted_count++;
 						}
 
-						Wait(10);
+						Wait(1);
 					}
 
 					m_toast_popup.ShowWindow(SW_HIDE);
@@ -2874,7 +2887,8 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
 			case file_cmd_new_folder :
-				ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				param0 = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				plist->insert_folder(-1, param0, false);
 				break;
 			case file_cmd_refresh :
 				ptree->refresh(ptree->GetSelectedItem());
@@ -2909,7 +2923,8 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_new_folder:
-				ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				param0 = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				plist->insert_folder(-1, param0, true);
 				break;
 			case file_cmd_refresh:
 				ptree->refresh(ptree->GetSelectedItem());
@@ -2987,24 +3002,28 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 	for (auto item : dq)
 	{
 		if (item.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		{
 			folder_included = true;
-
-		ULARGE_INTEGER file_size;
-		file_size.LowPart = item.nFileSizeLow;
-		file_size.HighPart = item.nFileSizeHigh;
-		total_size.QuadPart += file_size.QuadPart;
+		}
+		else
+		{
+			ULARGE_INTEGER file_size;
+			file_size.LowPart = item.nFileSizeLow;
+			file_size.HighPart = item.nFileSizeHigh;
+			total_size.QuadPart += file_size.QuadPart;
+		}
 	}
 
 	if (dq.size())
 	{
 		if (folder_included)
-			str.Format(_T("%d%s     %d%s"), plist->size(), _S(IDS_ITEM_COUNT), dq.size(), _S(IDS_ITEM_SELECTED_COUNT));
+			str.Format(_T("%s%s     %s%s"), i2S(plist->size(), true), _S(IDS_ITEM_COUNT), i2S(dq.size(), true), _S(IDS_ITEM_SELECTED_COUNT));
 		else
-			str.Format(_T("%d%s     %d%s  %s"), plist->size(), _S(IDS_ITEM_COUNT), dq.size(), _S(IDS_ITEM_SELECTED_COUNT), get_size_str(total_size.QuadPart, -1, 2));
+			str.Format(_T("%s%s     %s%s  %s"), i2S(plist->size(), true), _S(IDS_ITEM_COUNT), i2S(dq.size(), true), _S(IDS_ITEM_SELECTED_COUNT), get_size_str(total_size.QuadPart, -1, 2));
 	}
 	else
 	{
-		str.Format(_T("%d%s"), plist->size(), _S(IDS_ITEM_COUNT));
+		str.Format(_T("%s%s"), i2S(plist->size(), true), _S(IDS_ITEM_COUNT));
 	}
 
 	if (plist == &m_list_local)
@@ -3125,7 +3144,8 @@ void CnFTDServerDlg::OnLvnItemChangedListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	//if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
 	
 	//ItemChanged가 발생할때마다 바로 status를 변경하면 딜레이가 심하다. 타이머로 처리한다.
-	SetTimer(timer_refresh_selection_status, 100, NULL);
+	TRACE(_T("OnLvnItemChangedListLocal\n"));
+	SetTimer(timer_refresh_selection_status, 50, NULL);
 	//refresh_selection_status(&m_list_local);
 
 	*pResult = 0;
@@ -3141,7 +3161,8 @@ void CnFTDServerDlg::OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	//if ((pNMLV->uChanged & LVIF_STATE) && (pNMLV->uNewState & LVIS_SELECTED))
 		
 	//ItemChanged가 발생할때마다 바로 status를 변경하면 딜레이가 심하다. 타이머로 처리한다.
-	SetTimer(timer_refresh_selection_status, 100, NULL); 
+	TRACE(_T("OnLvnItemChangedListRemote\n"));
+	SetTimer(timer_refresh_selection_status, 50, NULL); 
 	//refresh_selection_status(&m_list_remote);
 
 	*pResult = 0;
@@ -3427,17 +3448,23 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	*pResult = 0;
 
 	int item = m_list_local.get_recent_edit_item();
 	int subitem = m_list_local.get_recent_edit_subitem();
 
 	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
+	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
+	//편집중에 트리의 한 폴더를 클릭하여 편집모드가 종료되면 새로 클릭된 폴더의 파일/폴더목록이 표시될테고
+	//이 때 위에서 구한 item, subItem은 이전 리스트에서 기억된 값이므로 의미가 없어진다.
+	//우선 인덱스를 검사하여 범위밖이면 그냥 리턴한다.
+	if (item < 0 || item >= m_list_local.size())
+		return;
+
 	if (m_list_local.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
 	{
 		m_tree_local.rename_child_item(m_tree_local.GetSelectedItem(), m_list_local.get_edit_old_text(), m_list_local.get_edit_new_text());
 	}
-
-	*pResult = 0;
 }
 
 
@@ -3445,17 +3472,22 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 {
 	NMLVDISPINFO* pDispInfo = reinterpret_cast<NMLVDISPINFO*>(pNMHDR);
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	*pResult = 0;
 
 	int item = m_list_remote.get_recent_edit_item();
 	int subitem = m_list_remote.get_recent_edit_subitem();
 
 	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
+	//편집중에 트리의 한 폴더를 클릭하여 편집모드가 종료되면 새로 클릭된 폴더의 파일/폴더목록이 표시될테고
+	//이 때 위에서 구한 item, subItem은 이전 리스트에서 기억된 값이므로 의미가 없어진다.
+	//우선 인덱스를 검사하여 범위밖이면 그냥 리턴한다.
+	if (item < 0 || item >= m_list_remote.size())
+		return;
+
 	if (m_list_remote.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
 	{
 		m_tree_remote.rename_child_item(m_tree_remote.GetSelectedItem(), m_list_remote.get_edit_old_text(), m_list_remote.get_edit_new_text());
 	}
-
-	*pResult = 0;
 }
 
 

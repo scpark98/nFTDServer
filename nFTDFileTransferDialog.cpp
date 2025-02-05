@@ -366,16 +366,21 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_pServerManager->m_DataSocket.SetFileWriteMode(WRITE_UNKNOWN);
 
 
+	//추후 양방향 파일목록이 섞이도록 수정할 경우는 for문 안으로 들어가야 한다.
+	m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
+	m_static_copy.play_animation();
+
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
 		res = transfer_result_fail;
 
-		m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
-
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
 		if (m_thread_transfer_started == false)
+		{
+			m_static_copy.stop_animation();
 			break;
+		}
 
 		//현재 전송중인 파일명 표시
 		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_name));
