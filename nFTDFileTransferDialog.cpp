@@ -85,9 +85,9 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
-
-	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY, Gdiplus::Color::White);
+	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY);
 	m_static_copy.fit_to_back_image(false);
+	//m_static_copy.play_animation();
 
 	m_static_message.set_back_color(m_cr_back);
 
@@ -345,6 +345,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//CString to;
 	CString msg;
 	WIN32_FIND_DATA to;
+	CString start_time;
+	CString end_time;
 
 	//데이터 전송을 위한 소켓을 연결하고 (전송이 모두 완료되면 DataClose())
 	//지금은 하나의 소켓을 연결하고 모든 파일들을 순차적으로 전송하지만
@@ -366,7 +368,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_pServerManager->m_DataSocket.SetFileWriteMode(WRITE_UNKNOWN);
 
 
-	//추후 양방향 파일목록이 섞이도록 수정할 경우는 for문 안으로 들어가야 한다.
+	//추후 양방향 파일목록이 섞이도록 수정할 경우는 아래 for문 안으로 들어가야 한다.
 	m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
 	m_static_copy.play_animation();
 
@@ -440,14 +442,16 @@ void CnFTDFileTransferDialog::thread_transfer()
 				m_list.set_text(i, col_status, _S(IDS_SRC_DST_SAME_PATH));
 				logWrite(_T("fullpath가 동일하므로 스킵."));
 
-				ULARGE_INTEGER filesize;
-				filesize.HighPart = m_filelist[i].nFileSizeHigh;
-				filesize.LowPart = m_filelist[i].nFileSizeLow;
+				//ULARGE_INTEGER filesize;
+				//filesize.HighPart = m_filelist[i].nFileSizeHigh;
+				//filesize.LowPart = m_filelist[i].nFileSizeLow;
 				m_ProgressData.ulReceivedSize.QuadPart += filesize.QuadPart;
 				m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
 					get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
 				continue;
 			}
+
+			start_time = get_cur_datetime_str(2);
 
 			//받기 전에 리스트는 해당 폴더로 자동 변경되도록? 너무 산만할 듯 하다.
 			//송신
@@ -459,6 +463,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 			{
 				res = m_pServerManager->m_DataSocket.recv_file(this, i, m_filelist[i], to, m_ProgressData);
 			}
+
+			end_time = get_cur_datetime_str(2);
 
 			switch (res)
 			{
@@ -480,7 +486,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 					break;
 				default :
 					//전송 완료 후 창 닫기 옵션이 true라고 해도 fail이 1건이라도 발생하면 창을 닫지 않아야만
-					//사용자가 이를 인지할 수 있다.
+					//사용자가 fail 내용을 인지할 수 있도록 해야 한다.
 					m_auto_close = false;
 					logWriteE(_T("fail."));
 					m_list.set_text(i, col_status, _T("fail"));
@@ -488,11 +494,15 @@ void CnFTDFileTransferDialog::thread_transfer()
 			}
 		}
 
-		//전송이 완료되면 리스트를 새로고침하거나
-		//해당 항목을 수동으로 리스트에 추가하고 선택상태로 표시, 스크롤되게 보여줘야 한다.
-		if ((res == transfer_result_success || res == transfer_result_overwrite) && insert_item_after_transfer_success)
+		if ((res == transfer_result_success || res == transfer_result_overwrite))
 		{
-			((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->add_transfered_file_to_dst_list(m_dstSide, to);
+			//전송이 완료되면 리스트를 새로고침하거나
+			//해당 항목을 수동으로 리스트에 추가하고 선택상태로 표시, 스크롤되게 보여줘야 한다.
+			if (insert_item_after_transfer_success)
+				((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->add_transfered_file_to_dst_list(m_dstSide, to);
+
+			//또한 파일전송 히스토리에도 기록한다.
+			m_pServerManager->request_file_transfer_history(get_part(m_filelist[i].cFileName, fn_name), i2S(filesize.QuadPart), m_dstSide == SERVER_SIDE, start_time, end_time);
 		}
 	}
 
@@ -503,7 +513,6 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 	TRACE(_T("exit thread_transfer()\n"));
 }
-
 
 void CnFTDFileTransferDialog::OnLButtonDown(UINT nFlags, CPoint point)
 {

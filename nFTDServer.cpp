@@ -93,6 +93,8 @@ BOOL CnFTDServerApp::InitInstance()
 	crypt.GenerateRSAKey(1024, g_rsakey.pvk, g_rsakey.pbk);
 
 
+	m_config_ini.SetFileName(get_exe_directory() + _T("\\config.ini"));
+
 	CnFTDServerDlg dlg;
 	m_pMainWnd = &dlg;
 	INT_PTR nResponse = dlg.DoModal();

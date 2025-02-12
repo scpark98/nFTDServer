@@ -1123,3 +1123,58 @@ CString CnFTDServerManager::GetRemoteDocumentPath()
 	return _T("");
 }
 
+bool CnFTDServerManager::request_file_transfer_history(CString filename, CString filesize, int is_SERVER_SIDE, CString start_time, CString end_time)
+{
+	CString ip = theApp.m_config_ini[_T("SERVER")][_T("WIP")];
+	int port = theApp.m_config_ini[_T("SERVER")][_T("WPORT")];
+
+	CRequestUrlParams	param(ip, port, _T(""), _T("PUT"));
+
+	//1.0에서는 P2P일때는 url이 다르지만 3.0에서는 request는 성공하지만 DB에는 기록되지 않는다. 우선 둘 다 AP2P 모드로 강제하여 기록한다.
+	if (true)//g_FT_mode == FT_MODE_AP2P)
+	{
+#ifdef LMM_SERVICE
+		param.sub_url.Format(_T("/api/v1.0/linkmemine/PutLmmFileHistoryInput2"));
+		param.body.Format(_T("{\"device_id\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d, \"company_fk\":\"%s\"}"),
+			m_strDeviceID, m_strManagerID, m_strViewerPublicIP, m_strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE, m_strCompanyKey);
+#else
+		strURL.Format(_T("/api/v1.0/optimal/PutOptimalFileHistoryInput"));
+		strParameter.Format(_T("{\"device_id\":\"%s\", \"mgrid\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
+			strDeviceID, strManagerID, start_time, end_time, filename, filesize, is_SERVER_SIDE);
+#endif
+	}
+	else
+	{
+#ifdef LMM_SERVICE
+		//원래 1.0의 파일전송 소스에는 PutLmmFileHistoryP2PInput로 되어있으나 기록되지 않고 있다. .netAPI라서 소스를 살펴봐야 하나
+		//param.sub_url.Format(_T("/api/v1.0/linkmemine/PutLmmFileHistoryP2PInput"));
+		param.sub_url.Format(_T("/api/v1.0/linkmemine/PutLmmFileHistoryInput2"));
+		param.body.Format(_T("{\"device_id\":\"%s\", \"host_pub_ip\":\"%s\", \"host_pri_ip\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
+			m_strDeviceID, m_strDeviceIP, m_strDeviceIP, m_strManagerID, m_strViewerPublicIP, m_strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE);
+#else
+		strURL.Format(_T("/api/v1.0/optimal/PutOptimalFileHistoryInput2"));
+		strParameter.Format(_T("{\"device_id\":\"%s\", \"host_pub_ip\":\"%s\", \"host_pri_ip\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
+			strDeviceID, strDeviceIP, strDeviceIP, strManagerID, strViewerPublicIP, strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE);
+#endif
+	}
+
+	CString tokenStr;
+	tokenStr.Format(_T("LMM_Token: %s\r\n"), m_strToken);
+
+	param.headers.push_back(tokenStr);
+
+	request_url(&param);
+	logWrite(_T("full_url = %s, body = %s, status = %d, result = %s"), param.full_url, param.body, param.status, param.result);
+
+	if (param.status != HTTP_STATUS_OK)
+	{
+		logWriteE(_T("fail to request."));
+		return false;
+	}
+	else
+	{
+		logWrite(_T("request success."));
+	}
+
+	return true;
+}

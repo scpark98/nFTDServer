@@ -52,6 +52,14 @@ public:
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
+	//20250212 scpark
+	//파일전송 히스토리를 저장하려고 보니 기존 코드는 .NetAPI로 작성되어 있고
+	//.Net 서버주소와 포트를 얻어오는 코드가 존재하지 않는다. 얻어와서 config.ini에 기록한다.
+	//=> ManualLauncher.exe가 실행되면서 config.ini에 이 주소를 기록했는데
+	//ManualLauncher.exe를 리뉴얼하면서 해당 코드가 누락되어 있었음. LIP, WIP모두 기록되도록 수정했으므로
+	//아래 함수는 불필요함.
+	//bool				get_server_info();
+
 	void				init_treectrl();
 	void				init_listctrl();
 	void				init_pathctrl();

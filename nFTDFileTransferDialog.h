@@ -33,7 +33,6 @@ public:
 	BOOL	FileTransferInitalize(CnFTDServerManager* pServerManager, std::deque<WIN32_FIND_DATA> *filelist,
 								  ULARGE_INTEGER* pulRemainDiskSpace, int srcSide, int dstSide, CString from, CString to, BOOL isAutoClose, LPCTSTR lpszStartPath = NULL);
 
-
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_FILETRANSFER };

@@ -57,6 +57,8 @@ public:
 	//BOOL	FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath);
 	BOOL	FileTransfer(HWND hWnd, CVtListCtrlEx& XList, INT iIndex, LPCTSTR lpFrom, LPCTSTR lpTo, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, DWORD dwSide);
 
+	bool	request_file_transfer_history(CString filename, CString filesize, int is_SERVER_SIDE, CString start_time, CString end_time);
+
 	int		m_is_server_side = SERVER_SIDE;
 
 	CString m_strServerIP;
