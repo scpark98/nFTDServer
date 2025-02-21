@@ -312,7 +312,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	*/
 
 	//이 코드를 넣어야 작업표시줄에서 클릭하여 minimize, restore된다.
-	//작업표시줄에서 해당 앱을 shift+우클릭하여 SYSMENU를 표시할 수 있다.
+	//작업표시줄에서 해당 앱을 shift+우클릭하여 lagacy SYSMENU를 표시할 수 있다.
 	//또한 CResizeCtrl을 이용하면 resize할 때 모든 컨트롤들의 레이아웃을 자동으로 맞춰주는데
 	//아래 코드를 사용하지 않으면 타이틀바가 없는 dlg는 상단에 흰색 여백 공간이 생기는 부작용이 생긴다.
 	//resizable dlg이므로 WS_THICKFRAME을 넣어주고 그래야만 윈도우 기본 shadow가 표시된다.(CWndShadow 불필요)
@@ -329,12 +329,15 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_static_remote.set_text(_S(NFTD_IDS_REMOTE_PC));
 
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
-	m_button_local_to_remote.fit_to_image(false);
+	//m_button_local_to_remote.fit_to_image(false);
 	m_button_local_to_remote.set_back_color(m_cr_back, false);
+	m_button_local_to_remote.draw_shadow();
+
 
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
-	m_button_remote_to_local.fit_to_image(false);
+	//m_button_remote_to_local.fit_to_image(false);
 	m_button_remote_to_local.set_back_color(m_cr_back, false);
+	m_button_remote_to_local.draw_shadow();
 
 	m_progress_local.set_style(CSCSliderCtrl::style_progress);
 	m_progress_local.set_track_height(4);
@@ -436,7 +439,6 @@ void CnFTDServerDlg::init_listctrl()
 	m_list_local.set_as_shell_listctrl(&theApp.m_shell_imagelist, true);
 	m_list_local.set_use_drag_and_drop(true);
 	m_list_local.load_column_width(&theApp, _T("list local"));
-	//m_list_local.set_path(_T("d:\\"));
 	m_list_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	auto drive_list = theApp.m_shell_imagelist.m_volume[0].get_drive_list();
@@ -449,7 +451,6 @@ void CnFTDServerDlg::init_listctrl()
 void CnFTDServerDlg::init_pathctrl()
 {
 	m_path_local.set_shell_imagelist(&theApp.m_shell_imagelist, true);
-	//m_path_local.back_color(Gdiplus::Color::Bisque);
 }
 /*
 void CnFTDServerDlg::init_shadow()
@@ -576,7 +577,7 @@ void CnFTDServerDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 	else
 	{
-		UINT id = (nID & 0xFFF0);
+		//UINT id = (nID & 0xFFF0);
 
 		CSCThemeDlg::OnSysCommand(nID, lParam);
 	}
@@ -665,7 +666,16 @@ void CnFTDServerDlg::OnWindowPosChanged(WINDOWPOS* lpwndpos)
 	CSCThemeDlg::OnWindowPosChanged(lpwndpos);
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+
+	//특정 파일이나 폴더가 많을 경우 tree와 favorite 컨트롤 사이에 동적 progress로 표시하는데
+	//윈도우 위치가 옮겨질 때 해당 컨트롤들도 따라와야 하므로 호출해준다.
 	adjust_processing_progress_ctrl();
+
+	//타이틀바를 잡고 일부분이 모니터 밖으로 나가도록 드래그 한 후 다시 안으로 들어오면 타이틀바 영역이 깨지는 현상이 있다.
+	//이를 보정해주기 위한 타이머
+	SetTimer(timer_refresh_title_area, 1, NULL);
+
+	//레지스트리에 현재 위치를 저장한 후 다시 프로그램이 시작될 때 위치 복원을 위해 저장
 	SaveWindowPosition(&theApp, this);
 }
 
@@ -3490,7 +3500,6 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 	}
 }
 
-
 void CnFTDServerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 {
 	CSCThemeDlg::OnActivate(nState, pWndOther, bMinimized);
@@ -3499,9 +3508,10 @@ void CnFTDServerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)
 	//TRACE(_T("nState = %d\n"), nState);
 
 	//deactivate 될 때 타이틀바의 체크박스와 m_sys_buttons에 잔상이 발생하여 이를 Invalidate()하도록 넣은 코드.
+	//이를 CSCThemeDlg의 OnTimer()에서 처리하려 했으나 CnFTDServerDlg의 OnTimer()로 넘어오므로 우선 main에서 처리함.
 	if (nState == 0)
 	{
-		SetTimer(timer_refresh_title_area, 10, NULL);	//이 타이머는 왜 동작하지 않나...
+		SetTimer(timer_refresh_title_area, 1, NULL);
 	}
 }
 

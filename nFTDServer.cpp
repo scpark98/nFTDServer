@@ -86,7 +86,7 @@ BOOL CnFTDServerApp::InitInstance()
 	SocketsInitializer socketsInitializer;
 
 	//shellimagelist를 초기화 한 후 트리, 리스트에서 공통으로 사용한다.
-	m_shell_imagelist.Initialize();
+	//m_shell_imagelist.Initialize();
 
 	// rsa 키 생성
 	neturoCrypto crypt;
