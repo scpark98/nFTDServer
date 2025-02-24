@@ -1303,7 +1303,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 	}
 
-	//0byte 파일일 경우는 아래의 do~while을 들어가지 않아야 한다.
+	//0byte 파일일 경우는 아래의 do ~ while을 들어가지 않아야 한다.
 	if (filesize.QuadPart == 0)
 	{
 		logWriteE(_T("0 byte file. just return."));
@@ -1317,14 +1317,14 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 	DWORD		dwBytesRead;
 	LPSTR		packet = new CHAR[BUFFER_SIZE];
-	int			nCompareSpeed = 0;
+	int			nCompareSpeed = GetPrivateProfileInt(_T("FILE"), _T("SPEED"), 0, get_exe_directory() + _T("\\config.ini"));
 	int			loop = 0;
 	long		t0 = clock(), t1 = 0;
 
 	if (g_FT_mode != FT_MODE_AP2P)
 		nCompareSpeed = 0;
 
-	//logWrite(_T("nCompareSpeed = %d"), nCompareSpeed);
+	logWrite(_T("nCompareSpeed = %d"), nCompareSpeed);
 
 	do
 	{
@@ -1368,7 +1368,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//}
 		//else
 		{
-			// 20170404 : 파일전송 도중 파일길이 늘어나면 파일 섞일 가능성이 있다.
+			// 20170404 : 파일전송 도중 파일 길이 늘어나면 파일 섞일 가능성이 있다.
 			//            사전에 약속한길이만큼만 보내준다.
 			ULARGE_INTEGER remainSize;
 			remainSize.QuadPart = filesize.QuadPart - sent_size;
@@ -1394,18 +1394,23 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//속도가 느린 경우는 n번마다 표시해주는 것이 좋다. n은?
 		//빠를 경우는 버퍼를 크게 잡아도 문제없으나
 		//느릴 경우는 이러한 부작용이 생긴다.
-		if ((loop % 10 == 1))// || (dwBytesRead < BUFFER_SIZE))
+		if (true)//(loop % 10 == 1))// || (dwBytesRead < BUFFER_SIZE))
 		{
 			t1 = clock();
 
-			double Bps = 1.0;
-			if (t1 - t0 > 100)
+			double real_speed = 1.0;
+			//if (t1 - t0 > 100)
 			{
-				Bps = double(sent_size) / double(t1 - t0) * 1000.0;
+				real_speed = double(sent_size) / double(t1 - t0) * 1000.0;
 
-				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
+				//보낸 크기가 제한 크기보다 큰 비율에서 전송에 걸린 시간을 빼면 그 값이 인위적인 딜레이 ms임. 그 값이 0보다 작다면 딜레이 없음.
+				if ((nCompareSpeed > 0) && (real_speed > nCompareSpeed))
+					std::this_thread::sleep_for(std::chrono::milliseconds((int)(max(sent_size * 1000.0 / (double)nCompareSpeed - (t1 - t0), 0))));
+					//Sleep(max(sent_size * 1000.0 / (double)nCompareSpeed - (t1 - t0), 0));
+
+				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / real_speed;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_str(remain_sec), d2S(Bps / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_str(remain_sec), d2S(real_speed / 1024.0, true, 0));
 			}
 		}
 

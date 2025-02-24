@@ -331,13 +331,12 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
 	//m_button_local_to_remote.fit_to_image(false);
 	m_button_local_to_remote.set_back_color(m_cr_back, false);
-	m_button_local_to_remote.draw_shadow();
-
+	m_button_local_to_remote.draw_shadow(true, 1.5f, 1.2f);
 
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
 	//m_button_remote_to_local.fit_to_image(false);
 	m_button_remote_to_local.set_back_color(m_cr_back, false);
-	m_button_remote_to_local.draw_shadow();
+	m_button_remote_to_local.draw_shadow(true, 1.5f, 1.2f);
 
 	m_progress_local.set_style(CSCSliderCtrl::style_progress);
 	m_progress_local.set_track_height(4);
@@ -915,7 +914,7 @@ void CnFTDServerDlg::initialize()
 	m_tree_remote.set_use_popup_menu();
 	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
-	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false);
+	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false, _T(""));
 	m_list_remote.set_use_drag_and_drop(true);
 	m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	m_list_remote.load_column_width(&theApp, _T("list remote"));
