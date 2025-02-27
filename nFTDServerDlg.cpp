@@ -1279,11 +1279,11 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		{
 			if (m_srcSide == SERVER_SIDE)
 			{
-				m_transfer_list.push_back(pDragListCtrl->get_file_data(dq[i]));
+				m_transfer_list.push_back(pDragListCtrl->get_win32_find_data(dq[i]));
 			}
 			else
 			{
-				m_transfer_list.push_back(pDragListCtrl->get_file_data(dq[i]));
+				m_transfer_list.push_back(pDragListCtrl->get_win32_find_data(dq[i]));
 			}
 			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CVtListCtrlEx::col_filename), m_transfer_list.back().cFileName);
 		}
@@ -3470,10 +3470,18 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	if (item < 0 || item >= m_list_local.size())
 		return;
 
+
+	//만약 리스트에서 폴더의 이름을 변경했다면 트리에서도 동일하게 변경해줘야 한다.
 	if (m_list_local.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
 	{
 		m_tree_local.rename_child_item(m_tree_local.GetSelectedItem(), m_list_local.get_edit_old_text(), m_list_local.get_edit_new_text());
 	}
+
+	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
+	auto item_data = (WIN32_FIND_DATA)m_list_local.get_win32_find_data(item);
+	CString folder = get_part(item_data.cFileName, fn_folder);
+	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_local.get_edit_new_text());
+	m_list_local.set_win32_find_data(item, item_data);
 }
 
 
@@ -3493,10 +3501,17 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 	if (item < 0 || item >= m_list_remote.size())
 		return;
 
+	//만약 리스트에서 폴더의 이름을 변경했다면 트리에서도 동일하게 변경해줘야 한다.
 	if (m_list_remote.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
 	{
 		m_tree_remote.rename_child_item(m_tree_remote.GetSelectedItem(), m_list_remote.get_edit_old_text(), m_list_remote.get_edit_new_text());
 	}
+
+	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
+	auto item_data = (WIN32_FIND_DATA)m_list_remote.get_win32_find_data(item);
+	CString folder = get_part(item_data.cFileName, fn_folder);
+	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_remote.get_edit_new_text());
+	m_list_remote.set_win32_find_data(item, item_data);
 }
 
 void CnFTDServerDlg::OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized)

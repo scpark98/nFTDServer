@@ -29,9 +29,12 @@ Delete키방지 필요
 
 
 [수정할 내용]
-
+- 이름 변경 후 해당 항목을 바로 전송하면 에러 발생. rename시에 VtListCtrlEx에서 m_cur_files를 갱신하지 않은 것이 원인임.
 
 [수정한 내용]
+*20250227
+- AP2P 전송인 경우 속도제한 적용
+
 *20250220
 - 멀티모니터에서 최대화 시 기본모니터의 최대 영역크기로 최대화되던 오류 수정(WM_GETMINMAXINFO)
 
@@ -130,6 +133,7 @@ Delete키방지 필요
 [AP2P 단독 테스트 시 파라미터]
 nFTDClient.exe -p 13.124.64.192 7002 351
 
+SCPARK-KOINO-LG	: nFTDServer2.exe -p -viewermode -statisticsmode "13.125.4.150" 7002 406 "C4BDE5622FFF428745499944" "SCPARK-KOINO-LG" "apple@linkmemine.com" "17" "f5eccd82833e4bed1d189531cecf70561fe7c0b1" "" "192.168.74.1" 1
 SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
 SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode "13.125.4.150" 7002 406 "C4BDE5622FFF428745499944" "SCPARK-KOINO-LG" "apple@linkmemine.com" "17" "de1ce65b3f163b6e89526b4232b75142909047d7" "" "192.168.74.1" 1
 SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 E0E1A9351FF9913636543560 "SCPARK-KOINO" "apple" "1" b4cf3f3509f42d5bb1e049bba39438e9b034435a "192.168.74.1" "192.168.74.1" 1
