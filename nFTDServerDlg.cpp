@@ -157,6 +157,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_PROPERTY, &CnFTDServerDlg::OnTreeContextMenuProperty)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnTreeContextMenuOpenExplorer)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_SEND, &CnFTDServerDlg::OnTreeContextMenuSend)
+	ON_REGISTERED_MESSAGE(Message_CDirectoryChangeWatcher, &CnFTDServerDlg::on_message_CDirectoryChangeWatcher)
 END_MESSAGE_MAP()
 
 
@@ -988,7 +989,8 @@ void CnFTDServerDlg::InitServerManager()
 	drive_list = *(theApp.m_shell_imagelist.m_volume[1].get_drive_list());
 	for (int i = 0; i < drive_list.size(); i++)
 	{
-		logWrite(_T("remote drive[%d] = %s, %s"), i, drive_list[i].label, drive_list[i].path);
+		logWrite(_T("remote drive[%d] = %s, real_path = %s, total_space = %s, free_space = %s"),
+				i, drive_list[i].label, drive_list[i].path, i2S(drive_list[i].total_space.QuadPart, true), i2S(drive_list[i].free_space.QuadPart, true));
 	}
 
 	//theApp.m_shell_imagelist.m_volumeadd_drive_list(&drive_list);
@@ -1090,9 +1092,11 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			{
 				if (res)
 					*res = true;
+
 				m_list_local.set_path(pMsg->cur_path);
 				m_tree_local.set_path(pMsg->cur_path);
-				//change_directory(pMsg->cur_path, SERVER_SIDE);
+				m_dir_watcher.UnwatchAllDirectories();
+				m_dir_watcher.WatchDirectory(convert_special_folder_to_real_path(pMsg->cur_path, &theApp.m_shell_imagelist, true), m_hWnd, false);
 			}
 			else
 			{
@@ -1170,6 +1174,9 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			m_tree_local.set_path(path);
 			m_path_local.set_path(path);
 			change_directory(path, SERVER_SIDE);
+
+			m_dir_watcher.UnwatchAllDirectories();
+			m_dir_watcher.WatchDirectory(convert_special_folder_to_real_path(path, &theApp.m_shell_imagelist, true), m_hWnd, false);
 		}
 		else if (msg->pThis == &m_list_remote)
 		{
@@ -1736,6 +1743,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 		m_path_local.set_path(path);
 		m_tree_local.set_path(path, false);
 		m_list_local.set_path(path);
+		m_dir_watcher.UnwatchAllDirectories();
+		m_dir_watcher.WatchDirectory(convert_special_folder_to_real_path(path, &theApp.m_shell_imagelist, true), m_hWnd, false);
 
 		refresh_selection_status(&m_list_local);
 		refresh_disk_usage(false);
@@ -2666,6 +2675,8 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				break;
 			case file_cmd_delete :
 				{
+					m_dir_watcher.UnwatchAllDirectories();
+
 					int deleted_count = 0;
 
 					EnableWindow(FALSE);
@@ -2677,6 +2688,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 					for (auto item : dq)
 					{
 						//item 위치의 항목을 제거하면 그 뒤 item들의 index는 당겨져야 한다.
+						//또는 제거 목록을 역순으로 제거해야 한다.
 						item -= deleted_count;
 
 						res = m_list_local.delete_item(item, true);
@@ -2694,6 +2706,8 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 
 					refresh_disk_usage(false);
 					refresh_selection_status(&m_list_local);
+					
+					m_dir_watcher.WatchDirectory(m_list_local.get_path(), m_hWnd, false);
 				}
 				break;
 			case file_cmd_property :
@@ -3594,4 +3608,21 @@ void CnFTDServerDlg::OnTreeContextMenuNewFolder()
 void CnFTDServerDlg::OnTreeContextMenuProperty()
 {
 	file_command_on_tree(file_cmd_property);
+}
+
+//file system의 이벤트에 대한 처리함수를 추가했으나 검토해야 할 부분이 많다.
+//이 프로그램을 통해 생성, 삭제, 이름변경을 할 때에는 모든 처리를 알아서 하게 작성되었으므로
+//이 이벤트를 여기서 또 처리하게되면 중복처리된다.
+//윈도우 탐색기와 같은 외부 프로그램에 의한 변경에 대해서만 이 이벤트들을 처리해야 한다.
+LRESULT CnFTDServerDlg::on_message_CDirectoryChangeWatcher(WPARAM wParam, LPARAM lParam)
+{
+	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_OLD_NAME(4)
+	CDirectoryChangeWatcherMessage* msg = (CDirectoryChangeWatcherMessage*)wParam;
+	TRACE(_T("action = %d, filename0 = %s, filename1 = %s\n"), msg->action, msg->filename0, msg->filename1);
+	if (msg->action == FILE_ACTION_REMOVED)
+	{
+		m_list_local.delete_item(msg->filename0);
+	}
+
+	return 0;
 }

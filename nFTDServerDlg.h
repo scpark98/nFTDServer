@@ -16,6 +16,8 @@
 #include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 #include "../../Common/CWnd/WndShadow/WndShadow.h"
 #include "../../Common/CDialog/SCShapeDlg/SCShapeDlg.h"
+#include "../../Common/file_system/DirectoryChanges/DirectoryChanges.h"
+#include "../../Common/file_system/DirectoryChanges/DelayedDirectoryChangeHandler.h"
 
 
 #include "nFTDServerManager.h"
@@ -47,8 +49,11 @@ public:
 	//void				init_shadow();
 
 	CResizeCtrl			m_resize;
-
 	CSCShapeDlg			m_toast_popup;
+
+	CDirectoryChangeWatcher	m_dir_watcher;
+	LRESULT				on_message_CDirectoryChangeWatcher(WPARAM wParam, LPARAM lParam);
+
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
