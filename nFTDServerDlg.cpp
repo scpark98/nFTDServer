@@ -109,7 +109,6 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_RBUTTONDOWN()
 	//ON_WM_LBUTTONUP()
 	//ON_WM_LBUTTONDBLCLK()
-	//ON_WM_GETMINMAXINFO()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
 	ON_REGISTERED_MESSAGE(Message_CPathCtrl, &CnFTDServerDlg::on_message_CPathCtrl)
@@ -802,19 +801,6 @@ void CnFTDServerDlg::OnRButtonDown(UINT nFlags, CPoint point)
 
 	CSCThemeDlg::OnRButtonDown(nFlags, point);
 }
-
-
-void CnFTDServerDlg::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
-{
-	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	CSize sz;
-	bool is_auto_hide = get_taskbar_state(ABS_AUTOHIDE, &sz);
-
-	lpMMI->ptMaxSize.y -= (is_auto_hide ? 2 : sz.cy);
-
-	CDialogEx::OnGetMinMaxInfo(lpMMI);
-}
-
 
 BOOL CnFTDServerDlg::OnEraseBkgnd(CDC* pDC)
 {
@@ -2670,12 +2656,13 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_rename :
+				m_dir_watcher.UnwatchAllDirectories();
 				m_list_local.edit_item(dq[0], CVtListCtrlEx::col_filename);
+				//여기서는 편집모드로만 들어가고 다시 watching은 편집이 종료된 시점에 재개해야 한다.
 				res = true;
 				break;
 			case file_cmd_delete :
 				{
-					m_dir_watcher.UnwatchAllDirectories();
 
 					int deleted_count = 0;
 
@@ -3496,6 +3483,8 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	CString folder = get_part(item_data.cFileName, fn_folder);
 	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_local.get_edit_new_text());
 	m_list_local.set_win32_find_data(item, item_data);
+
+	m_dir_watcher.WatchDirectory(m_list_local.get_path(), m_hWnd, false);
 }
 
 
@@ -3622,6 +3611,10 @@ LRESULT CnFTDServerDlg::on_message_CDirectoryChangeWatcher(WPARAM wParam, LPARAM
 	if (msg->action == FILE_ACTION_REMOVED)
 	{
 		m_list_local.delete_item(msg->filename0);
+	}
+	else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+	{
+		m_list_local.rename(msg->filename0, msg->filename1);
 	}
 
 	return 0;

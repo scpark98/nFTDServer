@@ -74,7 +74,13 @@ BOOL CnFTDServerApp::InitInstance()
 	// 적절한 내용으로 수정해야 합니다.
 	SetRegistryKey(_T("Koino"));
 
+	//LMM Service와 LMMSE Service의 차이 :
+	//- 로그파일 위치
+#if defined(LMMSE_SERVICE)
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMineSE\\Log\\FileTransfer"), get_exe_file_title());
+#else
+	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMine\\Log\\FileTransfer"), get_exe_file_title());
+#endif
 	gLog.write_start_log();
 
 	//개발 단계에서만 필요하며 실제 배포시에는 주석처리 할 것!
