@@ -25,7 +25,9 @@
 #define IDS_HOST_PC                     118
 #define IDS_SUPPORTER_PC                119
 #define IDS_TEXT_TITLE                  120
+#define NFTD_IDS_FILETRANSFER           120
 #define IDS_TEXT_TITLE2                 121
+#define NFTD_IDS_TRANSFER_INIT_FAIL     121
 #define IDS_EXIST_FOLDER                122
 #define IDS_REG_HKEY_LOCAL_MACH_LINKVNC 123
 #define IDS_TEXT_LINKVNC                124
@@ -50,7 +52,9 @@
 #define IDS_DISCONNECT                  136
 #define IDS_FONT                        137
 #define NFTD_IDS_CONNECTING_P2P         138
+#define NFTD_IDS_FILETRANSFER2          138
 #define NFTD_IDS_CONNECTING_AP2P        139
+#define NFTD_IDS_TRANSFER_INIT_FAIL2    139
 #define NFTD_ISD_FOLDER_FILE_LIST_LOADING 140
 #define IDS_EXIST_SRC_FILE_TITLE        141
 #define IDS_EXIST_DST_FILE_TITLE        142

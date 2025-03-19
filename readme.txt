@@ -31,6 +31,11 @@ Delete키방지 필요
 [수정할 내용]
 
 [수정한 내용]
+*20250318
+- 이어받기 시 용량표시 오류 수정
+- 파일목록창에서 파일명, 파일크기, 파일날짜 별로 정렬 오류 수정
+- 오름차순, 내림차순 정렬 시 헤더의 중앙에 화살표로 표시되도록 수정
+
 *20250304
 - 영문윈도우에서 파일날짜가 3/4/2025 1:42:34로 표시되던 시간표시오류를 "1:42 PM"으로 표시되도록 수정
 
@@ -135,6 +140,7 @@ Delete키방지 필요
 
 [AP2P 단독 테스트 시 파라미터]
 nFTDClient.exe -p 13.124.64.192 7002 351
+nFTDClient.exe -p 3.35.127.253 7002 111
 
 SCPARK-KOINO-LG	: nFTDServer2.exe -p -viewermode -statisticsmode "13.125.4.150" 7002 406 "C4BDE5622FFF428745499944" "SCPARK-KOINO-LG" "apple@linkmemine.com" "17" "f5eccd82833e4bed1d189531cecf70561fe7c0b1" "" "192.168.74.1" 1
 SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1

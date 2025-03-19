@@ -35,6 +35,19 @@ CnFTDFileTransferDialog::~CnFTDFileTransferDialog()
 {
 }
 
+void CnFTDFileTransferDialog::OnDestroy()
+{
+	TRACE(_T("CnFTDFileTransferDialog::OnDestroy()\n"));
+	while (m_thread_transfer_started)
+	{
+		TRACE(_T("wait until transfer thread is finished\n"));
+		Wait(1000);
+	}
+	__super::OnDestroy();
+
+	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
+}
+
 void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
@@ -58,6 +71,7 @@ BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CSCThemeDlg)
 	ON_WM_ERASEBKGND()
 	//ON_REGISTERED_MESSAGE(Message_CnFTDServerSocket, &CnFTDFileTransferDialog::on_message_server_socket)
 	ON_WM_TIMER()
+	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
 
@@ -81,6 +95,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
 	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
+	SetWindowText(_S(NFTD_IDS_FILETRANSFER));
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
@@ -140,7 +155,6 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 		TRACE(_T("파일전송 취소 처리\n"));
 		m_static_copy.stop_animation();
 		m_pServerManager->m_DataSocket.set_transfer_stop();
-		m_pServerManager->m_DataSocket.Close();
 		m_thread_transfer_started = false;
 
 		//취소 처리 플래그에 따라 정상적인 취소 절차가 모두 처리된 후에 창이 종료되어야 하므로
@@ -348,6 +362,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 	CString start_time;
 	CString end_time;
 
+	/*
 	//데이터 전송을 위한 소켓을 연결하고 (전송이 모두 완료되면 DataClose())
 	//지금은 하나의 소켓을 연결하고 모든 파일들을 순차적으로 전송하지만
 	//차후에는 하나의 파일마다 하나의 소켓을 할당해서 전송되도록 해야만 멀티전송이 가능하다.
@@ -358,6 +373,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		m_static_message.set_text(msg, Gdiplus::Color::Red);
 		return;
 	}
+	*/
 
 	m_thread_transfer_started = true;
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
@@ -385,6 +401,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 		}
 
 		//현재 전송중인 파일명 표시
+		if (m_filelist.size() > 1000)	//간혹 전송 취소를 누르면 특정 변수값이 garbage로 채워지는 이상 현상이 발생하여 비정상적인 경우는 break하도록 함.
+			break;
 		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_name));
 
 		memcpy(&to, &m_filelist[i], sizeof(to));
@@ -466,14 +484,20 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 			end_time = get_cur_datetime_str(2);
 
+			//전송 중 취소를 누를 경우 간혹 파일전송창이 닫혔음에도 m_list를 접근하는 것을 방지하기 위해.
+			if (!m_thread_transfer_started)
+				break;
+
 			switch (res)
 			{
 				case transfer_result_success :
 					m_list.set_text(i, col_status, _T("100"));
 					logWrite(_T("success. %s"), m_filelist[i].cFileName);
 					break;
+				//파일전송을 취소하는 것은 파일전송창을 닫는 액션이므로 리스트에 굳이 cancel 표시를 남길 필요는 없다.
+				//이 코드로 인해 창이 종료될 때 set_text()를 함으로써 에러가 발생한다.
 				case transfer_result_cancel :
-					m_list.set_text(i, col_status, _T("cancel"));
+					//m_list.set_text(i, col_status, _T("cancel"));
 					logWrite(_T("cancel."));
 					break;
 				case transfer_result_skip :
@@ -504,10 +528,19 @@ void CnFTDFileTransferDialog::thread_transfer()
 			//또한 파일전송 히스토리에도 기록한다.
 			m_pServerManager->request_file_transfer_history(get_part(m_filelist[i].cFileName, fn_name), i2S(filesize.QuadPart), m_dstSide == SERVER_SIDE, start_time, end_time);
 		}
+		else if (res == transfer_result_cancel)
+		{
+			break;
+		}
 	}
 
 	//전송이 모두 완료되면 dataSocket은 닫아준다.
-	m_pServerManager->DataClose();
+	//20250318 scpark 간혹 전송이 종료되면서 m_pServerManager가 원래와 다른 값을 가짐으로 인해 프로그램이 종료되는 현상이 발생했고
+	//그 원인을 찾아야하지만 우선 맨 처음 생성했던 maindlg의 serverManager와 동일한 값이 아닐 경우는 garbage라 생각하고 스킵시킨다.
+	//logWrite(_T("m_pServerManager = %p"), m_pServerManager);
+	//CnFTDServerManager* manager_original = ((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->m_pServerManager_original;
+	//if (m_pServerManager == manager_original && m_pServerManager != NULL && m_pServerManager != INVALID_HANDLE_VALUE && m_thread_transfer_started)
+	//	m_pServerManager->DataClose();
 
 	m_thread_transfer_started = false;
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
@@ -680,7 +713,7 @@ void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
 
 			if (m_auto_close)
 			{
-				CDialogEx::OnCancel();
+				CDialogEx::OnOK();
 			}
 		}
 		else

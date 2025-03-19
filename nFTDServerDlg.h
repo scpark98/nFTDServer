@@ -85,6 +85,7 @@ public:
 	CVtListCtrlEx*		m_pDropListCtrl;
 
 	CnFTDServerManager	m_ServerManager;
+
 	//l to l, r to r도 처리해야 하므로 src, dst가 어디인지 구분해야 한다.
 	int					m_srcSide = SERVER_SIDE;
 	int					m_dstSide = CLIENT_SIDE;

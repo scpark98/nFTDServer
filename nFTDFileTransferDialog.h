@@ -58,7 +58,7 @@ protected:
 
 	int					m_srcSide;
 	int					m_dstSide;
-	CnFTDServerManager* m_pServerManager;
+	CnFTDServerManager* m_pServerManager = NULL;
 	LPTSTR				m_lpInitPath;
 	CString				m_transfer_from;
 	CString				m_transfer_to;
@@ -97,4 +97,5 @@ public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	CSCStatic m_static_copy;
+	afx_msg void OnDestroy();
 };

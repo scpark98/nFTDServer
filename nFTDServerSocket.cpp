@@ -1129,10 +1129,12 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//msgString1	str1;
 	HANDLE		hFile;
 	ULARGE_INTEGER	filesize;
-	ULONGLONG		sent_size = 0;		//Progress.ulReceivedSize는 n개 파일에 대한 정보지만 sent_size는 현재 파일을 대상으로 한다.
+	ULONGLONG		sent_size = 0;	//Progress.ulReceivedSize는 n개 파일에 대한 정보지만 sent_size는 현재 파일을 대상으로 한다.
 	CnFTDFileTransferDialog* parent = (CnFTDFileTransferDialog*)parent_dlg;
 	WIN32_FIND_DATA exist_file;
 	ULARGE_INTEGER	exist_filesize;
+
+	exist_filesize.QuadPart = 0;
 
 	memset(&ret, 0, sizeof(ret));
 
@@ -1173,13 +1175,18 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		return transfer_result_fail;
 	}
 
-	//파일크기 전달
-	//if (!m_sock.SendExact((LPSTR)&filesize, sizeof(ULARGE_INTEGER), BLASTSOCK_BUFFER))
-	//{
-	//	logWriteE(_T("CODE-4 : %d"), GetLastError());
-	//	CloseHandle(hFile);
-	//	return transfer_result_fail;
-	//}
+	//파일크기가 0인 경우는 더 이상 진행할 필요가 없고 nFTDClient에서 0바이트 파일 생성하면 끝이다.
+	if (filesize.QuadPart == 0)
+	{
+		logWriteE(_T("0 byte file. just return."));
+		CloseHandle(hFile);
+
+		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+
+		return transfer_result_success;
+	}
+	
 
 	//수신측에서 파일 생성 및 준비 결과 수신
 	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
@@ -1213,48 +1220,26 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		if (dwWrite == WRITE_UNKNOWN) // 파일 중복 처리창이 뜬다
 		{
-			//원본과 대상 파일이 모두 0 바이트라면 중복 처리창을 띠울 필요도 없다.
-			//스킵하지만 사용자 선택에 의한 스킵이 아니므로 continue로 처리한다.
-			//그렇다고 dwWrite를 WRITE_CONTINUE로 강제로 줘서는 안된다.
-			//0바이트가 아닌 파일을 만나면 사용자의 결정을 받아야한다.
-			if (filesize.QuadPart == 0 && exist_filesize.QuadPart == 0)
+			CExistFileDlg dlg(parent, from, exist_file);
+			dwWrite = dlg.DoModal();
+
+			if (dwWrite == IDCANCEL)
 			{
-				ret.type = nFTD_FileContinue;
+				CloseHandle(hFile);
+
+				ret.type = nFTD_FileIgnore;
 
 				if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 				{
-					CloseHandle(hFile);
-					logWriteE(_T("CODE-7 : %d"), GetLastError());
+					logWriteE(_T("CODE-8 : %d"), GetLastError());
 					return 	transfer_result_fail;
 				}
 
-				SetFilePointer(hFile, exist_filesize.LowPart, (LONG*)&exist_filesize.HighPart, FILE_BEGIN);
-				Progress.ulReceivedSize.QuadPart += exist_filesize.QuadPart;
-				sent_size += exist_filesize.QuadPart;
+				return transfer_result_cancel;
 			}
-			else
-			{
-				CExistFileDlg dlg(parent, from, exist_file);
-				dwWrite = dlg.DoModal();
 
-				if (dwWrite == IDCANCEL)
-				{
-					CloseHandle(hFile);
-
-					ret.type = nFTD_FileIgnore;
-
-					if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
-					{
-						logWriteE(_T("CODE-8 : %d"), GetLastError());
-						return 	transfer_result_fail;
-					}
-
-					return transfer_result_cancel;
-				}
-
-				if ((dwWrite & WRITE_ALL) == WRITE_ALL)
-					m_dwWrite = dwWrite;
-			}
+			if ((dwWrite & WRITE_ALL) == WRITE_ALL)
+				m_dwWrite = dwWrite;
 		}
 
 		if ((dwWrite & WRITE_CONTINUE) == WRITE_CONTINUE) // 이어받기
@@ -1269,12 +1254,15 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			}
 
 			SetFilePointer(hFile, exist_filesize.LowPart, (LONG*)&exist_filesize.HighPart, FILE_BEGIN);
+			//Progress.ulTotalSize.QuadPart -= exist_filesize.QuadPart;
 			Progress.ulReceivedSize.QuadPart += exist_filesize.QuadPart;
 			sent_size += exist_filesize.QuadPart;
 		}
 		else if ((dwWrite & WRITE_OVERWRITE) == WRITE_OVERWRITE) // 덮어쓰기
 		{
 			ret.type = nFTD_FileOverWrite;
+
+			exist_filesize.QuadPart = 0;
 
 			if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 			{
@@ -1303,23 +1291,11 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 	}
 
-	//0byte 파일일 경우는 아래의 do ~ while을 들어가지 않아야 한다.
-	if (filesize.QuadPart == 0)
-	{
-		logWriteE(_T("0 byte file. just return."));
-		CloseHandle(hFile);
-
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
-
-		return transfer_result_success;
-	}
-
 	DWORD		dwBytesRead;
 	LPSTR		packet = new CHAR[BUFFER_SIZE];
 	int			nCompareSpeed = GetPrivateProfileInt(_T("FILE"), _T("SPEED"), 0, get_exe_directory() + _T("\\config.ini"));
 	int			loop = 0;
-	long		t0 = clock(), t1 = 0;
+	long		t0 = clock(), t_elapsed = 0;
 
 	//AP2P 모드일 경우는 최대 속도를 1,240,000으로 제한한다.
 	//사용자가 config.ini에서 0으로 편집할수도 있으므로 이 역시 1,240,000으로 변경한다.
@@ -1403,19 +1379,30 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//속도가 느린 경우는 n번마다 표시해주는 것이 좋다. n은?
 		//빠를 경우는 버퍼를 크게 잡아도 문제없으나
 		//느릴 경우는 이러한 부작용이 생긴다.
-		if (true)//(loop % 10 == 1))// || (dwBytesRead < BUFFER_SIZE))
+
+		//맨 처음부터 딜레이를 적용하지 않고 두 번째 패킷 전송 후부터 딜레이를 적용한다.
+		//if (sent_size > dwBytesRead)//(loop % 10 == 1))// || (dwBytesRead < BUFFER_SIZE))
+
+		//속도제한을 계산할때는 이어받기일 경우 이미 존재하는 크기는 제외하고 속도계산을 해야 한다.
 		{
-			t1 = clock();
+			t_elapsed = clock() - t0;
+
+			if (t_elapsed <= 0)
+				t_elapsed = 1;
+			//else if (t_elapsed > 1000)
+			//	t_elapsed = 1000;
 
 			double real_speed = 1.0;
-			//if (t1 - t0 > 100)
 			{
-				real_speed = double(sent_size) / double(t1 - t0) * 1000.0;
+				real_speed = double(sent_size - exist_filesize.QuadPart) / double(t_elapsed) * 1000.0;
 
 				//보낸 크기가 제한 크기보다 큰 비율에서 전송에 걸린 시간을 빼면 그 값이 인위적인 딜레이 ms임. 그 값이 0보다 작다면 딜레이 없음.
 				if ((nCompareSpeed > 0) && (real_speed > nCompareSpeed))
-					std::this_thread::sleep_for(std::chrono::milliseconds((int)(max(sent_size * 1000.0 / (double)nCompareSpeed - (t1 - t0), 0))));
-					//Sleep(max(sent_size * 1000.0 / (double)nCompareSpeed - (t1 - t0), 0));
+				{
+					TRACE(_T("delay = %d\n"), (int)(max((sent_size - exist_filesize.QuadPart) * 1000.0 / (double)nCompareSpeed - (t_elapsed), 0)));
+					std::this_thread::sleep_for(std::chrono::milliseconds((int)(max((sent_size - exist_filesize.QuadPart) * 1000.0 / (double)nCompareSpeed - (t_elapsed), 0))));
+					//Sleep(max(sent_size * 1000.0 / (double)nCompareSpeed - (t_elapsed), 0));
+				}
 
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / real_speed;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
@@ -1447,7 +1434,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//(기존 방식으로서 lock()처리가 필요하다)
 	//2.위와 같은 경우를 판별하여 이 블록에 m_progress의 출력 텍스트를 표시한다.
 	//우선 2번으로 처리한다.
-	if (t1 <= 0)
+	if (t_elapsed <= 1)
 	{
 		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
@@ -1463,9 +1450,12 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//msgString1 str1;
 	HANDLE		hFile;
 	ULARGE_INTEGER	src_filesize;
+	ULONGLONG	received_size = 0;	//Progress.ulReceivedSize는 n개 파일에 대한 정보지만 received_size는 현재 파일을 대상으로 한다.
 	CnFTDFileTransferDialog* parent = (CnFTDFileTransferDialog*)parent_dlg;
 	WIN32_FIND_DATA exist_file;
 	ULARGE_INTEGER	exist_filesize;
+
+	exist_filesize.QuadPart = 0;
 
 	memset(&ret, 0, sizeof(ret));
 
@@ -1528,6 +1518,21 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 		return transfer_result_fail;
 	}
+	//0byte 파일일 경우는 굳이 더 이상의 처리가 필요없이 생성해주고 filedate을 원래 파일값으로 세팅한 후 리턴하면 된다.
+	else if (src_filesize.QuadPart == 0)
+	{
+		logWriteE(_T("0 byte file. recreate, modify filedate, and return."));
+		CloseHandle(hFile);
+
+		hFile = CreateFile(to.cFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		SetFileTime(hFile, &from.ftCreationTime, &from.ftLastAccessTime, &from.ftLastWriteTime);
+		CloseHandle(hFile);
+
+		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+
+		return transfer_result_success;
+	}
 	else
 	{
 		if (GetLastError() == ERROR_ALREADY_EXISTS)
@@ -1568,6 +1573,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 					SetFilePointer(hFile, 0, NULL, FILE_END);
 					Progress.ulTotalSize.QuadPart -= exist_filesize.QuadPart;
+					Progress.ulReceivedSize.QuadPart += exist_filesize.QuadPart;
 					src_filesize.QuadPart -= exist_filesize.QuadPart;
 				}
 				else
@@ -1589,6 +1595,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			if ((dwWrite & WRITE_CONTINUE) == WRITE_CONTINUE)
 			{
 				ret.type = nFTD_FileContinue;
+
 				if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 				{
 					CloseHandle(hFile);
@@ -1603,12 +1610,16 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				}
 
 				SetFilePointer(hFile, 0, NULL, FILE_END);
-				Progress.ulTotalSize.QuadPart -= exist_filesize.QuadPart;
-				src_filesize.QuadPart -= exist_filesize.QuadPart;
+				//Progress.ulTotalSize.QuadPart -= exist_filesize.QuadPart;
+				Progress.ulReceivedSize.QuadPart += exist_filesize.QuadPart;
+				//src_filesize.QuadPart -= exist_filesize.QuadPart;
+				received_size += exist_filesize.QuadPart;
 			}
 			else if ((dwWrite & WRITE_OVERWRITE) == WRITE_OVERWRITE)
 			{
 				ret.type = nFTD_FileOverWrite;
+
+				exist_filesize.QuadPart = 0;
 
 				if (!m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 				{
@@ -1618,7 +1629,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				}
 
 				CloseHandle(hFile);
-				hFile = CreateFile(from.cFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				hFile = CreateFile(to.cFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 			}
 			else if ((dwWrite & WRITE_IGNORE) == WRITE_IGNORE)
 			{
@@ -1653,23 +1664,11 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 	SetFileTime(hFile, &from.ftCreationTime, &from.ftLastAccessTime, &from.ftLastWriteTime);
 
-	//0byte 파일일 경우는 아래의 do~while을 들어가지 않아야 한다.
-	if (src_filesize.QuadPart == 0)
-	{
-		logWriteE(_T("0 byte file. just return."));
-		CloseHandle(hFile);
-
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
-
-		return transfer_result_success;
-	}
 
 	//실제 수신 시작
 	DWORD dwBytesRead = BUFFER_SIZE;
 	DWORD dwBytesWrite;
 	LPSTR packet = new CHAR[BUFFER_SIZE];
-	ULONGLONG	received_size = 0;
 	int			loop = 0;
 	long		t0 = clock(), t1 = 0;
 
@@ -1682,6 +1681,13 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			Wait(1000);
 			//일시정지 할 경우는 t0 시간을 보정해줘야 한다.
 			t0 += 1000;
+		}
+
+		if (m_transfer_stop)
+		{
+			CloseHandle(hFile);
+			delete[] packet;
+			return transfer_result_cancel;
 		}
 
 		//파일 수신 시 맨 마지막에 버퍼크기보다 작게 남았을 경우 dwBytesRead값을 정확히 주고 RecvExact로 받아야한다.
@@ -1730,7 +1736,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		loop++;
 
-		if (loop % 2 == 1)// || (dwBytesRead < BUFFER_SIZE))
+		if (true)//loop % 2 == 1)// || (dwBytesRead < BUFFER_SIZE))
 		{
 			t1 = clock();
 
@@ -1738,7 +1744,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 			if (t1 - t0 > 100)
 			{
-				Bps = double(received_size) / double(t1 - t0) * 1000.0;
+				Bps = double(received_size - exist_filesize.QuadPart) / double(t1 - t0) * 1000.0;
 
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
@@ -1747,7 +1753,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 
 		//현재 파일 진행 상태 표시
-		double percent = (double)received_size * 100.0 / (double)src_filesize.QuadPart;
+		double percent = (double)(received_size) * 100.0 / (double)src_filesize.QuadPart;
 		parent->m_list.set_text(index, 2, d2S(percent, false, 0));
 		//TRACE(_T("dwBytesRead = %d, received_size = %u, %.2f%%\n"), dwBytesRead, received_size, percent);
 

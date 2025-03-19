@@ -104,11 +104,8 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_WINDOWPOSCHANGED()
 	ON_BN_CLICKED(IDOK, &CnFTDServerDlg::OnBnClickedOk)
 	ON_BN_CLICKED(IDCANCEL, &CnFTDServerDlg::OnBnClickedCancel)
-	//ON_WM_SETCURSOR()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_RBUTTONDOWN()
-	//ON_WM_LBUTTONUP()
-	//ON_WM_LBUTTONDBLCLK()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
 	ON_REGISTERED_MESSAGE(Message_CPathCtrl, &CnFTDServerDlg::on_message_CPathCtrl)
@@ -117,8 +114,6 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_REGISTERED_MESSAGE(Message_CControlSplitter, &CnFTDServerDlg::on_message_CControlSplitter)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_LOCAL, &CnFTDServerDlg::OnTvnSelchangedTreeLocal)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_REMOTE, &CnFTDServerDlg::OnTvnSelchangedTreeRemote)
-	//ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMDblclkListRemote)
-	//ON_NOTIFY(NM_DBLCLK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMDblclkListLocal)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE_LOCAL, &CnFTDServerDlg::OnNMRClickTreeLocal)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE_REMOTE, &CnFTDServerDlg::OnNMRClickTreeRemote)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMRClickListLocal)
@@ -132,7 +127,6 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_TIMER()
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN, &CnFTDServerDlg::OnListContextMenuOpen)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_PROPERTY, &CnFTDServerDlg::OnListContextMenuProperty)
-	//ON_WM_CONTEXTMENU()
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnItemChangedListLocal)
 	ON_NOTIFY(LVN_ITEMCHANGED, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnItemChangedListRemote)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnListContextMenuOpenExplorer)
@@ -148,7 +142,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnEndlabelEditListLocal)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnEndlabelEditListRemote)
 	ON_WM_ACTIVATE()
-	ON_WM_ACTIVATEAPP()
+	//ON_WM_ACTIVATEAPP()
 	ON_MESSAGE(MESSAGE_CONNECT_FAIL, &CnFTDServerDlg::on_message)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_FAVORITE, &CnFTDServerDlg::OnTreeContextMenuFavorite)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_REFRESH, &CnFTDServerDlg::OnTreeContextMenuRefresh)
@@ -226,6 +220,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
 	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
+	set_titlebar_icon(IDR_MAINFRAME);// , 20, 20);
 
 	//init_splitter();
 	int min_size = 120;
@@ -395,12 +390,25 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	if (get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
 	{
 		CString my_ip = get_my_ip();
+		//내 PC에서 P2P 모드로 테스트 할 경우
 		if (my_ip == CString(__targv[4]))
 		{
 			//대상 IP가 my_ip와 같고 실행중인 nFTDClient.exe가 없다면 실행시켜준다.
 			//만약 nFTDClient.exe도 trace mode로 돌려야한다면 nFTDClient.exe를 먼저 trace mode로 실행시켜서 테스트해야 한다.
 			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
 				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-l 7002"), 0, SW_SHOWNORMAL);
+		}
+		//LinkMeMine 1.0 개발서버의 AP2P로 테스트 할 경우
+		else if (CString(__targv[4]) == _T("3.35.127.253"))
+		{
+			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
+				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 3.35.127.253 443 440"), 0, SW_SHOWNORMAL);
+		}
+		//LinkMeMine 3.0 개발서버의 AP2P로 테스트 할 경우
+		else if (CString(__targv[4]) == _T("13.125.4.150"))
+		{
+			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
+				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 13.125.4.150 7002 440"), 0, SW_SHOWNORMAL);
 		}
 	}
 
@@ -897,7 +905,7 @@ void CnFTDServerDlg::initialize()
 {
 	InitServerManager();		// Server Manager 설정
 
-	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false);
+	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false, _T(""));
 	m_tree_remote.set_use_popup_menu();
 	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
@@ -1338,7 +1346,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		}
 		else
 		{
-			TRACE(_T("list total = %d, cur = %d\n"), msg->reserved, (int)lParam);
+			//TRACE(_T("list total = %d, cur = %d\n"), msg->reserved, (int)lParam);
 			slider->SetPos((int)lParam);
 			if (msg->reserved == (int)lParam)
 				slider->ShowWindow(SW_HIDE);
@@ -1418,7 +1426,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_folder_list)
 	{
-		::SetCursor(theApp.LoadStandardCursor(IDC_WAIT));
 		EnableWindow(FALSE);
 		m_tree_remote.SetRedraw(FALSE);
 
@@ -1442,8 +1449,12 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		{
 			std::deque<WIN32_FIND_DATA> dq;
 			m_ServerManager.get_folderlist(path, &dq, true);
+
 			if (dq.size() > 0)
 			{
+				if (dq.size() > 20)
+					::SetCursor(theApp.LoadStandardCursor(IDC_WAIT));
+
 				path = GetParentDirectory(CString(dq[0].cFileName));
 				//"C:\\" 인 경우와 "C:\\Windows" 인 경우는 처리가 달라야 한다.
 				int folder_length = path.GetLength() + (path.Right(1) == '\\' ? 0 : 1);
@@ -1567,7 +1578,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		}
 		else
 		{
-			TRACE(_T("total = %d, cur = %d\n"), msg->reserved, (int)lParam);
+			//TRACE(_T("total = %d, cur = %d\n"), msg->reserved, (int)lParam);
 			slider->SetPos((int)lParam);
 			if (msg->reserved == (int)lParam)
 				slider->ShowWindow(SW_HIDE);
@@ -1722,7 +1733,6 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 	BOOL result = FALSE;
 
 	EnableWindow(FALSE);
-	::SetCursor(theApp.LoadStandardCursor(IDC_WAIT));
 
 	if (dwSide == SERVER_SIDE)
 	{
@@ -1766,6 +1776,9 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			m_list_remote.delete_all_items();
 			//m_ServerManager.refresh_list(&dq, false);
 			m_ServerManager.get_filelist(path, &dq, false);
+
+			if (dq.size() > 20)
+				::SetCursor(theApp.LoadStandardCursor(IDC_WAIT));
 
 			m_progress_remote.SetRange(0, dq.size());
 			m_progress_remote.SetPos(0);
@@ -1988,11 +2001,22 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 
-
 	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &m_transfer_list, pulDiskSpace,
 												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, m_check_close_after_all.GetCheck()))
 	{
+		//20250319 scpark m_ServerManager.DataConnect(), m_ServerManager.DataClose()는 기존에는 m_FileTransferDlg 안에서 수행했으나
+		//정상 전송 완료 후 또는 전송 취소 후에도 DataClose()를 수행해야 하는데 뭔가 중복처리되거나 오동작이 발생하여
+		//m_FileTransferDlg.DoModal();을 하기 전에 연결하고 DoModal() 후에 닫는 방식으로 변경한다.
+		//그래야만 끝까지 전송 완료되거나 도중에 취소한 경우에 무관하게 DataClose()가 수행된다.
+		if (!m_ServerManager.DataConnect())
+		{
+			CMessageDlg dlg(_S(NFTD_IDS_TRANSFER_INIT_FAIL));
+			dlg.DoModal();
+			return;
+		}
+
 		m_FileTransferDlg.DoModal();
+		m_ServerManager.DataClose();
 		
 		//전송이 모두 끝나면 해당 폴더를 refresh해준다.
 		//change_directory(m_transfer_to, m_dstSide);

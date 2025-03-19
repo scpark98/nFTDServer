@@ -63,6 +63,8 @@ BOOL CExistFileDlg::OnInitDialog()
 	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
+	//SetWindowText(_S(NFTD_IDS_EXIST_FILE));
+
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
 	SetDlgItemText(IDOK, _S(NFTD_IDS_OK));
