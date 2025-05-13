@@ -94,9 +94,9 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
-	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
+	set_color_theme(CSCColorTheme::color_theme_linkmemine);
 	SetWindowText(_S(NFTD_IDS_FILETRANSFER));
-	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
+	set_title_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
@@ -104,7 +104,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_static_copy.fit_to_back_image(false);
 	//m_static_copy.play_animation();
 
-	m_static_message.set_back_color(m_cr_back);
+	m_static_message.set_back_color(m_theme.cr_back);
 
 	m_static_index_bytes.set_back_color(Gdiplus::Color::White);
 	m_static_remain_speed.set_back_color(Gdiplus::Color::White);
@@ -140,20 +140,20 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 {
 	if (m_thread_transfer_started)
 	{
-		m_static_copy.pause_animation(-1);
+		m_static_copy.pause_gif(-1);
 		m_pServerManager->m_DataSocket.set_transfer_pause(true);
 		CMessageDlg dlg(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 
 		int res = dlg.DoModal();//AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 		if (res == IDCANCEL)
 		{
-			m_static_copy.play_animation();
+			m_static_copy.play_gif();
 			m_pServerManager->m_DataSocket.set_transfer_pause(false);
 			return;
 		}
 
 		TRACE(_T("파일전송 취소 처리\n"));
-		m_static_copy.stop_animation();
+		m_static_copy.stop_gif();
 		m_pServerManager->m_DataSocket.set_transfer_stop();
 		m_thread_transfer_started = false;
 
@@ -386,7 +386,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	//추후 양방향 파일목록이 섞이도록 수정할 경우는 아래 for문 안으로 들어가야 한다.
 	m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
-	m_static_copy.play_animation();
+	m_static_copy.play_gif();
 
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
@@ -396,7 +396,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
 		if (m_thread_transfer_started == false)
 		{
-			m_static_copy.stop_animation();
+			m_static_copy.stop_gif();
 			break;
 		}
 
@@ -709,7 +709,7 @@ void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
 
 		if (!m_thread_transfer_started)
 		{
-			m_static_copy.stop_animation();
+			m_static_copy.stop_gif();
 
 			if (m_auto_close)
 			{

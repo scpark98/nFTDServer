@@ -60,8 +60,8 @@ BOOL CExistFileDlg::OnInitDialog()
 	CSCThemeDlg::OnInitDialog();
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
-	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
-	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
+	set_color_theme(CSCColorTheme::color_theme_linkmemine);
+	set_title_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	//SetWindowText(_S(NFTD_IDS_EXIST_FILE));
 
@@ -75,44 +75,44 @@ BOOL CExistFileDlg::OnInitDialog()
 
 
 	m_static_message.set_text_color(Gdiplus::Color(0, 51, 153));
-	m_static_message.set_back_color(m_cr_back);
+	m_static_message.set_back_color(m_theme.cr_back);
 	m_static_message.set_font_bold();
 	m_static_message.set_text(_S(NFTD_IDS_EXIST_FILE));
 
 	m_static_src_file_title.set_text_color(Gdiplus::Color(0, 51, 153));
-	m_static_src_file_title.set_back_color(m_cr_back);
+	m_static_src_file_title.set_back_color(m_theme.cr_back);
 	m_static_src_file_title.set_font_bold();
 	m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE));
 
 	m_static_dst_file_title.set_text_color(Gdiplus::Color(0, 51, 153));
-	m_static_dst_file_title.set_back_color(m_cr_back);
+	m_static_dst_file_title.set_back_color(m_theme.cr_back);
 	m_static_dst_file_title.set_font_bold();
 	m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE));
 
-	m_static_src_file.set_back_color(m_cr_back);
-	m_static_src_filesize.set_back_color(m_cr_back);
-	m_static_src_mtime.set_back_color(m_cr_back);
+	m_static_src_file.set_back_color(m_theme.cr_back);
+	m_static_src_filesize.set_back_color(m_theme.cr_back);
+	m_static_src_mtime.set_back_color(m_theme.cr_back);
 
-	m_static_dst_file.set_back_color(m_cr_back);
-	m_static_dst_filesize.set_back_color(m_cr_back);
-	m_static_dst_mtime.set_back_color(m_cr_back);
+	m_static_dst_file.set_back_color(m_theme.cr_back);
+	m_static_dst_filesize.set_back_color(m_theme.cr_back);
+	m_static_dst_mtime.set_back_color(m_theme.cr_back);
 
 
 	m_radio_succeed.SetWindowText(_S(NFTD_IDS_CONTINUE));
-	m_radio_succeed.set_back_color(m_cr_back, false);
+	m_radio_succeed.set_back_color(m_theme.cr_back, false);
 	m_radio_succeed.use_hover(false);
 
 	m_radio_overwrite.SetWindowText(_S(NFTD_IDS_OVERWRITE));
-	m_radio_overwrite.set_back_color(m_cr_back, false);
+	m_radio_overwrite.set_back_color(m_theme.cr_back, false);
 	m_radio_overwrite.use_hover(false);
 
 	m_radio_skip.SetWindowText(_S(NFTD_IDS_PASS));
-	m_radio_skip.set_back_color(m_cr_back, false);
+	m_radio_skip.set_back_color(m_theme.cr_back, false);
 	m_radio_skip.use_hover(false);
 
 	m_check_apply_all.SetWindowText(_S(NFTD_IDS_CHECK_ALL));
 	m_check_apply_all.SetCheck(theApp.GetProfileInt(_T("setting\\ExistFileDlg"), _T("apply all"), BST_CHECKED));
-	m_check_apply_all.set_back_color(m_cr_back, false);
+	m_check_apply_all.set_back_color(m_theme.cr_back, false);
 	m_check_apply_all.use_hover(false);
 
 

@@ -58,8 +58,8 @@ BOOL CMessageDlg::OnInitDialog()
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
 	SetWindowPos(NULL, 0, 0, m_width, m_height, SWP_NOMOVE | SWP_NOZORDER);
 
-	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
-	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
+	set_color_theme(CSCColorTheme::color_theme_linkmemine);
+	set_title_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
@@ -73,7 +73,7 @@ BOOL CMessageDlg::OnInitDialog()
 	//m_static_message.set_font_bold();
 	//m_static_message.set_font_size(10);
 	m_static_message.set_text(m_message);
-	m_static_message.set_back_color(m_cr_back);
+	m_static_message.set_back_color(m_theme.cr_back);
 	
 	CRect rc;
 	GetClientRect(rc);

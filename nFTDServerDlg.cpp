@@ -218,16 +218,16 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_resize.Add(IDC_BUTTON_LOCAL_TO_REMOTE, 50, 50, 0, 0);
 	m_resize.Add(IDC_BUTTON_REMOTE_TO_LOCAL, 50, 50, 0, 0);
 
-	set_color_theme(CSCThemeDlg::color_theme_linkmemine);
+	set_color_theme(CSCColorTheme::color_theme_linkmemine);
 	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
-	set_titlebar_icon(IDR_MAINFRAME);// , 20, 20);
+	set_title_icon(IDR_MAINFRAME);// , 20, 20);
 
 	//init_splitter();
 	int min_size = 120;
 
 	//왼쪽 트리와 리스트 스플리터
 	m_splitter_left.set_type(CControlSplitter::CS_VERT, true, Gdiplus::Color::LightGray);
-	m_splitter_left.set_back_color(m_cr_back);
+	m_splitter_left.set_back_color(m_theme.cr_back);
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_STATIC_LOCAL, min_size);			//static은 cx만 제한하면 되지만
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_TREE_LOCAL, min_size, min_size);	//tree는 cx, cy 둘 다 제한시켜야 한다.
 	m_splitter_left.AddToTopOrLeftCtrls(IDC_SPLITTER_LOCAL_FAVORITE);
@@ -239,14 +239,14 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	//왼쪽 트리와 즐겨찾기 리스트 스플리터
 	m_splitter_local_favorite.set_type(CControlSplitter::CS_HORZ, true, Gdiplus::Color::LightGray);
-	m_splitter_local_favorite.set_back_color(m_cr_back);
+	m_splitter_local_favorite.set_back_color(m_theme.cr_back);
 	m_splitter_local_favorite.AddToTopOrLeftCtrls(IDC_TREE_LOCAL, min_size, min_size);
 	m_splitter_local_favorite.AddToBottomOrRightCtrls(IDC_LIST_LOCAL_FAVORITE, min_size, min_size);
 
 
 	//오른쪽 트리와 리스트 스플리터
 	m_splitter_right.set_type(CControlSplitter::CS_VERT, true, Gdiplus::Color::LightGray);
-	m_splitter_right.set_back_color(m_cr_back);
+	m_splitter_right.set_back_color(m_theme.cr_back);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_STATIC_REMOTE, min_size);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_TREE_REMOTE, min_size, min_size);
 	m_splitter_right.AddToTopOrLeftCtrls(IDC_SPLITTER_REMOTE_FAVORITE);
@@ -258,7 +258,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	//오른쪽 트리와 즐겨찾기 리스트 스플리터
 	m_splitter_remote_favorite.set_type(CControlSplitter::CS_HORZ, true, Gdiplus::Color::LightGray);
-	m_splitter_remote_favorite.set_back_color(m_cr_back);
+	m_splitter_remote_favorite.set_back_color(m_theme.cr_back);
 	m_splitter_remote_favorite.AddToTopOrLeftCtrls(IDC_TREE_REMOTE, min_size, min_size);
 	m_splitter_remote_favorite.AddToBottomOrRightCtrls(IDC_LIST_REMOTE_FAVORITE, min_size, min_size);
 
@@ -315,63 +315,60 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_CLIPCHILDREN);
 
 	m_static_local.set_header_images(IDB_LOCAL_PC1);
-	m_static_local.set_back_color(m_cr_back);
+	m_static_local.set_back_color(m_theme.cr_back);
 	m_static_local.set_font_bold();
 	m_static_local.set_text(_S(NFTD_IDS_AGENT));
 	m_static_remote.set_header_images(IDB_REMOTE_PC1);
-	m_static_remote.set_back_color(m_cr_back);
+	m_static_remote.set_back_color(m_theme.cr_back);
 	m_static_remote.set_font_bold();
 	m_static_remote.set_text(_S(NFTD_IDS_REMOTE_PC));
 
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
-	//m_button_local_to_remote.fit_to_image(false);
-	m_button_local_to_remote.set_back_color(m_cr_back, false);
-	m_button_local_to_remote.draw_shadow(true, 1.5f, 1.2f);
+	m_button_local_to_remote.fit_to_image(false);
+	m_button_local_to_remote.set_back_color(m_theme.cr_back, false);
+	m_button_local_to_remote.draw_shadow(true, 1.0f, 1.6f);
 
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
-	//m_button_remote_to_local.fit_to_image(false);
-	m_button_remote_to_local.set_back_color(m_cr_back, false);
-	m_button_remote_to_local.draw_shadow(true, 1.5f, 1.2f);
+	m_button_remote_to_local.fit_to_image(false);
+	m_button_remote_to_local.set_back_color(m_theme.cr_back, false);
+	m_button_remote_to_local.draw_shadow(true, 1.0f, 1.6f);
 
 	m_progress_local.set_style(CSCSliderCtrl::style_progress);
 	m_progress_local.set_track_height(4);
 	m_progress_local.set_text_style(CSCSliderCtrl::text_style_none);
 	//m_progress_local.set_inactive_color(GRAY(232));
-	m_progress_local.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
+	m_progress_local.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 
 	m_progress_remote.set_style(CSCSliderCtrl::style_progress);
 	m_progress_remote.set_track_height(4);
 	m_progress_remote.set_text_style(CSCSliderCtrl::text_style_none);
 	//m_progress_remote.set_inactive_color(GRAY(232));
-	m_progress_remote.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
+	m_progress_remote.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 
 	m_slider_local_disk_space.set_style(CSCSliderCtrl::style_progress);
-	m_slider_local_disk_space.set_track_height(10);
-	m_slider_local_disk_space.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
-	m_slider_local_disk_space.set_text_color(dimgray);
+	//m_slider_local_disk_space.set_track_height(10);
+	m_slider_local_disk_space.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 	m_slider_local_disk_space.set_text_style(CSCSliderCtrl::text_style_none);
 	m_slider_local_disk_space.draw_progress_border();
 	m_slider_local_disk_space.SetPos(0);
-	m_static_local_disk_space.set_back_color(m_cr_back);
-	m_static_local_disk_space.set_font_size(9);
 
 	m_slider_remote_disk_space.set_style(CSCSliderCtrl::style_progress);
-	m_slider_remote_disk_space.set_track_height(10);
-	m_slider_remote_disk_space.set_track_color(RGB(36, 160, 212), RGB(230, 230, 230));
-	m_slider_remote_disk_space.set_text_color(dimgray);
+	//m_slider_remote_disk_space.set_track_height(10);
+	m_slider_remote_disk_space.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 	m_slider_remote_disk_space.set_text_style(CSCSliderCtrl::text_style_none);
 	m_slider_remote_disk_space.draw_progress_border();
 	m_slider_remote_disk_space.SetPos(0);
-	m_static_remote_disk_space.set_back_color(m_cr_back);
-	m_static_remote_disk_space.set_font_size(9);
 
-	m_static_count_local.set_color(m_cr_text, m_cr_back);
-	m_static_count_remote.set_color(m_cr_text, m_cr_back);
+	m_static_local_disk_space.set_color(Gdiplus::Color::DimGray, m_theme.cr_back);
+	m_static_remote_disk_space.set_color(Gdiplus::Color::DimGray, m_theme.cr_back);
+
+	m_static_count_local.set_color(Gdiplus::Color::DimGray, m_theme.cr_back);
+	m_static_count_remote.set_color(Gdiplus::Color::DimGray, m_theme.cr_back);
 
 	m_check_close_after_all.SetWindowText(_S(IDS_CLOSE_AFTER_TRANSFER));			//전송 완료 후 창 닫기
-	m_check_close_after_all.set_tooltip_text(_S(IDS_CLOSE_ALL_TRANSFER_SUCCESS));	//모든 전송이 성공해야만 창 닫기 옵션이 적용됨. 하나라도 실패하면 닫지 않음
-	m_check_close_after_all.set_text_color(m_cr_back);
-	m_check_close_after_all.set_back_color(m_cr_titlebar_back, false);
+	//m_check_close_after_all.set_tooltip_text(_S(IDS_CLOSE_ALL_TRANSFER_SUCCESS));	//모든 전송이 성공해야만 창 닫기 옵션이 적용됨. 하나라도 실패하면 닫지 않음
+	m_check_close_after_all.set_text_color(m_theme.cr_title_text);
+	m_check_close_after_all.set_back_color(m_theme.cr_title_back, false);
 	m_check_close_after_all.use_hover(false);
 	m_check_close_after_all.set_font_bold();
 	int auto_close = theApp.GetProfileInt(_T("setting"), _T("auto close after all"), BST_CHECKED);
@@ -381,7 +378,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	GetClientRect(rc);
 	m_check_close_after_all.SetWindowPos(NULL,
 										rc.right - m_sys_buttons.get_size().cx - 12 - rz.Width(),
-										(get_titlebar_height() - rz.Height()) / 2 + 1,
+										(get_title_height() - rz.Height()) / 2 + 1,
 										rz.Width(),
 										rz.Height(), SWP_NOZORDER);
 
@@ -3135,16 +3132,16 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 
 	//progressbar에는 남은 용량만큼 채우는게 아니라 사용량만큼 채워서 보여준다.
 	if (free_ratio < 10.0f)
-		pslider->set_active_color(RGB(220 - free_ratio, 41, 42));
+		pslider->set_active_color(gRGB(220 - free_ratio, 41, 42));
 	else
-		pslider->set_active_color(RGB(36, 160, 212));
+		pslider->set_active_color(gRGB(36, 160, 212));
 
 	pslider->SetPos(100 - (int)free_ratio);
 
 	if (GetUserDefaultUILanguage() == 1042)
-		pstatic->set_textf(Gdiplus::Color::DimGray, _T("%s 중 %s 사용 가능"), get_size_str(ulTotal.QuadPart, -1), get_size_str(ulFree.QuadPart, -1));
+		pstatic->set_textf(-1, _T("%s 중 %s 사용 가능"), get_size_str(ulTotal.QuadPart, -1), get_size_str(ulFree.QuadPart, -1));
 	else
-		pstatic->set_textf(Gdiplus::Color::DimGray, _T("%s free of %s"), get_size_str(ulFree.QuadPart, -1), get_size_str(ulTotal.QuadPart, -1));
+		pstatic->set_textf(-1, _T("%s free of %s"), get_size_str(ulFree.QuadPart, -1), get_size_str(ulTotal.QuadPart, -1));
 }
 
 void CnFTDServerDlg::OnListContextMenuOpen()
