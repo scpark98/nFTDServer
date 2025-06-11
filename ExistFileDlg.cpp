@@ -60,8 +60,8 @@ BOOL CExistFileDlg::OnInitDialog()
 	CSCThemeDlg::OnInitDialog();
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
-	set_color_theme(CSCColorTheme::color_theme_linkmemine);
-	set_title_height(TOOLBAR_TITLE_HEIGHT);
+	set_color_theme(theApp.m_color_theme);
+	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	//SetWindowText(_S(NFTD_IDS_EXIST_FILE));
 
@@ -157,25 +157,33 @@ BOOL CExistFileDlg::OnInitDialog()
 	}
 
 	//src와 dst 파일크기가 동일하면 파란색으로 표시, 그렇지 않으면 기본색으로 표시.
-	m_static_src_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_src_file.cFileName);
-	m_static_dst_file.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s"), m_dst_file.cFileName);
-	m_static_src_filesize.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1),
-		_T("%s : %s (%s)"),
-		_S(IDS_FILE_SIZE),
-		get_size_str(src_filesize.QuadPart, 1),
-		get_size_str(src_filesize.QuadPart, 0));
-	m_static_src_mtime.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s : %s"),
-		_S(IDS_FILE_LAST_MODIFIED_TIME),
-		get_file_time_str(m_src_file.ftLastWriteTime));
+	m_static_src_file.set_text_color((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : m_theme.cr_text));
+	m_static_src_file.set_textf(_T("%s"), m_src_file.cFileName);
+	m_static_dst_file.set_text_color((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : m_theme.cr_text));
+	m_static_dst_file.set_textf(_T("%s"), m_dst_file.cFileName);
 
-	m_static_dst_filesize.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1),
-		_T("%s : %s (%s)"),
-		_S(IDS_FILE_SIZE),
-		get_size_str(dst_filesize.QuadPart, 1),
-		get_size_str(dst_filesize.QuadPart, 0));
-	m_static_dst_mtime.set_textf((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : -1), _T("%s : %s"),
-		_S(IDS_FILE_LAST_MODIFIED_TIME),
-		get_file_time_str(m_dst_file.ftLastWriteTime));
+	m_static_src_filesize.set_text_color((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : m_theme.cr_text));
+	m_static_src_filesize.set_textf(_T("%s : %s (%s)"),
+									_S(IDS_FILE_SIZE),
+									get_size_str(src_filesize.QuadPart, 1),
+									get_size_str(src_filesize.QuadPart, 0));
+
+	m_static_src_mtime.set_text_color((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : m_theme.cr_text));
+	m_static_src_mtime.set_textf(_T("%s : %s"),
+									_S(IDS_FILE_LAST_MODIFIED_TIME),
+									get_file_time_str(m_src_file.ftLastWriteTime));
+
+	m_static_dst_filesize.set_text_color((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : m_theme.cr_text));
+	m_static_dst_filesize.set_textf(
+									_T("%s : %s (%s)"),
+									_S(IDS_FILE_SIZE),
+									get_size_str(dst_filesize.QuadPart, 1),
+									get_size_str(dst_filesize.QuadPart, 0));
+
+	m_static_dst_mtime.set_text_color((src_filesize.QuadPart == dst_filesize.QuadPart ? Gdiplus::Color(0, 51, 200) : m_theme.cr_text));
+	m_static_dst_mtime.set_textf(_T("%s : %s"),
+									_S(IDS_FILE_LAST_MODIFIED_TIME),
+									get_file_time_str(m_dst_file.ftLastWriteTime));
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.

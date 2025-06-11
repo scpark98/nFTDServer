@@ -10,6 +10,7 @@
 
 #include "resource.h"		// 주 기호입니다.
 
+#include "../../Common/colors.h"
 #include "../../Common/system/ShellImageList/ShellImageList.h"
 #include "../../Common/ini/EZIni/EZIni.h"
 
@@ -30,6 +31,7 @@ public:
 	CShellImageList		m_shell_imagelist;
 
 	EZIni				m_config_ini;
+	int					m_color_theme = CSCColorTheme::color_theme_anysupport;
 
 // 재정의입니다.
 public:

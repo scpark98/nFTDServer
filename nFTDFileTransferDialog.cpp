@@ -94,13 +94,13 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Add(IDC_PROGRESS, 0, 0, 100, 0);
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
-	set_color_theme(CSCColorTheme::color_theme_linkmemine);
+	set_color_theme(theApp.m_color_theme);
 	SetWindowText(_S(NFTD_IDS_FILETRANSFER));
-	set_title_height(TOOLBAR_TITLE_HEIGHT);
+	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
-	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY);
+	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY, m_theme.cr_back);
 	m_static_copy.fit_to_back_image(false);
 	//m_static_copy.play_animation();
 
@@ -403,7 +403,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//현재 전송중인 파일명 표시
 		if (m_filelist.size() > 1000)	//간혹 전송 취소를 누르면 특정 변수값이 garbage로 채워지는 이상 현상이 발생하여 비정상적인 경우는 break하도록 함.
 			break;
-		m_static_message.set_textf(-1, _T("%s"), get_part(m_filelist[i].cFileName, fn_name));
+		m_static_message.set_textf(_T("%s"), get_part(m_filelist[i].cFileName, fn_name));
 
 		memcpy(&to, &m_filelist[i], sizeof(to));
 
@@ -464,7 +464,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 				//filesize.HighPart = m_filelist[i].nFileSizeHigh;
 				//filesize.LowPart = m_filelist[i].nFileSizeLow;
 				m_ProgressData.ulReceivedSize.QuadPart += filesize.QuadPart;
-				m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
+				m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
 					get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
 				continue;
 			}

@@ -531,6 +531,7 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 		}
 	}
 
+	//client에서 처리된 결과를 받는다.
 	if (!m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-4 : %d"), GetLastError());
@@ -1181,7 +1182,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		logWriteE(_T("0 byte file. just return."));
 		CloseHandle(hFile);
 
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 		return transfer_result_success;
@@ -1284,7 +1285,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 			CloseHandle(hFile);
 			Progress.ulTotalSize.QuadPart -= filesize.QuadPart;
-			parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+			parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 				get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 			return transfer_result_skip;
@@ -1406,7 +1407,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / real_speed;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_str(remain_sec), d2S(real_speed / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(real_speed / 1024.0, true, 0));
 			}
 		}
 
@@ -1419,7 +1420,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//전체 파일 진행 상태 표시
 		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
 		parent->m_progress.SetPos((int)percent);
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 		//TRACE(_T("total percent = %.2f\n"), percent);
 #endif
@@ -1436,9 +1437,9 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//우선 2번으로 처리한다.
 	if (t_elapsed <= 1)
 	{
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
-		parent->m_static_remain_speed.set_textf(-1, _T("0 Sec / 0 KB/s"));
+		parent->m_static_remain_speed.set_textf(_T("0 Sec / 0 KB/s"));
 	}
 
 	return transfer_result_success;
@@ -1528,7 +1529,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		SetFileTime(hFile, &from.ftCreationTime, &from.ftLastAccessTime, &from.ftLastWriteTime);
 		CloseHandle(hFile);
 
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 		return transfer_result_success;
@@ -1644,7 +1645,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 				CloseHandle(hFile);
 				Progress.ulTotalSize.QuadPart -= src_filesize.QuadPart;
-				parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+				parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 					get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
 				return transfer_result_skip;
@@ -1748,7 +1749,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
 				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(-1, _T("%s / %s KB/s"), get_time_str(remain_sec), d2S(Bps / 1024.0, true, 0));
+				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(Bps / 1024.0, true, 0));
 			}
 		}
 
@@ -1760,7 +1761,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//전체 파일 진행 상태 표시
 		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
 		parent->m_progress.SetPos((int)percent);
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 		//TRACE(_T("total percent = %.2f\n"), percent);
 
@@ -1789,9 +1790,9 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	//우선 2번으로 처리한다.
 	if (t1 <= 0)
 	{
-		parent->m_static_index_bytes.set_textf(-1, _T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
+		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
-		parent->m_static_remain_speed.set_textf(-1, _T("0 Sec / 0 KB/s"));
+		parent->m_static_remain_speed.set_textf(_T("0 Sec / 0 KB/s"));
 	}
 
 	return transfer_result_success;
