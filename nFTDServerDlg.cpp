@@ -150,7 +150,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_PROPERTY, &CnFTDServerDlg::OnTreeContextMenuProperty)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnTreeContextMenuOpenExplorer)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_SEND, &CnFTDServerDlg::OnTreeContextMenuSend)
-	ON_REGISTERED_MESSAGE(Message_CDirectoryChangeWatcher, &CnFTDServerDlg::on_message_CDirectoryChangeWatcher)
+	ON_REGISTERED_MESSAGE(Message_CSCDirWatcher, &CnFTDServerDlg::on_message_CSCDirWatcher)
 END_MESSAGE_MAP()
 
 
@@ -219,8 +219,10 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_resize.Add(IDC_BUTTON_REMOTE_TO_LOCAL, 50, 50, 0, 0);
 
 	set_color_theme(theApp.m_color_theme);
-	set_system_buttons(SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
+	set_system_buttons(this, SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
 	set_titlebar_icon(IDR_MAINFRAME);// , 20, 20);
+
+	m_dir_watcher.init(this);
 
 	m_messagebox.create(this, _T("Title Text"));
 	m_messagebox.set_color_theme(m_theme.get_color_theme());
@@ -1091,8 +1093,8 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 
 				m_list_local.set_path(pMsg->cur_path);
 				m_tree_local.set_path(pMsg->cur_path);
-				m_dir_watcher.UnwatchAllDirectories();
-				m_dir_watcher.WatchDirectory(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, pMsg->cur_path), m_hWnd, false);
+				m_dir_watcher.stop();
+				m_dir_watcher.add(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, pMsg->cur_path));
 			}
 			else
 			{
@@ -1171,8 +1173,8 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			m_path_local.set_path(path);
 			change_directory(path, SERVER_SIDE);
 
-			m_dir_watcher.UnwatchAllDirectories();
-			m_dir_watcher.WatchDirectory(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path), m_hWnd, false);
+			m_dir_watcher.stop();
+			m_dir_watcher.add(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path), false);
 		}
 		else if (msg->pThis == &m_list_remote)
 		{
@@ -1741,8 +1743,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 		m_path_local.set_path(path);
 		m_tree_local.set_path(path, false);
 		m_list_local.set_path(path);
-		m_dir_watcher.UnwatchAllDirectories();
-		m_dir_watcher.WatchDirectory(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path), m_hWnd, false);
+		m_dir_watcher.stop();
+		m_dir_watcher.add(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path), false);
 
 		refresh_selection_status(&m_list_local);
 		refresh_disk_usage(false);
@@ -2682,7 +2684,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_rename :
-				m_dir_watcher.UnwatchAllDirectories();
+				m_dir_watcher.stop();
 				m_list_local.edit_item(dq[0], CVtListCtrlEx::col_filename);
 				//여기서는 편집모드로만 들어가고 다시 watching은 편집이 종료된 시점에 재개해야 한다.
 				res = true;
@@ -2720,7 +2722,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 					refresh_disk_usage(false);
 					refresh_selection_status(&m_list_local);
 					
-					m_dir_watcher.WatchDirectory(m_list_local.get_path(), m_hWnd, false);
+					m_dir_watcher.add(m_list_local.get_path(), false);
 				}
 				break;
 			case file_cmd_property :
@@ -3510,7 +3512,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_local.get_edit_new_text());
 	m_list_local.set_win32_find_data(item, item_data);
 
-	m_dir_watcher.WatchDirectory(m_list_local.get_path(), m_hWnd, false);
+	m_dir_watcher.add(m_list_local.get_path(), false);
 }
 
 
@@ -3629,18 +3631,18 @@ void CnFTDServerDlg::OnTreeContextMenuProperty()
 //이 프로그램을 통해 생성, 삭제, 이름변경을 할 때에는 모든 처리를 알아서 하게 작성되었으므로
 //이 이벤트를 여기서 또 처리하게되면 중복처리된다.
 //윈도우 탐색기와 같은 외부 프로그램에 의한 변경에 대해서만 이 이벤트들을 처리해야 한다.
-LRESULT CnFTDServerDlg::on_message_CDirectoryChangeWatcher(WPARAM wParam, LPARAM lParam)
+LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_OLD_NAME(4)
-	CDirectoryChangeWatcherMessage* msg = (CDirectoryChangeWatcherMessage*)wParam;
-	TRACE(_T("action = %d, filename0 = %s, filename1 = %s\n"), msg->action, msg->filename0, msg->filename1);
+	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
+	TRACE(_T("action = %d, filename0 = %s, filename1 = %s\n"), msg->action, msg->path0, msg->path1);
 	if (msg->action == FILE_ACTION_REMOVED)
 	{
-		m_list_local.delete_item(msg->filename0);
+		m_list_local.delete_item(msg->path0);
 	}
 	else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
 	{
-		m_list_local.rename(msg->filename0, msg->filename1);
+		m_list_local.rename(msg->path1, msg->path0);
 	}
 
 	return 0;

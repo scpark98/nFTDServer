@@ -22,7 +22,7 @@
     <Filter Include="Common\SCMenuBar">
       <UniqueIdentifier>{2467b52b-8237-44da-aac9-6389ec6a299c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Common\DirectoryChanges">
+    <Filter Include="Common\SCDirWatcher">
       <UniqueIdentifier>{5eb59eb5-528a-4893-889b-fd67e9661996}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -159,17 +159,23 @@
     <ClInclude Include="..\..\Common\system\CrashHandler\CrashHandler.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\file_system\DirectoryChanges\DelayedDirectoryChangeHandler.h">
-      <Filter>Common\DirectoryChanges</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Common\file_system\DirectoryChanges\DirectoryChanges.h">
-      <Filter>Common\DirectoryChanges</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\messagebox\CSCMessageBox\SCMessageBox.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\data_structure\SCParagraph\SCParagraph.h">
       <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChangesPrivate.h">
+      <Filter>Common\SCDirWatcher</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\SCDirWatcher.h">
+      <Filter>Common\SCDirWatcher</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ThreadSafeQueue.h">
+      <Filter>Common\SCDirWatcher</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChanges.h">
+      <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -287,17 +293,20 @@
     <ClCompile Include="..\..\Common\system\CrashHandler\CrashHandler.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\file_system\DirectoryChanges\DirectoryChanges.cpp">
-      <Filter>Common\DirectoryChanges</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\file_system\DirectoryChanges\DelayedDirectoryChangeHandler.cpp">
-      <Filter>Common\DirectoryChanges</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Common\messagebox\CSCMessageBox\SCMessageBox.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\data_structure\SCParagraph\SCParagraph.cpp">
       <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChangesPrivate.cpp">
+      <Filter>Common\SCDirWatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\file_system\SCDirWatcher\SCDirWatcher.cpp">
+      <Filter>Common\SCDirWatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChanges.cpp">
+      <Filter>Common\SCDirWatcher</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

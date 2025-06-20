@@ -16,8 +16,7 @@
 #include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 #include "../../Common/CWnd/WndShadow/WndShadow.h"
 #include "../../Common/CDialog/SCShapeDlg/SCShapeDlg.h"
-#include "../../Common/file_system/DirectoryChanges/DirectoryChanges.h"
-#include "../../Common/file_system/DirectoryChanges/DelayedDirectoryChangeHandler.h"
+#include "../../Common/file_system/SCDirWatcher/SCDirWatcher.h"
 #include "../../Common/messagebox/CSCMessageBox/SCMessageBox.h"
 
 #include "nFTDServerManager.h"
@@ -44,8 +43,8 @@ public:
 	CSCShapeDlg			m_toast_popup;
 	CSCMessageBox		m_messagebox;
 
-	CDirectoryChangeWatcher	m_dir_watcher;
-	LRESULT				on_message_CDirectoryChangeWatcher(WPARAM wParam, LPARAM lParam);
+	CSCDirWatcher		m_dir_watcher;
+	LRESULT				on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam);
 
 	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
