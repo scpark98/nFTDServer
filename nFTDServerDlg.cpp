@@ -224,7 +224,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	m_dir_watcher.init(this);
 
-	m_messagebox.create(this, _T("Title Text"));
+	m_messagebox.create(this, _T("nFTDServer"));
 	m_messagebox.set_color_theme(m_theme.get_color_theme());
 
 	//init_splitter();

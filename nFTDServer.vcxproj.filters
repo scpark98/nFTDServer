@@ -93,9 +93,6 @@
     <ClInclude Include="..\..\Common\Functions.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\GdiplusBitmap.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\MemoryDC.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -177,6 +174,9 @@
     <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChanges.h">
       <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Common\SCGdiplusBitmap.h">
+      <Filter>Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nFTDServer.cpp">
@@ -231,9 +231,6 @@
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\Functions.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\GdiplusBitmap.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\CButton\GdiButton\GdiButton.cpp">
@@ -307,6 +304,9 @@
     </ClCompile>
     <ClCompile Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChanges.cpp">
       <Filter>Common\SCDirWatcher</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\SCGdiplusBitmap.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
