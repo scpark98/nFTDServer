@@ -221,6 +221,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	set_color_theme(theApp.m_color_theme);
 	set_system_buttons(this, SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
 	set_titlebar_icon(IDR_MAINFRAME);// , 20, 20);
+	set_draw_border(true, 1, get_color(m_theme.cr_title_back, 16));
 
 	m_dir_watcher.init(this);
 
