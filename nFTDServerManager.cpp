@@ -127,54 +127,69 @@ BOOL CnFTDServerManager::SetConnectionService()
 
 BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 {
-	LPSTR lpCmdOpt;
+	//CString cmdline(lptCmdLine);
 	DWORD dwConnectionMode = 0;
 	ULONG ulAP2PAddress = 0;
 	USHORT ushAP2PPort = 0;
 	int nServerNum = 0;
 	BOOL isStandAlone;
 
-	LPSTR lpCmdLine = new CHAR[MAX_PATH];
-	ZeroMemory(lpCmdLine, MAX_PATH);
-	int nLen = WideCharToMultiByte(CP_ACP, 0, lptCmdLine, -1, NULL, NULL, NULL, NULL);
-	WideCharToMultiByte(CP_ACP, 0, lptCmdLine, -1, lpCmdLine, nLen, NULL, NULL);
+	//LPSTR lpCmdLine = new CHAR[MAX_PATH];
+	//ZeroMemory(lpCmdLine, MAX_PATH);
+	//int nLen = WideCharToMultiByte(CP_ACP, 0, lptCmdLine, -1, NULL, NULL, NULL, NULL);
+	//WideCharToMultiByte(CP_ACP, 0, lptCmdLine, -1, lpCmdLine, nLen, NULL, NULL);
 
-	if (strlen(lpCmdLine) < 2)
+	//"C:\Users\Public\Documents\LinkMeMine\LMMViewer\LMMLauncher\nFTDServer2.exe" -p 192.168.0.48 7002 10000001
+	if (__argc < 2)
 	{
-		delete[] lpCmdLine;
+		//delete[] lpCmdLine;
 		return FALSE;
 	}
 
-	lpCmdOpt = strtok(lpCmdLine, " ");
-	if (!strcmp(lpCmdOpt, "-l"))
+	//std::deque<CString> token;
+	//get_token_string(cmdline, token, _T(" "), false);
+
+	//lpCmdOpt = strtok(lpCmdLine, " ");
+	if (_tcscmp(__targv[1], _T("-l")) == 0)		// P2P server
+		//if (token[1] == _T("-l"))
 	{
 		dwConnectionMode = CONNECTION_LISTEN;
-		ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
+		//ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
+		ushAP2PPort = _ttoi(__targv[2]);
 	}
-	else if (!strcmp(lpCmdOpt, "-c")) // connect
+	else if (_tcscmp(__targv[1], _T("-c")) == 0) // P2P connect
+	//else if (token[1] == _T("-c")) // connect
 	{
 		dwConnectionMode = CONNECTION_CONNECT;
-		ulAP2PAddress = inet_addr(strtok(NULL, " "));
-		ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
+		//ulAP2PAddress = inet_addr(strtok(NULL, " "));
+		//ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
+		//ulAP2PAddress = inet_addr((char*)(LPTSTR)(CStoken[2].GetBuffer()));
+		ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[2]).c_str());
+		ushAP2PPort = _ttoi(__targv[3]);
 
 		m_isP2PConnection = TRUE;
 		m_strServerIP = _T("P2P");
 	}
-	else if (!strcmp(lpCmdOpt, "-p")) // pat to pat . NMS 俊 立加
+	else if (_tcscmp(__targv[1], _T("-p")) == 0) // AP2P (pat to pat) . NMS 俊 立加
+	//else if (token[1] == _T("-p"))
 	{
 		dwConnectionMode = CONNECTION_CONNECT;
 
-		LPCSTR lpcServerAddress = strtok(NULL, " ");
-		TCHAR tchServerAddress[30] = { 0, };
-		MultiByteToWideChar(CP_ACP, 0, lpcServerAddress, -1, tchServerAddress, 30);
-		m_strServerIP.Format(_T("%s"), tchServerAddress);
-		//g_serverIp.Format(_T("%s"), tchServerAddress);
+		//LPCSTR lpcServerAddress = (CStringA(token[2]));
+		//TCHAR tchServerAddress[30] = { 0, };
+		//MultiByteToWideChar(CP_ACP, 0, lpcServerAddress, -1, tchServerAddress, 30);
+		//m_strServerIP.Format(_T("%s"), tchServerAddress);
 
-		ulAP2PAddress = inet_addr(lpcServerAddress);
-		ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
-		nServerNum = atoi(strtok(NULL, " "));
+		m_strServerIP = __targv[2];
+		ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[2]).c_str());
+		//ulAP2PAddress = inet_addr((char*)(LPTSTR)(token[2].GetBuffer()));
+		//ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
+		//nServerNum = atoi(strtok(NULL, " "));
+		ushAP2PPort = _ttoi(__targv[3]);
+		nServerNum = _ttoi(__targv[4]);
 		m_isP2PConnection = FALSE;
 	}
+	/*
 	else
 	{
 		delete[] lpCmdLine;
@@ -182,6 +197,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	}
 
 	lpCmdOpt = strtok(NULL, " ");
+	*/
 #ifdef ANYSUPPORT
 	if (lpCmdOpt != NULL)
 	{
@@ -223,6 +239,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 #endif // ANYSUPPORT
 
 	// standalone 牢瘤 咯何
+	/*
 	if (lpCmdOpt != NULL && !strcmp(lpCmdOpt, "-standalone"))
 	{
 		//neturoService::SetServiceMode(FALSE);
@@ -294,9 +311,9 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	}
 
 	delete[] lpCmdLine;
-
+	*/
 	m_socket.SetConnection(dwConnectionMode);
-	m_socket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, isStandAlone);
+	m_socket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, true);// isStandAlone);
 	m_DataSocket.SetConnection(dwConnectionMode);
 	m_DataSocket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, FALSE);
 
@@ -1138,9 +1155,9 @@ bool CnFTDServerManager::request_file_transfer_history(CString filename, CString
 		param.body.Format(_T("{\"device_id\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d, \"company_fk\":\"%s\"}"),
 			m_strDeviceID, m_strManagerID, m_strViewerPublicIP, m_strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE, m_strCompanyKey);
 #else
-		strURL.Format(_T("/api/v1.0/optimal/PutOptimalFileHistoryInput"));
-		strParameter.Format(_T("{\"device_id\":\"%s\", \"mgrid\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
-			strDeviceID, strManagerID, start_time, end_time, filename, filesize, is_SERVER_SIDE);
+		//strURL.Format(_T("/api/v1.0/optimal/PutOptimalFileHistoryInput"));
+		//strParameter.Format(_T("{\"device_id\":\"%s\", \"mgrid\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
+		//	strDeviceID, strManagerID, start_time, end_time, filename, filesize, is_SERVER_SIDE);
 #endif
 	}
 	else
@@ -1152,9 +1169,9 @@ bool CnFTDServerManager::request_file_transfer_history(CString filename, CString
 		param.body.Format(_T("{\"device_id\":\"%s\", \"host_pub_ip\":\"%s\", \"host_pri_ip\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
 			m_strDeviceID, m_strDeviceIP, m_strDeviceIP, m_strManagerID, m_strViewerPublicIP, m_strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE);
 #else
-		strURL.Format(_T("/api/v1.0/optimal/PutOptimalFileHistoryInput2"));
-		strParameter.Format(_T("{\"device_id\":\"%s\", \"host_pub_ip\":\"%s\", \"host_pri_ip\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
-			strDeviceID, strDeviceIP, strDeviceIP, strManagerID, strViewerPublicIP, strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE);
+		//strURL.Format(_T("/api/v1.0/optimal/PutOptimalFileHistoryInput2"));
+		//strParameter.Format(_T("{\"device_id\":\"%s\", \"host_pub_ip\":\"%s\", \"host_pri_ip\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
+		//	strDeviceID, strDeviceIP, strDeviceIP, strManagerID, strViewerPublicIP, strViewerPrivateIP, start_time, end_time, filename, filesize, is_SERVER_SIDE);
 #endif
 	}
 

@@ -110,7 +110,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_static_remain_speed.set_back_color(Gdiplus::Color::White);
 
 	m_progress.set_style(CSCSliderCtrl::style_progress_line);
-	m_progress.set_active_color(RGB(0, 134, 218));
+	m_progress.set_active_color(gRGB(0, 134, 218));
 	m_progress.set_back_color(white);
 
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);

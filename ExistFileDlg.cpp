@@ -63,7 +63,11 @@ BOOL CExistFileDlg::OnInitDialog()
 	set_color_theme(theApp.m_color_theme);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
-	//SetWindowText(_S(NFTD_IDS_EXIST_FILE));
+#ifdef _REMOTE_SDK
+	SetWindowText(_T("Remote SDK"));
+#else
+	SetWindowText(_S(NFTD_IDS_EXIST_FILE));
+#endif
 
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 

@@ -1,3 +1,12 @@
+[빌드환경]
+- blastsock과 그 안에 cryptopp와의 빌드호환성 때문에 특정 조건에서는 빌드에 실패한다.
+- nFTDServer2
+	Debug	: winSDK 8.1, vs2022 ok, vs2019 ok, vs2015 ?
+	Release	: winSDK 8.1, vs2022 fail, vs2019 fail, vs2015 ok
+- nFTDClient
+	Debug	: winSDK 8.1, vs2022 ok, vs2019 ok, vs2015 ok
+	Release	: winSDK 8.1, vs2022 fail, vs2019 fail, vs2015 ok
+
 [수정할 내용-즐겨찾기]
 
 [수정할 내용-drag&drop]
@@ -139,8 +148,8 @@ Delete키방지 필요
 - AP2P, KMS와 같은 서버와의 연결시에는 항상 RECEIVE_KEY로 한다.
 
 [AP2P 단독 테스트 시 파라미터]
-nFTDClient.exe -p 13.124.64.192 7002 351
-nFTDClient.exe -p 3.35.127.253 7002 111
+nFTDClient.exe -p 13.124.64.192 443 1234
+nFTDClient.exe -p 3.35.127.253 443 1234
 
 SCPARK-KOINO-LG	: nFTDServer2.exe -p -viewermode -statisticsmode "13.125.4.150" 7002 406 "C4BDE5622FFF428745499944" "SCPARK-KOINO-LG" "apple@linkmemine.com" "17" "f5eccd82833e4bed1d189531cecf70561fe7c0b1" "" "192.168.74.1" 1
 SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
@@ -150,6 +159,10 @@ SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 
 [P2P 단독 테스트 시 파라미터]
 nFTDClient.exe -l 443
 nFTDServer.exe -c -viewermode -statisticsmode 192.168.3.196 443 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
+
+[RemoteSDK]
+nFTDClient.exe -p 192.168.0.48 7002 10000001
+nFTDServer.exe -p 192.168.0.48 7002 10000001
 
 [전송속도]
 -P2P  send : 17.80 MB/s, recv : 15.45 MB/s

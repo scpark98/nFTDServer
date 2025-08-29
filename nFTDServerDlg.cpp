@@ -390,28 +390,41 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 
 	//for test. 한 PC에서 단독으로 테스트 할 경우
-	if (true)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
+	if (false)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
 	{
 		CString my_ip = get_my_ip();
+#ifdef _REMOTE_SDK
+		//for Remote SDK test
+		if (true)
+#else
 		//내 PC에서 P2P 모드로 테스트 할 경우
 		if (my_ip == CString(__targv[4]))
+#endif
 		{
 			//대상 IP가 my_ip와 같고 실행중인 nFTDClient.exe가 없다면 실행시켜준다.
 			//만약 nFTDClient.exe도 trace mode로 돌려야한다면 nFTDClient.exe를 먼저 trace mode로 실행시켜서 테스트해야 한다.
 			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
-				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-l 7002"), 0, SW_SHOWNORMAL);
+			{
+				#ifdef _REMOTE_SDK
+					//for REMOTE_SDK AP2P connection test
+					ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 192.168.0.48 7002 10000001"), 0, SW_SHOWNORMAL);
+				#else
+					//for P2P direct connection test
+					//ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-l 443"), 0, SW_SHOWNORMAL);
+				#endif
+			}
 		}
 		//LinkMeMine 1.0 개발서버의 AP2P로 테스트 할 경우
 		else if (CString(__targv[4]) == _T("3.35.127.253"))
 		{
 			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
-				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 3.35.127.253 443 440"), 0, SW_SHOWNORMAL);
+				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 3.35.127.253 443 1234"), 0, SW_SHOWNORMAL);
 		}
 		//LinkMeMine 3.0 개발서버의 AP2P로 테스트 할 경우
 		else if (CString(__targv[4]) == _T("13.125.4.150"))
 		{
 			if (get_process_running_count(get_exe_directory() + _T("\\nFTDClient2.exe")) == 0)
-				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 13.125.4.150 7002 440"), 0, SW_SHOWNORMAL);
+				ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 13.125.4.150 443 1234"), 0, SW_SHOWNORMAL);
 		}
 	}
 
@@ -863,7 +876,7 @@ int CnFTDServerDlg::connect()
 #ifdef LMM_SERVICE
 	if (!m_ServerManager.SetConnectionService())
 #else
-	if (!m_ServerManager.SetConnection(lpCmdLine))
+	if (!m_ServerManager.SetConnection(GetCommandLine()))
 #endif
 	{
 		AfxMessageBox(_T("m_ServerManager.SetConnection(lpCmdLine) failed."));
@@ -899,7 +912,11 @@ int CnFTDServerDlg::connect()
 	//m_treeClient.SetOsType(m_ServerManager.m_nClientOSType);
 
 	//m_ServerManager.m_strStatusbarTitle;
+#ifdef _REMOTE_SDK
+	SetWindowText(_T("File Transfer"));
+#else
 	SetWindowText(m_ServerManager.m_strStatusbarTitle);
+#endif
 
 	logWrite(_T("Connection ok."));
 
@@ -964,7 +981,9 @@ void CnFTDServerDlg::initialize()
 
 
 	//즐겨찾기 로딩 및 체크
+#ifndef _REMOTE_SDK
 	SetTimer(timer_init_favorites, 1000, NULL);
+#endif
 }
 
 

@@ -78,6 +78,8 @@ BOOL CnFTDServerApp::InitInstance()
 	//- 로그파일 위치
 #if defined(LMMSE_SERVICE)
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMineSE\\Log\\FileTransfer"), get_exe_file_title());
+#elif defined(_REMOTE_SDK)
+	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\Koino\\Log\\FileTransfer"), get_exe_file_title());
 #else
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMine\\Log\\FileTransfer"), get_exe_file_title());
 #endif
