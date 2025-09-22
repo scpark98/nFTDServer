@@ -7,6 +7,14 @@
 	Debug	: winSDK 8.1, vs2022 ok, vs2019 ok, vs2015 ok
 	Release	: winSDK 8.1, vs2022 fail, vs2019 fail, vs2015 ok
 
+
+- anysupport
+  무조건 C 드라이브로 시작,
+  즐겨찾기 메뉴 항목은 제거,
+  파일전송 시 alternative_back_color 사용안함으로 수정.
+
+
+
 [수정할 내용-즐겨찾기]
 
 [수정할 내용-drag&drop]
@@ -163,6 +171,10 @@ nFTDServer.exe -c -viewermode -statisticsmode 192.168.3.196 443 351 C4BDE5622FFF
 [RemoteSDK]
 nFTDClient.exe -p 192.168.0.48 7002 10000001
 nFTDServer.exe -p 192.168.0.48 7002 10000001
+
+[AnySupport]
+nFTDClient.exe -p 43.202.85.142 443 1
+nFTDServer.exe -p 43.202.85.142 443 1
 
 [전송속도]
 -P2P  send : 17.80 MB/s, recv : 15.45 MB/s

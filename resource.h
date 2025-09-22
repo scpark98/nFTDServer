@@ -96,11 +96,14 @@
 #define IDS_CLOSE_ALL_TRANSFER_SUCCESS  167
 #define IDR_GIF_DELETE                  167
 #define IDR_TREE_CONTEXT_MENU           168
+#define IDS_SHOW_ON_AGENT               168
 #define IDS_MAKE_FILE_FOLDER_LIST       169
 #define IDS_ALREADY_EXIST_SAME_NAME_ITEM 170
 #define IDS_ALREADY_EXIST_SAME_NAME_FOLDER 171
 #define IDS_FAIL_TO_GET_PROPERTY        172
 #define IDS_HIGH_SPEED_MODE             173
+#define IDS_SHOW_ON_AGENT2              174
+#define IDS_SHOW_ON_CLIENT              174
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002

@@ -26,12 +26,16 @@ class CnFTDServerApp : public CWinApp
 {
 public:
 	CnFTDServerApp();
+	~CnFTDServerApp();
 
 	//Shell의 imagelist 및 shell과 관계된 멤버 제공
 	CShellImageList		m_shell_imagelist;
 
 	EZIni				m_config_ini;
 	int					m_color_theme = CSCColorTheme::color_theme_anysupport;
+
+protected:
+	HANDLE				m_hMutex;
 
 // 재정의입니다.
 public:

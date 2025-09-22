@@ -332,12 +332,12 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
 	m_button_local_to_remote.fit_to_image(false);
 	m_button_local_to_remote.set_back_color(m_theme.cr_back, false);
-	m_button_local_to_remote.draw_drop_shadow(true, 1.0f, 1.6f);
+	m_button_local_to_remote.draw_drop_shadow(true, 1.8f, 1.6f);
 
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
 	m_button_remote_to_local.fit_to_image(false);
 	m_button_remote_to_local.set_back_color(m_theme.cr_back, false);
-	m_button_remote_to_local.draw_drop_shadow(true, 1.0f, 1.6f);
+	m_button_remote_to_local.draw_drop_shadow(true, 1.8f, 1.6f);
 
 	m_progress_local.set_style(CSCSliderCtrl::style_progress);
 	m_progress_local.set_track_height(4);
@@ -352,14 +352,14 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_progress_remote.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 
 	m_slider_local_disk_space.set_style(CSCSliderCtrl::style_progress);
-	//m_slider_local_disk_space.set_track_height(10);
+	m_slider_local_disk_space.set_track_height(11);
 	m_slider_local_disk_space.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 	m_slider_local_disk_space.set_text_style(CSCSliderCtrl::text_style_none);
 	m_slider_local_disk_space.draw_progress_border();
 	m_slider_local_disk_space.SetPos(0);
 
 	m_slider_remote_disk_space.set_style(CSCSliderCtrl::style_progress);
-	//m_slider_remote_disk_space.set_track_height(10);
+	m_slider_remote_disk_space.set_track_height(11);
 	m_slider_remote_disk_space.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 	m_slider_remote_disk_space.set_text_style(CSCSliderCtrl::text_style_none);
 	m_slider_remote_disk_space.draw_progress_border();
@@ -432,6 +432,21 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	init_listctrl();
 	init_pathctrl();
 
+	//로컬 경로를 복원시킨다. 이 작업은 연결 여부와 관계없이 먼저 진행시킨다.
+	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
+	//anysupport는 viewermode가 아니면 로컬이 고객컴퓨터가 된다. 따라서 특정 고객의 로컬 드라이브를 기억해놓는 것은 의미가 없다.
+#if (defined(_ANYSUPPORT))
+	m_path_local.set_path(_T("C:\\"));
+#else
+	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, GetLocalLastPath());
+	if (path.IsEmpty() || !PathFileExists(path))
+		path = get_known_folder(CSIDL_DRIVES);
+
+	//만약 real_path가 "C:\Users\scpark\Desktop"이라도 트리에서는 "바탕 화면" 항목이 선택되야 한다.
+	logWrite(_T("local path = %s"), path);
+	change_directory(path, SERVER_SIDE);
+#endif
+
 	//text 내용만 없을 뿐 폰트 크기 등을 미리 세팅해놓고 시작한다.
 	//팝업 메시지가 필요할 경우 set_text(_T("text message"));와 같이 텍스트만 변경해주면 된다.
 	m_toast_popup.set_text(this, _T(" "), 32, Gdiplus::FontStyleBold, 2, 2.0, _T("맑은 고딕"),
@@ -455,6 +470,14 @@ void CnFTDServerDlg::init_treectrl()
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	m_tree_local.set_use_popup_menu();
 
+	//filetransfer.ini? favorite.ini?에서 읽어와서 마지막 열었던 폴더를 복원시키는데
+	//anysupport는 linkmemine과 달리 favorite.ini를 활용하기 애매하다.
+	//우선 C드라이브를 기본으로 열어준다.
+#if (defined(_REMOTE_SDK) || defined(_ANYSUPPORT))
+	m_tree_local.set_path(_T(""));
+	Wait(100);
+	m_tree_local.set_path(_T("C:\\"));
+#endif
 }
 
 void CnFTDServerDlg::init_listctrl()
@@ -519,11 +542,13 @@ void CnFTDServerDlg::init_favorite()
 	CString headings;
 	headings.Format(_T("%s,100;%s,150"), _S(IDS_FAVORITE) + _T(" ") + _S(IDS_FOLDER), _S(IDS_PATH));
 
+	m_list_local_favorite.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_FLATSB);
 	m_list_local_favorite.set_headings(headings);
 	m_list_local_favorite.set_font_size(9);
 	m_list_local_favorite.set_header_height(22);
 	m_list_local_favorite.load_column_width(&theApp, _T("list local favorite"));
 
+	m_list_remote_favorite.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_FLATSB);
 	m_list_remote_favorite.set_headings(headings);
 	m_list_remote_favorite.set_font_size(9);
 	m_list_remote_favorite.set_header_height(22);
@@ -550,24 +575,29 @@ void CnFTDServerDlg::init_favorite()
 		favorite_cmd(favorite_add, SERVER_SIDE, dq[i]);
 	}
 
-	//remote. __targv[4] = IP, __targv[7] = device_id
-	str = ini[__targv[4]][__targv[7]];
-
-	dq.clear();
-	get_token_string(str, dq, _T(";"), false);
-
-	for (i = 0; i < dq.size(); i++)
-	{
-		//기존 즐겨찾기 폴더끝에 붙은 '\\' 제거.
-		if (dq[i].GetLength() > 2 && dq[i].Right(1) == '\\')
-			truncate(dq[i], 1);
-		favorite_cmd(favorite_add, CLIENT_SIDE, dq[i]);
-	}
-
 	//header text가 수직 중앙에 제대로 표시되지 않는 현상이 있어 강제로 Invalidate()을 호출함.
 	//set_header_height()를 호출했으나 그 적용이 된 후에도 정상표시되지 않고 있음.
 	m_list_local_favorite.Invalidate();
-	m_list_remote_favorite.Invalidate();
+
+
+	//remote. __targv[4] = IP, __targv[7] = device_id
+	if (__argc >= 8)
+	{
+		str = ini[__targv[4]][__targv[7]];
+
+		dq.clear();
+		get_token_string(str, dq, _T(";"), false);
+
+		for (i = 0; i < dq.size(); i++)
+		{
+			//기존 즐겨찾기 폴더끝에 붙은 '\\' 제거.
+			if (dq[i].GetLength() > 2 && dq[i].Right(1) == '\\')
+				truncate(dq[i], 1);
+			favorite_cmd(favorite_add, CLIENT_SIDE, dq[i]);
+		}
+
+		m_list_remote_favorite.Invalidate();
+	}
 }
 
 void CnFTDServerDlg::save_favorite(int dwSide)
@@ -587,7 +617,7 @@ void CnFTDServerDlg::save_favorite(int dwSide)
 
 	if (dwSide == SERVER_SIDE)
 		ini[_T("LOCAL")][_T("FAVORITE")] = str;
-	else
+	else if (__argc >= 8)
 		ini[__targv[4]][__targv[7]] = str;
 }
 
@@ -914,6 +944,10 @@ int CnFTDServerDlg::connect()
 	//m_ServerManager.m_strStatusbarTitle;
 #ifdef _REMOTE_SDK
 	SetWindowText(_T("File Transfer"));
+#elif _ANYSUPPORT
+	SetWindowText(_T("AnySupport ") + _S(NFTD_IDS_FILETRANSFER));
+	m_static_local.set_text(m_bViewerMode ? _S(IDS_SUPPORTER_PC) : _S(IDS_HOST_PC));
+	m_static_remote.set_text(m_bViewerMode ? _S(IDS_HOST_PC) : _S(IDS_SUPPORTER_PC));
 #else
 	SetWindowText(m_ServerManager.m_strStatusbarTitle);
 #endif
@@ -940,17 +974,7 @@ void CnFTDServerDlg::initialize()
 	m_path_remote.set_is_local_device(false);
 	//m_path_remote.back_color(Gdiplus::Color::Turquoise);
 
-	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
-	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, GetLocalLastPath());
-	if (path.IsEmpty() || !PathFileExists(path))
-		path = get_known_folder(CSIDL_DRIVES);
-
-	//만약 real_path가 "C:\Users\scpark\Desktop"이라도 트리에서는 "바탕 화면" 항목이 선택되야 한다.
-
-	logWrite(_T("local path = %s"), path);
-	change_directory(path, SERVER_SIDE);
-
-	path = GetRemoteLastPath();
+	CString path = GetRemoteLastPath();
 	//if (path.IsEmpty() || !PathFileExists(path))
 	//	path = get_known_folder(CSIDL_DRIVES);
 
@@ -981,9 +1005,18 @@ void CnFTDServerDlg::initialize()
 
 
 	//즐겨찾기 로딩 및 체크
-#ifndef _REMOTE_SDK
+#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
 	SetTimer(timer_init_favorites, 1000, NULL);
 #endif
+
+	//filetransfer.ini? favorite.ini?에서 읽어와서 마지막 열었던 폴더를 복원시키는데
+//anysupport는 linkmemine과 달리 favorite.ini를 활용하기 애매하다.
+//우선 C드라이브를 기본으로 열어준다.
+#if (defined(_REMOTE_SDK) || defined(_ANYSUPPORT))
+	m_tree_remote.set_path(_T("C:\\"));
+#endif
+
+	SetForegroundWindowForce(m_hWnd);
 }
 
 
@@ -1106,6 +1139,7 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			bool* res = (bool*)lParam;
 
 			//내 PC, 바탕 화면 등과 같은 경로일 경우는 PathFileExists()로 검사가 안되므로 다른 방법으로 유효한 패스인지 검사해야 한다.
+			/*
 			if (PathFileExists(pMsg->cur_path))
 			{
 				if (res)
@@ -1115,6 +1149,16 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 				m_tree_local.set_path(pMsg->cur_path);
 				m_dir_watcher.stop();
 				m_dir_watcher.add(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, pMsg->cur_path));
+			}
+			*/
+			if (change_directory(pMsg->cur_path, SERVER_SIDE))
+			{
+				if (res)
+					*res = true;
+
+				//tree에서 set_path()를 호출하면 list도 자동 갱신되므로
+				//별도로 호출하지 않는다.
+				m_tree_local.set_path(pMsg->cur_path);
 			}
 			else
 			{
@@ -1582,7 +1626,11 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		if (res)// && !viewer_is_running)
 		{
+#ifdef _ANYSUPPORT
+			m_toast_popup.set_text(m_bViewerMode ? _S(IDS_SHOW_ON_CLIENT) : _S(IDS_SHOW_ON_AGENT));
+#else
 			m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
+#endif
 			m_toast_popup.CenterWindow(this);
 			m_toast_popup.fade_in(10, 2000, true);
 		}
@@ -2201,8 +2249,14 @@ void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	CString path = m_tree_local.get_path();
 
 	//즐겨찾기에 등록된 폴더인지 확인한다.
+#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
 	int favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, path);
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
+#else
+	//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
+	pMenu->DeleteMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND);
+#endif
+
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, _S(IDS_OPEN_WITH_EXPLORER) + _T("(&E)"));
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
@@ -2259,8 +2313,14 @@ void CnFTDServerDlg::OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	CString path = m_tree_remote.get_path();
 
 	//즐겨찾기에 등록된 폴더인지 확인한다.
+#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
 	int favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, path);
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
+#else
+	//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
+	pMenu->DeleteMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND);
+#endif
+
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, _S(IDS_OPEN_WITH_EXPLORER) + _T("(&E)"));
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
@@ -2312,6 +2372,7 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 		fullpath = dq[0].cFileName;
 	
 	//파일 또는 폴더에서 우클릭하므로 즐겨찾기에 등록된 폴더인지는 폴더 경로로 비교해야 한다.
+#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
 	int favorite_index;
 	if (dq.size() == 0 || !(dq[0].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 		favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, m_list_local.get_path());
@@ -2319,6 +2380,10 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 		favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, dq[0].cFileName);
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
+#else
+	//pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
+	pMenu->DeleteMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND);
+#endif
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_OPEN, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_OPEN, _S(IDS_OPEN) + _T("(&O)"));
@@ -2343,8 +2408,6 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_PROPERTY, MF_DISABLED);
 	}
-
-
 
 	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
 	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
@@ -2394,6 +2457,7 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 		fullpath = dq[0].cFileName;
 
 	//파일 또는 폴더에서 우클릭하므로 즐겨찾기에 등록된 폴더인지는 폴더 경로로 비교해야 한다.
+#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
 	int favorite_index;
 	if (dq.size() == 0 || !(dq[0].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 		favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, m_list_remote.get_path());
@@ -2401,6 +2465,10 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 		favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, dq[0].cFileName);
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
+#else
+	//pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
+	pMenu->DeleteMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND);
+#endif
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_OPEN, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_OPEN, _S(IDS_OPEN) + _T("(&O)"));
@@ -3041,6 +3109,14 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 	}
 
 	return res;
+}
+
+void CnFTDServerDlg::refresh_selection_status(bool local)
+{
+	if (local)
+		refresh_selection_status(&m_list_local);
+	else
+		refresh_selection_status(&m_list_remote);
 }
 
 //목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.

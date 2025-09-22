@@ -29,8 +29,17 @@ CnFTDServerApp::CnFTDServerApp()
 {
 	// TODO: 여기에 생성 코드를 추가합니다.
 	// InitInstance에 모든 중요한 초기화 작업을 배치합니다.
+	m_hMutex = NULL;
 }
 
+CnFTDServerApp::~CnFTDServerApp()
+{
+	if (m_hMutex)
+	{
+		::ReleaseMutex(m_hMutex);
+		m_hMutex = NULL;
+	}
+}
 
 // 유일한 CnFTDServerApp 개체입니다.
 
@@ -43,6 +52,18 @@ HMODULE g_hRes;
 
 BOOL CnFTDServerApp::InitInstance()
 {
+	m_hMutex = ::CreateMutex(NULL, FALSE, _T("MUTEX_OF_nFTDServer2"));
+	if (::GetLastError() == ERROR_ALREADY_EXISTS)
+	{
+		HWND hWnd = get_hwnd_by_exe_file(get_exe_filename());
+		if (hWnd)
+		{
+			SetForegroundWindowForce(hWnd);
+			//::ShowWindow(hWnd, SW_SHOWNORMAL);
+		}
+		return FALSE;
+	}
+
 	// 애플리케이션 매니페스트가 ComCtl32.dll 버전 6 이상을 사용하여 비주얼 스타일을
 	// 사용하도록 지정하는 경우, Windows XP 상에서 반드시 InitCommonControlsEx()가 필요합니다.
 	// InitCommonControlsEx()를 사용하지 않으면 창을 만들 수 없습니다.
@@ -79,6 +100,8 @@ BOOL CnFTDServerApp::InitInstance()
 #if defined(LMMSE_SERVICE)
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMineSE\\Log\\FileTransfer"), get_exe_file_title());
 #elif defined(_REMOTE_SDK)
+	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\Koino\\Log\\FileTransfer"), get_exe_file_title());
+#elif defined(_ANYSUPPORT)
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\Koino\\Log\\FileTransfer"), get_exe_file_title());
 #else
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\LinkMeMine\\Log\\FileTransfer"), get_exe_file_title());

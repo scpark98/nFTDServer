@@ -112,7 +112,7 @@ BOOL CMessageDlg::OnInitDialog()
 	m_button_cancel.set_back_color(Gdiplus::Color::White);
 	//m_button_cancel.set_font_size(10);
 	//m_button_cancel.set_round(10);
-	//m_button_cancel.draw_border();
+	m_button_cancel.draw_border();
 	//m_button_cancel.draw_hover_rect();
 
 	CenterWindow(AfxGetApp()->GetMainWnd());

@@ -111,6 +111,7 @@ public:
 
 	//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
 	void				refresh_selection_status(CVtListCtrlEx* plist);
+	void				refresh_selection_status(bool local);
 	void				refresh_disk_usage(bool is_remote_side);
 
 	//즐겨찾기 관련 명령

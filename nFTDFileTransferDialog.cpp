@@ -109,9 +109,10 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_static_index_bytes.set_back_color(Gdiplus::Color::White);
 	m_static_remain_speed.set_back_color(Gdiplus::Color::White);
 
-	m_progress.set_style(CSCSliderCtrl::style_progress_line);
-	m_progress.set_active_color(gRGB(0, 134, 218));
-	m_progress.set_back_color(white);
+	m_progress.set_style(CSCSliderCtrl::style_progress);
+	m_progress.set_text_style(CSCSliderCtrl::text_style_percentage);
+	m_progress.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
+	//m_progress.set_inactive_color(white);
 
 	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);
 
@@ -216,7 +217,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_column_data_type(col_status, CVtListCtrlEx::column_data_type_progress);
 	m_list.show_progress_text();
 	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
-	m_list.set_back_alternate_color(true, Gdiplus::Color(242, 242, 242));
+	//m_list.set_back_alternate_color(true, Gdiplus::Color(242, 242, 242));
 	//m_list.set_progress_text_color(Gdiplus::Color::Black);
 
 	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
@@ -331,7 +332,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		depth = get_char_count(folder, '\\') - 1;
 
 		//"파일명,100;크기,100;상태,60;"
-		m_list.insert_item(i, image_index, make_string(_T(" "), depth) + filename, size_str, _T(""));
+		m_list.insert_item(i, image_index, duplicate_str(_T(" "), depth) + filename, size_str, _T(""));
 	}
 
 	TRACE(_T("file = %d, folder = %d\n"), file_count, folder_count);
@@ -545,6 +546,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_thread_transfer_started = false;
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 	TRACE(_T("exit thread_transfer()\n"));
+
+	((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->refresh_selection_status(true);
 }
 
 void CnFTDFileTransferDialog::OnLButtonDown(UINT nFlags, CPoint point)

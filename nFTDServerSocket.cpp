@@ -131,17 +131,7 @@ BOOL CnFTDServerSocket::Connection()
 			msg_server_num server_num;
 			// N2N과의 커넥션타이밍을 맞추기 위해
 			// Neturo Viewer 가 처음 N2N과 접속할때 하는짓을 한다.
-			if (m_bIsN2NConnectionTiming == TRUE)
-			{
-				server_num.command = 620;
-			}
-			// nFTD가 N2N과의 커넥션타이밍을 맞출때는
-			// 그냥 700으로
-			else
-			{
-				server_num.command = AP2P_NFTD_CS_SERVERNUM;
-			}
-
+			server_num.command = AP2P_NFTD_CS_SERVERNUM;
 			server_num.servernum = m_iServerNum;
 			if (!m_sock.SendExact((LPSTR)&server_num, sizeof(msg_server_num)))
 			{
@@ -735,6 +725,8 @@ BOOL CnFTDServerSocket::delete_file(LPCTSTR lpPathName)
 
 BOOL CnFTDServerSocket::change_directory(LPCTSTR lpDirName)
 {
+	logWrite(_T(""));
+
 	msgString1 str1;
 	msg ret;
 

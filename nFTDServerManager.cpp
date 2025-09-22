@@ -313,7 +313,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	delete[] lpCmdLine;
 	*/
 	m_socket.SetConnection(dwConnectionMode);
-	m_socket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, true);// isStandAlone);
+	m_socket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, FALSE);// isStandAlone);
 	m_DataSocket.SetConnection(dwConnectionMode);
 	m_DataSocket.SetSockAddr(ulAP2PAddress, ushAP2PPort, nServerNum, FALSE);
 
@@ -578,7 +578,7 @@ void CnFTDServerManager::KeepDataConnection()
 
 bool CnFTDServerManager::change_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket)
 {
-	logWrite(_T("dwSide = %d, path = %s"), dwSide, lpPath);
+	logWrite(_T("lpPath = %d, dwSide = %s, bDataSocket = %d"), dwSide, lpPath, bDataSocket);
 
 	bool bRet;
 
