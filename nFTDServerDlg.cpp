@@ -484,7 +484,7 @@ void CnFTDServerDlg::init_listctrl()
 {
 	m_list_local.set_as_shell_listctrl(&theApp.m_shell_imagelist, true);
 	m_list_local.set_use_drag_and_drop(true);
-	m_list_local.load_column_width(&theApp, _T("list local"));
+	m_list_local.restore_column_width(&theApp, _T("list local"));
 	m_list_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	auto drive_list = theApp.m_shell_imagelist.m_volume[0].get_drive_list();
@@ -546,13 +546,13 @@ void CnFTDServerDlg::init_favorite()
 	m_list_local_favorite.set_headings(headings);
 	m_list_local_favorite.set_font_size(9);
 	m_list_local_favorite.set_header_height(22);
-	m_list_local_favorite.load_column_width(&theApp, _T("list local favorite"));
+	m_list_local_favorite.restore_column_width(&theApp, _T("list local favorite"));
 
 	m_list_remote_favorite.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_FLATSB);
 	m_list_remote_favorite.set_headings(headings);
 	m_list_remote_favorite.set_font_size(9);
 	m_list_remote_favorite.set_header_height(22);
-	m_list_remote_favorite.load_column_width(&theApp, _T("list remote favorite"));
+	m_list_remote_favorite.restore_column_width(&theApp, _T("list remote favorite"));
 
 	CString favorite_ini;
 
@@ -968,7 +968,7 @@ void CnFTDServerDlg::initialize()
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false, _T(""));
 	m_list_remote.set_use_drag_and_drop(true);
 	m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
-	m_list_remote.load_column_width(&theApp, _T("list remote"));
+	m_list_remote.restore_column_width(&theApp, _T("list remote"));
 
 	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist, false);
 	m_path_remote.set_is_local_device(false);

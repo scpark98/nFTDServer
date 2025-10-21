@@ -199,7 +199,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_font_size(theApp.GetProfileInt(_T("list"), _T("font size"), 9));
 	m_list.set_font_name(theApp.GetProfileString(_T("list"), _T("font name"), _S(IDS_FONT)));
 
-	//m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
+	//m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 	m_list.set_header_height(22);
 
 	//
@@ -220,7 +220,7 @@ void CnFTDFileTransferDialog::init_list()
 	//m_list.set_back_alternate_color(true, Gdiplus::Color(242, 242, 242));
 	//m_list.set_progress_text_color(Gdiplus::Color::Black);
 
-	m_list.load_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
+	m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 
 	m_list.allow_edit(false);
 	m_list.allow_sort(false);

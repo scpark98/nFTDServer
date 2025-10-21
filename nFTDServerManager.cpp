@@ -161,10 +161,8 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	//else if (token[1] == _T("-c")) // connect
 	{
 		dwConnectionMode = CONNECTION_CONNECT;
-		//ulAP2PAddress = inet_addr(strtok(NULL, " "));
-		//ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
-		//ulAP2PAddress = inet_addr((char*)(LPTSTR)(CStoken[2].GetBuffer()));
-		ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[2]).c_str());
+		//ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[2]).c_str());
+		ulAP2PAddress = get_S_addr_from_domain_or_ip_str(__targv[2]);
 		ushAP2PPort = _ttoi(__targv[3]);
 
 		m_isP2PConnection = TRUE;
@@ -174,17 +172,9 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	//else if (token[1] == _T("-p"))
 	{
 		dwConnectionMode = CONNECTION_CONNECT;
-
-		//LPCSTR lpcServerAddress = (CStringA(token[2]));
-		//TCHAR tchServerAddress[30] = { 0, };
-		//MultiByteToWideChar(CP_ACP, 0, lpcServerAddress, -1, tchServerAddress, 30);
-		//m_strServerIP.Format(_T("%s"), tchServerAddress);
-
 		m_strServerIP = __targv[2];
-		ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[2]).c_str());
-		//ulAP2PAddress = inet_addr((char*)(LPTSTR)(token[2].GetBuffer()));
-		//ushAP2PPort = (USHORT)atoi(strtok(NULL, " "));
-		//nServerNum = atoi(strtok(NULL, " "));
+		//ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[2]).c_str());
+		ulAP2PAddress = get_S_addr_from_domain_or_ip_str(__targv[2]);
 		ushAP2PPort = _ttoi(__targv[3]);
 		nServerNum = _ttoi(__targv[4]);
 		m_isP2PConnection = FALSE;
