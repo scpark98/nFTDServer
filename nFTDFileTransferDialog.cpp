@@ -102,7 +102,6 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY, m_theme.cr_back);
 	m_static_copy.fit_to_back_image(false);
-	//m_static_copy.play_animation();
 
 	m_static_message.set_back_color(m_theme.cr_back);
 
@@ -387,7 +386,6 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	//추후 양방향 파일목록이 섞이도록 수정할 경우는 아래 for문 안으로 들어가야 한다.
 	m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
-	m_static_copy.play_gif();
 
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
@@ -487,7 +485,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 			//전송 중 취소를 누를 경우 간혹 파일전송창이 닫혔음에도 m_list를 접근하는 것을 방지하기 위해.
 			if (!m_thread_transfer_started)
+			{
+				m_static_copy.stop_gif();
 				break;
+			}
 
 			switch (res)
 			{
@@ -500,6 +501,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 				case transfer_result_cancel :
 					//m_list.set_text(i, col_status, _T("cancel"));
 					logWrite(_T("cancel."));
+					m_static_copy.stop_gif();
 					break;
 				case transfer_result_skip :
 					m_list.set_text(i, col_status, _T("skip"));
@@ -531,6 +533,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		}
 		else if (res == transfer_result_cancel)
 		{
+			m_static_copy.stop_gif();
 			break;
 		}
 	}
@@ -543,6 +546,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//if (m_pServerManager == manager_original && m_pServerManager != NULL && m_pServerManager != INVALID_HANDLE_VALUE && m_thread_transfer_started)
 	//	m_pServerManager->DataClose();
 
+	m_static_copy.stop_gif();
 	m_thread_transfer_started = false;
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 	TRACE(_T("exit thread_transfer()\n"));

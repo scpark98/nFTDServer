@@ -333,11 +333,13 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_button_local_to_remote.fit_to_image(false);
 	m_button_local_to_remote.set_back_color(m_theme.cr_back, false);
 	m_button_local_to_remote.draw_drop_shadow(true, 1.8f, 1.6f);
+	m_button_local_to_remote.set_down_offset(1, 1);
 
 	m_button_remote_to_local.add_image(IDB_ARROW_RIGHT_TO_LEFT);
 	m_button_remote_to_local.fit_to_image(false);
 	m_button_remote_to_local.set_back_color(m_theme.cr_back, false);
 	m_button_remote_to_local.draw_drop_shadow(true, 1.8f, 1.6f);
+	m_button_remote_to_local.set_down_offset(1, 1);
 
 	m_progress_local.set_style(CSCSliderCtrl::style_progress);
 	m_progress_local.set_track_height(4);

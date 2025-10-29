@@ -27,7 +27,7 @@
 
 [버그]
 - 내 PC를 표시하는 상태에서 리스트 우클릭 메뉴 확인 필요.
-ok. 이어받기 안됨, 상대편용량이 잘못표시됨
+ok. 이어받기 안됨, 상대편 용량이 잘못표시됨
 ok. 원격컴퓨터 새폴더 추가로 안됨
 
 내컴퓨터 -> 원격컴퓨터로 드래그 시 파일 숫자가 잘못 표기됨
@@ -46,6 +46,9 @@ Delete키방지 필요
 
 
 [수정할 내용]
+- local에 존재하는 remote 파일을 다운받을 때 이미 존재하는 파일에 대한 처리창에서 취소를 한 경우
+  local의 파일을 remote로 전송하려하면 바로 fail이 되는 오류.
+
 
 [수정한 내용]
 *20250318
@@ -166,7 +169,9 @@ SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 
 
 [P2P 단독 테스트 시 파라미터]
 nFTDClient.exe -l 443
+nFTDServer.exe -c 192.168.0.48 443
 nFTDServer.exe -c -viewermode -statisticsmode 192.168.3.196 443 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
+nFTDServer.exe -c -viewermode -statisticsmode 192.168.0.48  443 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
 
 [RemoteSDK]
 nFTDClient.exe -p 192.168.0.48 7002 10000001
