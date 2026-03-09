@@ -221,7 +221,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	set_color_theme(theApp.m_color_theme);
 	set_system_buttons(this, SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
 	set_titlebar_icon(IDR_MAINFRAME);// , 20, 20);
-	set_draw_border(true, 1, get_color(m_theme.cr_title_back, 16));
+	//set_draw_border(true, 1, get_color(m_theme.cr_title_back_active, 16));
 
 	m_dir_watcher.init(this);
 
@@ -322,11 +322,11 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 	m_static_local.set_header_images(IDB_LOCAL_PC1);
 	m_static_local.set_back_color(m_theme.cr_back);
-	m_static_local.set_font_bold();
+	m_static_local.set_font_weight();
 	m_static_local.set_text(_S(NFTD_IDS_AGENT));
 	m_static_remote.set_header_images(IDB_REMOTE_PC1);
 	m_static_remote.set_back_color(m_theme.cr_back);
-	m_static_remote.set_font_bold();
+	m_static_remote.set_font_weight();
 	m_static_remote.set_text(_S(NFTD_IDS_REMOTE_PC));
 
 	m_button_local_to_remote.add_image(IDB_ARROW_LEFT_TO_RIGHT);
@@ -376,9 +376,9 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_check_close_after_all.SetWindowText(_S(IDS_CLOSE_AFTER_TRANSFER));			//전송 완료 후 창 닫기
 	//m_check_close_after_all.set_tooltip_text(_S(IDS_CLOSE_ALL_TRANSFER_SUCCESS));	//모든 전송이 성공해야만 창 닫기 옵션이 적용됨. 하나라도 실패하면 닫지 않음
 	m_check_close_after_all.set_text_color(m_theme.cr_title_text);
-	m_check_close_after_all.set_back_color(m_theme.cr_title_back, false);
+	m_check_close_after_all.set_back_color(m_theme.cr_title_back_active, false);
 	m_check_close_after_all.use_hover(false);
-	m_check_close_after_all.set_font_bold();
+	m_check_close_after_all.set_font_weight();
 	int auto_close = theApp.GetProfileInt(_T("setting"), _T("auto close after all"), BST_CHECKED);
 	m_check_close_after_all.SetCheck(auto_close);
 	CRect rz = m_check_close_after_all.calc_rect();
@@ -567,7 +567,7 @@ void CnFTDServerDlg::init_favorite()
 	int index;
 
 	std::deque<CString> dq;
-	get_token_string(str, dq, _T(";"), false);
+	get_token_str(str, dq, _T(";"), false);
 
 	for (i = 0; i < dq.size(); i++)
 	{
@@ -588,7 +588,7 @@ void CnFTDServerDlg::init_favorite()
 		str = ini[__targv[4]][__targv[7]];
 
 		dq.clear();
-		get_token_string(str, dq, _T(";"), false);
+		get_token_str(str, dq, _T(";"), false);
 
 		for (i = 0; i < dq.size(); i++)
 		{
@@ -2975,6 +2975,7 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 	int dwSide = SERVER_SIDE;
 	CSCTreeCtrl* ptree;
 	CVtListCtrlEx* plist;
+	HTREEITEM hItem = NULL;
 
 	if (GetFocus() == &m_tree_local)
 	{
@@ -3015,8 +3016,8 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
 			case file_cmd_new_folder :
-				param0 = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
-				plist->insert_folder(-1, param0, false);
+				hItem = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				plist->insert_folder(-1, ptree->GetItemText(hItem), false);
 				break;
 			case file_cmd_refresh :
 				ptree->refresh(ptree->GetSelectedItem());
@@ -3051,8 +3052,8 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_new_folder:
-				param0 = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
-				plist->insert_folder(-1, param0, true);
+				hItem = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				plist->insert_folder(-1, ptree->GetItemText(hItem), true);
 				break;
 			case file_cmd_refresh:
 				ptree->refresh(ptree->GetSelectedItem());

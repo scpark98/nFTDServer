@@ -98,6 +98,8 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	SetWindowText(_S(NFTD_IDS_FILETRANSFER));
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
+	set_draw_border(true);
+
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
 	m_static_copy.set_back_image(_T("GIF"), IDR_GIF_COPY, m_theme.cr_back);
@@ -142,7 +144,10 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 	{
 		m_static_copy.pause_gif(-1);
 		m_pServerManager->m_DataSocket.set_transfer_pause(true);
+		
 		CMessageDlg dlg(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
+		
+		dlg.set_title(_S(NFTD_IDS_FILETRANSFER_CANCEL));
 
 		int res = dlg.DoModal();//AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 		if (res == IDCANCEL)
@@ -192,16 +197,15 @@ void CnFTDFileTransferDialog::init_list()
 
 	headings.Format(_T("%s,200;%s,100;%s,60"), _S(NFTD_IDS_LISTCTRL_NAME), _S(NFTD_IDS_LISTCTRL_SIZE), _S(NFTD_IDS_LISTCTRL_STATUS));
 	m_list.set_headings(headings);
-	//m_list.set_color_theme(CVtListCtrlEx::color_theme_dark_gray);
-	//m_list.set_line_height(theApp.GetProfileInt(_T("list name"), _T("line height"), 80));
+
+	m_list.set_color_theme(m_theme.get_color_theme());
+	m_list.set_border_color(Gdiplus::Color::DarkGray);
 
 	m_list.set_font_size(theApp.GetProfileInt(_T("list"), _T("font size"), 9));
 	m_list.set_font_name(theApp.GetProfileString(_T("list"), _T("font name"), _S(IDS_FONT)));
 
-	//m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 	m_list.set_header_height(22);
 
-	//
 	m_list.set_use_own_imagelist(true);
 	m_list.set_shell_imagelist(&theApp.m_shell_imagelist);
 	m_list.set_line_height(20);
@@ -209,15 +213,9 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_column_text_align(col_filesize, HDF_RIGHT);
 	m_list.set_column_text_align(col_status, HDF_CENTER);
 
-	//m_list.set_header_text_align(col_filesize, HDF_CENTER);
-	//m_list.set_header_text_align(2, HDF_CENTER);
-
-	//m_list.set_column_data_type(list_score, CVtListCtrlEx::column_data_type_percentage_grid);
 	m_list.set_column_data_type(col_status, CVtListCtrlEx::column_data_type_progress);
 	m_list.show_progress_text();
 	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
-	//m_list.set_back_alternate_color(true, Gdiplus::Color(242, 242, 242));
-	//m_list.set_progress_text_color(Gdiplus::Color::Black);
 
 	m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 
@@ -430,7 +428,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 		filesize.HighPart = 0;
 
 		bool is_same_device = false;
-		if (get_my_ip().Compare(__targv[4]) == 0)
+
+		if ((__argc > 4) && (get_my_ip().Compare(__targv[4]) == 0))
 			is_same_device = true;
 
 		//폴더 전송. 폴더는 실제 폴더를 전송하지 않고 동일한 이름으로 폴더를 생성해주면 된다.

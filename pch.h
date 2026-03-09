@@ -16,5 +16,5 @@ extern CSCLog gLog;
 extern int g_FT_mode;
 
 extern CRITICAL_SECTION g_cs;
-extern std::mutex g_mutex;
+//extern std::mutex g_mutex;
 #endif //PCH_H

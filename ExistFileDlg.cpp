@@ -63,6 +63,8 @@ BOOL CExistFileDlg::OnInitDialog()
 	set_color_theme(theApp.m_color_theme);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
+	set_draw_border(true);
+
 #ifdef _REMOTE_SDK
 	SetWindowText(_T("Remote SDK"));
 #else
@@ -73,24 +75,24 @@ BOOL CExistFileDlg::OnInitDialog()
 
 	SetDlgItemText(IDOK, _S(NFTD_IDS_OK));
 
-	m_button_ok.set_font_bold();
+	m_button_ok.set_font_weight();
 	m_button_ok.set_text_color(Gdiplus::Color::White);
 	m_button_ok.set_back_color(gRGB(59, 70, 92));
 
 
 	m_static_message.set_text_color(Gdiplus::Color(0, 51, 153));
 	m_static_message.set_back_color(m_theme.cr_back);
-	m_static_message.set_font_bold();
+	m_static_message.set_font_weight();
 	m_static_message.set_text(_S(NFTD_IDS_EXIST_FILE));
 
 	m_static_src_file_title.set_text_color(Gdiplus::Color(0, 51, 153));
 	m_static_src_file_title.set_back_color(m_theme.cr_back);
-	m_static_src_file_title.set_font_bold();
+	m_static_src_file_title.set_font_weight();
 	m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE));
 
 	m_static_dst_file_title.set_text_color(Gdiplus::Color(0, 51, 153));
 	m_static_dst_file_title.set_back_color(m_theme.cr_back);
-	m_static_dst_file_title.set_font_bold();
+	m_static_dst_file_title.set_font_weight();
 	m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE));
 
 	m_static_src_file.set_back_color(m_theme.cr_back);

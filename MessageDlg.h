@@ -18,6 +18,7 @@ public:
 	//메시지박스가 표시된 상태에서도 set()을 호출하여 메시지 내용등을 변경할 수 있지만
 	//width, height를 변경하지 않는 것이 일반적이므로 0일 경우는 NO_RESIZE.
 	void		set(CString message, UINT type = MB_OK, int timeout_ms = 0, int width = 0, int height = 0);
+	void		set_title(CString title) { m_title = title; }
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
@@ -25,6 +26,7 @@ public:
 #endif
 
 protected:
+	CString		m_title;
 	CString		m_message;
 	UINT		m_type = MB_OK;
 	int			m_timeout = 0;	//단위 : ms. 0 이하는 timeout 적용 안함.

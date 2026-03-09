@@ -58,7 +58,7 @@ BOOL CnFTDServerManager::SetConnectionService()
 
 		m_strServerIP = __targv[4];
 		//g_serverIp = m_strServerIP;
-		ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[4]).c_str());
+		ulAP2PAddress = inet_addr(unicode2Multibyte(__targv[4]).c_str());
 		ushAP2PPort = (USHORT)_ttoi(__targv[5]);
 		//nServerNum = _ttoi(__wargv[6]);
 		m_strDeviceID = __targv[7];
@@ -88,7 +88,7 @@ BOOL CnFTDServerManager::SetConnectionService()
 
 		m_strServerIP = __targv[4];
 		//g_serverIp = m_strServerIP;
-		ulAP2PAddress = inet_addr(unicodeToMultibyte(__targv[4]).c_str());
+		ulAP2PAddress = inet_addr(unicode2Multibyte(__targv[4]).c_str());
 		ushAP2PPort = (USHORT)_ttoi(__targv[5]);
 		nServerNum = _ttoi(__targv[6]);
 		m_strDeviceID = __targv[7];
@@ -147,7 +147,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	}
 
 	//std::deque<CString> token;
-	//get_token_string(cmdline, token, _T(" "), false);
+	//get_token_str(cmdline, token, _T(" "), false);
 
 	//lpCmdOpt = strtok(lpCmdLine, " ");
 	if (_tcscmp(__targv[1], _T("-l")) == 0)		// P2P server
@@ -203,6 +203,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 		}
 	}
 #elif LMM_SERVICE
+	/*
 	if (lpCmdOpt != NULL)
 	{
 		if (!strcmp(lpCmdOpt, "-viewermode"))
@@ -226,6 +227,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 		//m_nClientOSType = OS_MAC;
 		logWrite(_T("Do OS_MAC2"));
 	}
+	*/
 #endif // ANYSUPPORT
 
 	// standalone 인지 여부

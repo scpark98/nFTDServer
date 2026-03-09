@@ -69,18 +69,6 @@
     <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\VtListCtrlEx.h">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\EditCell.h">
-      <Filter>Common\VtListCtrlEx</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Common\CMenu\SCMenuBar\SCMenuBar.h">
-      <Filter>Common\SCMenuBar</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Common\CMenu\SCMenuBar\SCMenuButton.h">
-      <Filter>Common\SCMenuBar</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Common\CMenu\SCMenuBar\SCMenu.h">
-      <Filter>Common\SCMenuBar</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\ResizeCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -153,9 +141,6 @@
     <ClInclude Include="..\..\Common\CDialog\SCShapeDlg\SCShapeDlg.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\system\CrashHandler\CrashHandler.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\messagebox\CSCMessageBox\SCMessageBox.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -175,6 +160,18 @@
       <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\SCGdiplusBitmap.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CMenu\CSCMenuBar\SCMenu.h">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CMenu\CSCMenuBar\SCMenuBar.h">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CMenu\CSCMenuBar\SCMenuButton.h">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\system\CrashHandler\CrashHandler\CrashHandler.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -206,20 +203,8 @@
     <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\VtListCtrlEx.cpp">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\EditCell.cpp">
-      <Filter>Common\VtListCtrlEx</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.cpp">
       <Filter>Common\VtListCtrlEx</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\CMenu\SCMenuBar\SCMenuBar.cpp">
-      <Filter>Common\SCMenuBar</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\CMenu\SCMenuBar\SCMenuButton.cpp">
-      <Filter>Common\SCMenuBar</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\CMenu\SCMenuBar\SCMenu.cpp">
-      <Filter>Common\SCMenuBar</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\ResizeCtrl.cpp">
       <Filter>Common</Filter>
@@ -287,9 +272,6 @@
     <ClCompile Include="..\..\Common\CDialog\SCShapeDlg\SCShapeDlg.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\system\CrashHandler\CrashHandler.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Common\messagebox\CSCMessageBox\SCMessageBox.cpp">
       <Filter>Common</Filter>
     </ClCompile>
@@ -306,6 +288,18 @@
       <Filter>Common\SCDirWatcher</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\SCGdiplusBitmap.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CMenu\CSCMenuBar\SCMenuBar.cpp">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CMenu\CSCMenuBar\SCMenuButton.cpp">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CMenu\CSCMenuBar\SCMenu.cpp">
+      <Filter>Common\SCMenuBar</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\system\CrashHandler\CrashHandler\CrashHandler.cpp">
       <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
