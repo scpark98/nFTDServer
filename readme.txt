@@ -170,6 +170,8 @@ SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 70
 SCPARK-KOINO-LG	: nFTDServer.exe -p -viewermode -statisticsmode "13.125.4.150" 7002 406 "C4BDE5622FFF428745499944" "SCPARK-KOINO-LG" "apple@linkmemine.com" "17" "de1ce65b3f163b6e89526b4232b75142909047d7" "" "192.168.74.1" 1
 SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 351 E0E1A9351FF9913636543560 "SCPARK-KOINO" "apple" "1" b4cf3f3509f42d5bb1e049bba39438e9b034435a "192.168.74.1" "192.168.74.1" 1
 
+1.0 FastAPI	dev	: -p -viewermode -statisticsmode "114.108.164.45" 80 299529 "047C1612FEA4531246127046" "SCPARK-KOINO" "apple" "2451" "b4cf3f3509f42d5bb1e049bba39438e9b034435a" "118.37.42.237" "192.168.238.1" 1
+
 [P2P 단독 테스트 시 파라미터]
 nFTDClient.exe -l 443
 nFTDServer.exe -c 192.168.0.48 443
