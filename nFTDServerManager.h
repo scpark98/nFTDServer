@@ -4,8 +4,8 @@
 #include "nFTDServerSocket.h"
 //#include "nFTDFileManager.h"
 
-#include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
-#include "../../Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
+#include "Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+#include "Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
 
 class CnFTDServerManager
 {

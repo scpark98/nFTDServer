@@ -1,9 +1,9 @@
 ﻿#pragma once
 
-#include "../../Common/Functions.h"
-#include "../../Common/CButton/GdiButton/GdiButton.h"
-#include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
-#include "../../Common/CStatic/SCStatic/SCStatic.h"
+#include "Common/Functions.h"
+#include "Common/CButton/GdiButton/GdiButton.h"
+#include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
+#include "Common/CStatic/SCStatic/SCStatic.h"
 
 // CMessageDlg 대화 상자
 

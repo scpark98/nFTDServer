@@ -10,7 +10,7 @@
 #include <thread>
 #include <algorithm>
 
-#include "../../Common/MemoryDC.h"
+#include "Common/MemoryDC.h"
 #include "MessageDlg.h"
 
 extern HMODULE g_hRes;

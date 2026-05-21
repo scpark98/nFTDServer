@@ -2,14 +2,12 @@
 
 #include "nFTDServerManager.h"
 
-#include "../../Common/colors.h"
-#include "../../Common/CStatic/SCStatic/SCStatic.h"
-#include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
-#include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
-//#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
-#include "../../Common/ResizeCtrl.h"
-//#include "../../Common/CWnd/WndShadow/WndShadow.h"
-#include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
+#include "Common/colors.h"
+#include "Common/CStatic/SCStatic/SCStatic.h"
+#include "Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+#include "Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
+#include "Common/ResizeCtrl.h"
+#include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
 
 // CnFTDFileTransferDialog 대화 상자
 

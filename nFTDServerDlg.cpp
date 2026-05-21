@@ -11,9 +11,9 @@
 #include <thread>
 #include <memory>
 
-#include "../../Common/Functions.h"
-#include "../../Common/MemoryDC.h"
-#include "../../Common/ini/EZIni/EZIni.h"
+#include "Common/Functions.h"
+#include "Common/MemoryDC.h"
+#include "Common/ini/EZIni/EZIni.h"
 
 #include "nFTDFileTransferDialog.h"
 #include "MessageDlg.h"

@@ -2,7 +2,7 @@
 
 #include "nFTDProtocol.h"
 #include "blastsock.h"
-#include "../../Common/system/ShellImageList/ShellImageList.h"
+#include "Common/system/ShellImageList/ShellImageList.h"
 
 //#include "../../Common/CStatic/SCStatic/SCStatic.h"
 //#include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"

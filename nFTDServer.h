@@ -10,9 +10,9 @@
 
 #include "resource.h"		// 주 기호입니다.
 
-#include "../../Common/colors.h"
-#include "../../Common/system/ShellImageList/ShellImageList.h"
-#include "../../Common/ini/EZIni/EZIni.h"
+#include "Common/colors.h"
+#include "Common/system/ShellImageList/ShellImageList.h"
+#include "Common/ini/EZIni/EZIni.h"
 
 //메인창을 제외한 메시지박스, 전송창 등의 타이틀바는 메인창의 타이틀바보다는 작게 표시한다.
 #define TOOLBAR_TITLE_HEIGHT			24
