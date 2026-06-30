@@ -203,7 +203,7 @@ SCPARK-KOINO	: nFTDServer.exe -p -viewermode -statisticsmode 13.124.64.192 7002 
 
 [P2P 단독 테스트 시 파라미터]
 nFTDClient.exe -l 443
-nFTDServer.exe -c 192.168.0.48 443
+nFTDServer.exe -c 192.168.0.48 443 => 예전엔 가능했으나 현재는 아래와 같이 15개 모두 줘야한다.
 nFTDServer.exe -c -viewermode -statisticsmode 192.168.3.196 443 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
 nFTDServer.exe -c -viewermode -statisticsmode 192.168.0.48  443 351 C4BDE5622FFF865173239111 "SCPARK-KOINO-LG" "apple" "1" "bdb4d55fbba98e29875f38018651492645520607" "192.168.74.1" "192.168.74.1" 1
 

@@ -11,7 +11,6 @@
 #include <algorithm>
 
 #include "Common/MemoryDC.h"
-#include "MessageDlg.h"
 
 extern HMODULE g_hRes;
 
@@ -63,13 +62,8 @@ void CnFTDFileTransferDialog::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CSCThemeDlg)
 	ON_BN_CLICKED(IDOK, &CnFTDFileTransferDialog::OnBnClickedOk)
 	ON_BN_CLICKED(IDCANCEL, &CnFTDFileTransferDialog::OnBnClickedCancel)
-	ON_WM_LBUTTONDOWN()
 	ON_WM_WINDOWPOSCHANGED()
-	ON_WM_SETCURSOR()
-	ON_WM_GETMINMAXINFO()
-	ON_WM_PAINT()
-	ON_WM_ERASEBKGND()
-	//ON_REGISTERED_MESSAGE(Message_CnFTDServerSocket, &CnFTDFileTransferDialog::on_message_server_socket)
+	//타이틀바/테두리 처리(LBUTTONDOWN/SETCURSOR/PAINT/ERASEBKGND/GETMINMAXINFO)는 base CSCThemeDlg 에 위임.
 	ON_WM_TIMER()
 	ON_WM_DESTROY()
 END_MESSAGE_MAP()
@@ -83,7 +77,6 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
 	init_list();
-	//init_shadow();
 
 	m_resize.Create(this);
 	m_resize.SetMinimumTrackingSize(CSize(400, 320));
@@ -95,6 +88,8 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_resize.Add(IDC_LIST, 0, 0, 100, 100);
 
 	set_color_theme(theApp.m_color_theme);
+	m_messagebox.create(this, _S(NFTD_IDS_FILETRANSFER));
+	m_messagebox.set_color_theme(theApp.m_color_theme);
 	SetWindowText(_S(NFTD_IDS_FILETRANSFER));
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
@@ -115,7 +110,10 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_progress.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
 	//m_progress.set_inactive_color(white);
 
-	SetWindowLong(m_hWnd, GWL_STYLE, WS_CLIPCHILDREN);// | WS_CLIPSIBLINGS);
+	//borderless 윈도우 스타일 정규화(WS_THICKFRAME/WS_SYSMENU/... 부여 + SWP_FRAMECHANGED)는
+	//CSCThemeDlg::OnInitDialog() 이 정석대로 처리한다(borderless dialog.md Step 4). 깜빡임 감소용 WS_CLIPCHILDREN 만 추가.
+	//(예전엔 SetWindowLong 으로 스타일을 통째로 WS_CLIPCHILDREN 하나로 덮어써 base 의 WS_THICKFRAME 등을 지웠다.)
+	ModifyStyle(0, WS_CLIPCHILDREN);
 
 	RestoreWindowPosition(&theApp, this, _T("CnFTDFileTransferDialog"));
 	Wait(10);
@@ -145,11 +143,8 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 		m_static_copy.pause_gif(-1);
 		m_pServerManager->m_DataSocket.set_transfer_pause(true);
 		
-		CMessageDlg dlg(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
-		
-		dlg.set_title(_S(NFTD_IDS_FILETRANSFER_CANCEL));
-
-		int res = dlg.DoModal();//AfxMessageBox(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
+		m_messagebox.set_title(_S(NFTD_IDS_FILETRANSFER_CANCEL));
+		int res = m_messagebox.DoModal(_S(NFTD_IDS_MSGBOX_CANCELTRANSFER), MB_OKCANCEL);
 		if (res == IDCANCEL)
 		{
 			m_static_copy.play_gif();
@@ -223,18 +218,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.allow_sort(false);
 	m_list.use_indent_from_prefix_space(true);
 }
-/*
-void CnFTDFileTransferDialog::init_shadow()
-{
-	CWndShadow::Initialize(AfxGetInstanceHandle());
-	m_shadow.Create(GetSafeHwnd());
-	m_shadow.SetSize(8);	// -19 ~ 19
-	m_shadow.SetSharpness(19);	// 0 ~ 19
-	m_shadow.SetDarkness(128);	// 0 ~ 254
-	m_shadow.SetPosition(0, 0);	// -19 ~ 19
-	m_shadow.SetColor(RGB(0, 0, 0));
-}
-*/
+
 void CnFTDFileTransferDialog::thread_transfer()
 {
 	int i;
@@ -340,9 +324,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		CString message;
 		message.LoadString(NFTD_IDS_MSGBOX_DISKFULL);
 
-		CMessageDlg dlgMessage;
-		//dlgMessage.SetMessage(MsgType::TypeOK, message);
-		dlgMessage.DoModal();
+		m_messagebox.DoModal(message);
 
 		EndDialog(0);
 		return;
@@ -553,142 +535,18 @@ void CnFTDFileTransferDialog::thread_transfer()
 	((CnFTDServerDlg*)(AfxGetApp()->GetMainWnd()))->refresh_selection_status(true);
 }
 
-void CnFTDFileTransferDialog::OnLButtonDown(UINT nFlags, CPoint point)
-{
-	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	if (!IsZoomed() && (m_corner_index >= corner_left) && (m_corner_index <= corner_bottomright))
-	{
-		DefWindowProc(WM_SYSCOMMAND, SC_SIZE + m_corner_index, MAKELPARAM(point.x, point.y));
-	}
-	else if (!IsZoomed() && (m_corner_index == corner_inside))
-	{
-		DefWindowProc(WM_NCLBUTTONDOWN, HTCAPTION, MAKEWORD(point.x, point.y));
-	}
-
-	CDialogEx::OnLButtonDown(nFlags, point);
-}
-
+//OnLButtonDown / OnSetCursor / OnGetMinMaxInfo / OnPaint / OnEraseBkgnd 제거:
+//타이틀바 드래그 이동·가장자리 resize·resize 커서·NC/배경 paint·maximize 경계는 모두 base CSCThemeDlg 가
+//정석 패턴(borderless dialog.md: WM_NCHITTEST 트랩 + OnNcPaint/OnPaint + OnGetMinMaxInfo)으로 처리한다.
+//예전엔 get_corner_index() 로 client 가장자리를 직접 판정해 SC_SIZE 를 보내고 resize 커서를 SetCursor 하던
+//방식이었으나 base 위임으로 일원화한다. OnWindowPosChanged 만 위치 저장을 위해 남기되 base 를 경유한다.
 
 void CnFTDFileTransferDialog::OnWindowPosChanged(WINDOWPOS* lpwndpos)
 {
-	CDialogEx::OnWindowPosChanged(lpwndpos);
+	//base(CSCThemeDlg) 경유 — adjust_sys_buttons() 등 타이틀바 시스템 버튼 정렬이 base 에서 수행된다.
+	CSCThemeDlg::OnWindowPosChanged(lpwndpos);
 
-	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
 	SaveWindowPosition(&theApp, this, _T("CnFTDFileTransferDialog"));
-}
-
-
-BOOL CnFTDFileTransferDialog::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
-{
-	if (IsZoomed())
-		return CDialogEx::OnSetCursor(pWnd, nHitTest, message);
-
-	CPoint pt;
-	CRect rc;
-
-	GetClientRect(rc);
-
-	GetCursorPos(&pt);
-	ScreenToClient(&pt);
-
-	m_corner_index = get_corner_index(rc, pt, 10);
-	//TRACE(_T("m_corner_index = %d\n"), m_corner_index);
-
-	if (m_corner_index == corner_left || m_corner_index == corner_right)
-	{
-		::SetCursor(theApp.LoadStandardCursor(IDC_SIZEWE));
-		return true;
-	}
-	else if (m_corner_index == corner_top || m_corner_index == corner_bottom)
-	{
-		::SetCursor(theApp.LoadStandardCursor(IDC_SIZENS));
-		return true;
-	}
-	else if (m_corner_index == corner_topleft || m_corner_index == corner_bottomright)
-	{
-		::SetCursor(theApp.LoadStandardCursor(IDC_SIZENWSE));
-		return true;
-	}
-	else if (m_corner_index == corner_topright || m_corner_index == corner_bottomleft)
-	{
-		::SetCursor(theApp.LoadStandardCursor(IDC_SIZENESW));
-		return true;
-	}
-	else if (m_corner_index != corner_inside)
-	{
-		m_corner_index = -1;
-	}
-
-	::SetCursor(theApp.LoadStandardCursor(IDC_ARROW));
-	return true;
-}
-
-
-void CnFTDFileTransferDialog::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
-{
-	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	CSize sz;
-	bool is_auto_hide = get_taskbar_state(ABS_AUTOHIDE, &sz);
-
-	lpMMI->ptMaxSize.y -= (is_auto_hide ? 2 : sz.cy);
-
-	CDialogEx::OnGetMinMaxInfo(lpMMI);
-}
-
-
-void CnFTDFileTransferDialog::OnPaint()
-{
-	CSCThemeDlg::OnPaint();
-	/*
-	CPaintDC dc1(this); // device context for painting
-					   // TODO: 여기에 메시지 처리기 코드를 추가합니다.
-					   // 그리기 메시지에 대해서는 CDialogEx::OnPaint()을(를) 호출하지 마십시오.
-
-	CRect rc;
-
-	GetClientRect(rc);
-
-	CMemoryDC dc(&dc1, &rc);
-
-	//타이틀바 영역
-	CRect rTitle = rc;
-	rTitle.bottom = rTitle.top + TITLEBAR_HEIGHT;
-	//draw_rectangle(&dc, rTitle, Gdiplus::Color::Transparent, m_sys_buttons.m_theme.cr_back);
-
-	//프로그램 아이콘을 그려주고
-	CRect rIcon = rTitle;
-	HICON hIcon = load_icon(AfxGetInstanceHandle(), IDR_MAINFRAME, 16);
-	rIcon.left = 8;
-	rIcon.right = rIcon.left + 16;
-	draw_icon(&dc, hIcon, rIcon);
-	//dc.DrawIcon(2, (TITLEBAR_HEIGHT - 16) / 2, hIcon);
-	::DestroyIcon(hIcon);
-
-	//타이틀바 표시
-	rTitle.left = rIcon.right + 8;
-	CFont* font = GetFont();
-	CFont* pOldFont = (CFont*)dc.SelectObject(font);
-	dc.SetBkMode(TRANSPARENT);
-
-	if (_tcscmp(__targv[1], _T("-p")) == 0)
-		dc.SetTextColor(RGB(96, 96, 128));
-	else
-		dc.SetTextColor(RGB(52, 99, 193));
-
-	dc.DrawText(_T("파일 전송"), rTitle, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
-
-	//테두리
-	draw_rectangle(&dc, rc, Gdiplus::Color::RoyalBlue);
-
-	dc.SelectObject(pOldFont);
-	*/
-}
-
-BOOL CnFTDFileTransferDialog::OnEraseBkgnd(CDC* pDC)
-{
-	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-	return FALSE;
-	return CDialogEx::OnEraseBkgnd(pDC);
 }
 /*
 LRESULT CnFTDFileTransferDialog::on_message_server_socket(WPARAM wParam, LPARAM lParam)

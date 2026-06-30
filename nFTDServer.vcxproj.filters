@@ -132,9 +132,6 @@
     <ClInclude Include="$(CommonLibDir)\CDialog\SCThemeDlg\SCThemeDlg.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="MessageDlg.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="$(CommonLibDir)\ini\EZIni\EZIni.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -172,6 +169,18 @@
       <Filter>Common\SCMenuBar</Filter>
     </ClInclude>
     <ClInclude Include="$(CommonLibDir)\system\CrashHandler\CrashHandler\CrashHandler.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CEdit\CSCStaticEdit\SCStaticEdit.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CDialog\CSCColorPicker\SCColorPicker.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CDialog\CSCColorPicker\SCDropperDlg.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CScrollbar\SCScrollbar\SCScrollbar.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -263,9 +272,6 @@
     <ClCompile Include="$(CommonLibDir)\CDialog\SCThemeDlg\SCThemeDlg.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="MessageDlg.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="$(CommonLibDir)\ini\EZIni\EZIni.cpp">
       <Filter>Common</Filter>
     </ClCompile>
@@ -300,6 +306,18 @@
       <Filter>Common\SCMenuBar</Filter>
     </ClCompile>
     <ClCompile Include="$(CommonLibDir)\system\CrashHandler\CrashHandler\CrashHandler.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CEdit\CSCStaticEdit\SCStaticEdit.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CDialog\CSCColorPicker\SCColorPicker.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CDialog\CSCColorPicker\SCDropperDlg.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CScrollbar\SCScrollbar\SCScrollbar.cpp">
       <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>

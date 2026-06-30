@@ -14,7 +14,6 @@
 #include "Common/ControlSplitter.h"
 #include "Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 #include "Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
-#include "Common/CWnd/WndShadow/WndShadow.h"
 #include "Common/CDialog/SCShapeDlg/SCShapeDlg.h"
 #include "Common/file_system/SCDirWatcher/SCDirWatcher.h"
 #include "Common/messagebox/CSCMessageBox/SCMessageBox.h"
@@ -36,7 +35,6 @@ public:
 		timer_init_progress_and_connect,
 		timer_init_favorites,
 		timer_refresh_selection_status,
-		timer_refresh_title_area,
 	};
 
 	CResizeCtrl			m_resize;
@@ -45,8 +43,6 @@ public:
 
 	CSCDirWatcher		m_dir_watcher;
 	LRESULT				on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam);
-
-	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
 
 	//20250212 scpark
 	//파일전송 히스토리를 저장하려고 보니 기존 코드는 .NetAPI로 작성되어 있고
@@ -69,6 +65,9 @@ public:
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CControlSplitter(WPARAM wParam, LPARAM lParam);
+	//타이틀바 시스템 버튼(min/max/close)은 WM_SYSCOMMAND 가 아닌 Message_CSCSystemButtons 를 부모로 보낸다.
+	//parent 인 본 dlg 가 직접 처리해야 버튼이 동작한다.
+	LRESULT				on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam);
 	void				adjust_processing_progress_ctrl();
 
 	LRESULT				on_message(WPARAM wParam, LPARAM lParam);
@@ -158,10 +157,9 @@ public:
 	afx_msg void OnWindowPosChanged(WINDOWPOS* lpwndpos);
 	afx_msg void OnBnClickedOk();
 	afx_msg void OnBnClickedCancel();
-	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
+	//타이틀바/테두리 처리는 base CSCThemeDlg(borderless dialog.md 정석 패턴)에 위임한다.
+	//OnLButtonDown 은 path edit_end 처리를 위해 남기되, 드래그 이동은 base 가 처리한다.
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonDblClk(UINT nFlags, CPoint point);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
@@ -222,8 +220,6 @@ public:
 	CSCStatic m_static_remote_disk_space;
 	afx_msg void OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnActivate(UINT nState, CWnd* pWndOther, BOOL bMinimized);
-	afx_msg void OnActivateApp(BOOL bActive, DWORD dwThreadID);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnTreeContextMenuFavorite();
 	afx_msg void OnTreeContextMenuOpenExplorer();

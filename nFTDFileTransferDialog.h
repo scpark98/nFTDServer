@@ -8,6 +8,7 @@
 #include "Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 #include "Common/ResizeCtrl.h"
 #include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
+#include "Common/messagebox/CSCMessageBox/SCMessageBox.h"
 
 // CnFTDFileTransferDialog 대화 상자
 
@@ -44,11 +45,7 @@ protected:
 
 	CWnd				*m_parent = NULL;
 	CResizeCtrl			m_resize;
-
-	int					m_corner_index = -1;	//커서가 코너의 어느 영역에 있는지
-
-	//CWndShadow			m_shadow;
-	void				init_shadow();
+	CSCMessageBox		m_messagebox;
 
 	bool				m_thread_transfer_started = false;
 	void				thread_transfer();
@@ -84,12 +81,9 @@ public:
 	CSCSliderCtrl m_progress;
 	CVtListCtrlEx m_list;
 	virtual BOOL OnInitDialog();
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	//타이틀바/테두리 처리는 base CSCThemeDlg(borderless dialog.md 정석 패턴)에 위임한다.
+	//OnWindowPosChanged 만 윈도우 위치 저장을 위해 남긴다.
 	afx_msg void OnWindowPosChanged(WINDOWPOS* lpwndpos);
-	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
-	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
-	afx_msg void OnPaint();
-	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	CSCStatic m_static_index_bytes;
 	CSCStatic m_static_remain_speed;
 	afx_msg void OnTimer(UINT_PTR nIDEvent);

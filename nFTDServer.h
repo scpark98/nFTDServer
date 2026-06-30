@@ -32,7 +32,7 @@ public:
 	CShellImageList		m_shell_imagelist;
 
 	EZIni				m_config_ini;
-	int					m_color_theme = CSCColorTheme::color_theme_anysupport;
+	int					m_color_theme = CSCColorTheme::color_theme_linkmemine;
 
 protected:
 	HANDLE				m_hMutex;

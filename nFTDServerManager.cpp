@@ -1,4 +1,4 @@
-#include "pch.h"
+Ôªø#include "pch.h"
 #include "nFTDServer.h"
 #include "nFTDServerManager.h"
 #include "Common/Functions.h"
@@ -168,7 +168,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 		m_isP2PConnection = TRUE;
 		m_strServerIP = _T("P2P");
 	}
-	else if (_tcscmp(__targv[1], _T("-p")) == 0) // AP2P (pat to pat) . NMS ø° ¡¢º”
+	else if (_tcscmp(__targv[1], _T("-p")) == 0) // AP2P (pat to pat) . NMS Ïóê Ï†ëÏÜç
 	//else if (token[1] == _T("-p"))
 	{
 		dwConnectionMode = CONNECTION_CONNECT;
@@ -230,7 +230,7 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 	*/
 #endif // ANYSUPPORT
 
-	// standalone ¿Œ¡ˆ ø©∫Œ
+	// standalone Ïù∏ÏßÄ Ïó¨Î∂Ä
 	/*
 	if (lpCmdOpt != NULL && !strcmp(lpCmdOpt, "-standalone"))
 	{
@@ -395,9 +395,9 @@ void CnFTDServerManager::refresh_list(std::deque<WIN32_FIND_DATA> *dq, bool is_s
 		m_FileManager.FileList(&FindFileData);
 
 		do {
-			if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0) // º˚±Ë∆ƒ¿œ √‚∑¬ X
+			if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0) // Ïà®ÍπÄÌååÏùº Ï∂úÎ†• X
 				continue;
-			//if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) // ∆ƒ¿œ √‚∑¬
+			//if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) // ÌååÏùº Ï∂úÎ†•
 			pShellListCtrl->ShowFile(&FindFileData);
 		} while (m_FileManager.NextFileList(&FindFileData));
 		*/
@@ -416,7 +416,7 @@ void CnFTDServerManager::refresh_list(std::deque<WIN32_FIND_DATA> *dq, bool is_s
 				continue;
 
 
-			//º˚±Ë∆ƒ¿œ √‚∑¬ X
+			//Ïà®ÍπÄÌååÏùº Ï∂úÎ†• X
 			if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0)
 				continue;
 
@@ -431,7 +431,7 @@ void CnFTDServerManager::refresh_list(std::deque<WIN32_FIND_DATA> *dq, bool is_s
 				continue;
 			}
 
-			//if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) // ∆ƒ¿œ √‚∑¬
+			//if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) // ÌååÏùº Ï∂úÎ†•
 			pShellListCtrl->ShowFile(&FindFileData);
 			*/
 		} while (m_socket.NextFileList(&FindFileData));
@@ -495,9 +495,9 @@ void CnFTDServerManager::refresh_tree(CSCTreeCtrl* pTreeCtrl, bool is_server_sid
 	}
 }
 
-//¿Ã¿¸ ƒ⁄µÂ «‘ºˆ∏Ì : GetFileList(CShellTreeCtrl* pShellTreeCtrl)
-//treeø°º≠ «ÿ¥Á path folder¿« sub folder ∏Ò∑œ¿ª refresh«—¥Ÿ.
-//º±≈√«“ ∂ß∞° æ∆¥œ∂Û ∆˙¥ı∏¶ √≥¿Ω ∆Óƒ• ∂ß, ªı∑Œ∞Ìƒß «“ ∂ß ªÁøÎµ»¥Ÿ.
+//Ïù¥Ï†Ñ ÏΩîÎìú Ìï®ÏàòÎ™Ö : GetFileList(CShellTreeCtrl* pShellTreeCtrl)
+//treeÏóêÏÑú Ìï¥Îãπ path folderÏùò sub folder Î™©Î°ùÏùÑ refreshÌïúÎã§.
+//ÏÑ†ÌÉùÌï† ÎïåÍ∞Ä ÏïÑÎãàÎùº Ìè¥ÎçîÎ•º Ï≤òÏùå ÌéºÏπ† Îïå, ÏÉàÎ°úÍ≥†Ïπ® Ìï† Îïå ÏÇ¨Ïö©ÎêúÎã§.
 void CnFTDServerManager::refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CString path)
 {
 	WIN32_FIND_DATA FindFileData;
@@ -520,12 +520,12 @@ void CnFTDServerManager::refresh_tree_folder(CSCTreeCtrl* pShellTreeCtrl, CStrin
 			continue;
 		}
 
-		if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0) // º˚±Ë∆ƒ¿œ √‚∑¬ X
+		if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0) // Ïà®ÍπÄÌååÏùº Ï∂úÎ†• X
 		{
 			continue;
 		}
 
-		//∆˙¥ı¿Ã∏È √ﬂ∞°
+		//Ìè¥ÎçîÏù¥Î©¥ Ï∂îÍ∞Ä
 		if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 		{
 			pShellTreeCtrl->insert_folder(&FindFileData);
@@ -541,13 +541,6 @@ void CnFTDServerManager::KeepConnection()
 	{
 		TRACE(_T("!m_socket.IsOpen()"));
 
-		//CString strMessage;
-		//strMessage.LoadString(IDS_DISCONNECT);
-
-		//CMessageDlg dlgMessage;
-		//dlgMessage.SetMessage(MsgType::TypeOK, strMessage);
-		//dlgMessage.DoModal();
-
 		ExitProcess(0);
 	}
 }
@@ -557,13 +550,6 @@ void CnFTDServerManager::KeepDataConnection()
 	if (!m_DataSocket.IsOpen() && m_bDataClose)
 	{
 		TRACE(_T("!m_DataSocket.IsOpen() && m_bDataClose"));
-		//CString strMessage;
-		//strMessage.LoadString(IDS_DISCONNECT);
-
-		//CMessageDlg dlgMessage;
-		//dlgMessage.SetMessage(MsgType::TypeOK, strMessage);
-		//dlgMessage.DoModal();
-
 		ExitProcess(0);
 	}
 }
@@ -627,14 +613,14 @@ void CnFTDServerManager::ChangeDrvComboBox(CDrvComboBox* pDrvComboBox, DWORD dwS
 
 		if (dwSide == CnFTDServerManager::SERVERSIDE)
 		{
-			if (LBText.Compare(_T("πŸ≈¡»≠∏È")) == 0)
+			if (LBText.Compare(_T("Î∞îÌÉïÌôîÎ©¥")) == 0)
 			{
 				TCHAR path[MAX_PATH];
 				neturoService::GetSpectialPath(path, GUID_FOLDER_DESKTOP);
 
 				Drive.Format(_T("%s"), path);
 			}
-			else if (LBText.Compare(_T("≥ªπÆº≠")) == 0)
+			else if (LBText.Compare(_T("ÎÇ¥Î¨∏ÏÑú")) == 0)
 			{
 				TCHAR path[MAX_PATH];
 				neturoService::GetSpectialPath(path, GUID_FOLDER_MYDOC);
@@ -647,11 +633,11 @@ void CnFTDServerManager::ChangeDrvComboBox(CDrvComboBox* pDrvComboBox, DWORD dwS
 		}
 		else
 		{
-			if (LBText.Compare(_T("πŸ≈¡»≠∏È")) == 0)
+			if (LBText.Compare(_T("Î∞îÌÉïÌôîÎ©¥")) == 0)
 			{
 				Drive.Format(_T("%s"), LBText);
 			}
-			else if (LBText.Compare(_T("≥ªπÆº≠")) == 0)
+			else if (LBText.Compare(_T("ÎÇ¥Î¨∏ÏÑú")) == 0)
 			{
 				Drive.Format(_T("%s"), LBText);
 			}
@@ -724,8 +710,8 @@ bool CnFTDServerManager::create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDa
 }
 
 #if 0
-// Ω«¡˙¿˚¿Œ »≠¿œ¿¸º€∫Œ∫–. recursive «œ∞‘ ±∏«ˆµ«æ˙¥Ÿ
-// depth : recursive ¿« ±Ì¿Ã. «œ¿ß∆˙¥ı¿Œ¡ˆ∆«∫∞«œ±‚¿ß«ÿªÁøÎ
+// Ïã§ÏßàÏ†ÅÏù∏ ÌôîÏùºÏ†ÑÏÜ°Î∂ÄÎ∂Ñ. recursive ÌïòÍ≤å Íµ¨ÌòÑÎêòÏóàÎã§
+// depth : recursive Ïùò ÍπäÏù¥. ÌïòÏúÑÌè¥ÎçîÏù∏ÏßÄÌåêÎ≥ÑÌïòÍ∏∞ÏúÑÌï¥ÏÇ¨Ïö©
 BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath)
 {
 	INT CurrentDepth = 0, iIndex;
@@ -742,7 +728,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 	ulTotalSize.QuadPart = 0;
 
 
-	// pShellList ≤®∏¶ ∫π¡¶«—¥Ÿ
+	// pShellList Í∫ºÎ•º Î≥µÏ†úÌïúÎã§
 	POSITION pos = pShellListCtrl->GetFirstSelectedItemPosition();
 
 
@@ -804,7 +790,7 @@ BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CV
 	CurrentDepth = 0;
 	for (int i = 0; i < pXList->GetItemCount(); i++)
 	{
-		// ªÛ¿ß∆˙¥ı∑Œ
+		// ÏÉÅÏúÑÌè¥ÎçîÎ°ú
 		while (CurrentDepth != _tstoi(pDepthList->GetItemText(i, 0)))
 		{
 			change_directory(_T(".."), dwSide, TRUE);
@@ -909,7 +895,7 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 	msg ret;
 	memset(&ret, 0, sizeof(ret));
 
-	//∏Ì∑… ¿¸º€
+	//Î™ÖÎ†π Ï†ÑÏÜ°
 	ret.type = nFTD_filelist_all;
 	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -919,21 +905,21 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 
 	USHORT length = _tcslen(path) * 2;
 
-	//path ±Ê¿Ã ¿¸º€
+	//path Í∏∏Ïù¥ Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-1 : %d"), GetLastError());
 		return false;
 	}
 
-	//path ¿¸º€
+	//path Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return false;
 	}
 
-	//recursive ø©∫Œ ¿¸º€
+	//recursive Ïó¨Î∂Ä Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)&recursive, sizeof(bool), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
@@ -968,7 +954,7 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 	msg ret;
 	memset(&ret, 0, sizeof(ret));
 
-	//∏Ì∑… ¿¸º€
+	//Î™ÖÎ†π Ï†ÑÏÜ°
 	ret.type = nFTD_folderlist_all;
 	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -978,21 +964,21 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 
 	USHORT length = _tcslen(path) * 2;
 
-	//path ±Ê¿Ã ¿¸º€
+	//path Í∏∏Ïù¥ Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return false;
 	}
 
-	//path ¿¸º€
+	//path Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return false;
 	}
 
-	//¿¿¥‰ π◊ ¡ÿ∫Ò ∞·∞˙ »Æ¿Œ
+	//ÏùëÎãµ Î∞è Ï§ÄÎπÑ Í≤∞Í≥º ÌôïÏù∏
 	if (!m_socket.m_sock.RecvExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-4 : %d"), GetLastError());
@@ -1022,7 +1008,7 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 		//TRACE(_T("%3d = %s\n"), dq->size() - 1, dq->back().cFileName);
 	}
 
-	//clientø°º≠ ≥—æÓø√ ∂ß ∆˙¥ı∏Ò∑œ¿Ã fullpath∑Œ ≥—æÓø¿π«∑Œ ∆˙¥ı∏Ì¿ª √ﬂ√‚«ÿº≠ ¥ŸΩ√ ≥÷æÓ¡ÿ¥Ÿ.
+	//clientÏóêÏÑú ÎÑòÏñ¥Ïò¨ Îïå Ìè¥ÎçîÎ™©Î°ùÏù¥ fullpathÎ°ú ÎÑòÏñ¥Ïò§ÎØÄÎ°ú Ìè¥ÎçîÎ™ÖÏùÑ Ï∂îÏ∂úÌï¥ÏÑú Îã§Ïãú ÎÑ£Ïñ¥Ï§ÄÎã§.
 	if (dq->size() > 0 && !fullpath)
 	{
 		for (int i = 0; i < dq->size(); i++)
@@ -1035,14 +1021,14 @@ bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA
 	return true;
 }
 
-//«ÿ¥Á ∞Ê∑Œ¿« ∆˙¥ıø° child∞° ¿÷¥Ÿ∏È ∆Æ∏Æø°º≠ »Æ¿Âπˆ∆∞¿ª «•Ω√«ÿ¡‡æﬂ«—¥Ÿ.
-//0:æ¯¿Ω, 1¿ÃªÛ:¿÷¿Ω, ¿Ωºˆ:ø°∑Ø
+//Ìï¥Îãπ Í≤ΩÎ°úÏùò Ìè¥ÎçîÏóê childÍ∞Ä ÏûàÎã§Î©¥ Ìä∏Î¶¨ÏóêÏÑú ÌôïÏû•Î≤ÑÌäºÏùÑ ÌëúÏãúÌï¥Ï§òÏïºÌïúÎã§.
+//0:ÏóÜÏùå, 1Ïù¥ÏÉÅ:ÏûàÏùå, ÏùåÏàò:ÏóêÎü¨
 int CnFTDServerManager::get_subfolder_count(LPCTSTR path)
 {
 	msg ret;
 	memset(&ret, 0, sizeof(ret));
 
-	//∏Ì∑… ¿¸º€
+	//Î™ÖÎ†π Ï†ÑÏÜ°
 	ret.type = nFTD_get_subfolder_count;
 	if (!m_socket.m_sock.SendExact((LPSTR)&ret, sz_msg, BLASTSOCK_BUFFER))
 	{
@@ -1052,21 +1038,21 @@ int CnFTDServerManager::get_subfolder_count(LPCTSTR path)
 
 	USHORT length = _tcslen(path) * 2;
 
-	//path ±Ê¿Ã ¿¸º€
+	//path Í∏∏Ïù¥ Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return false;
 	}
 
-	//path ¿¸º€
+	//path Ï†ÑÏÜ°
 	if (!m_socket.m_sock.SendExact((LPSTR)path, length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
 		return false;
 	}
 
-	//¿¿¥‰ ºˆΩ≈
+	//ÏùëÎãµ ÏàòÏã†
 	int sub_folder_count = -1;
 
 	if (!m_socket.m_sock.RecvExact((LPSTR)&sub_folder_count, sizeof(int), BLASTSOCK_BUFFER))
@@ -1139,7 +1125,7 @@ bool CnFTDServerManager::request_file_transfer_history(CString filename, CString
 
 	CRequestUrlParams	param(ip, port, _T(""), _T("PUT"));
 
-	//1.0ø°º≠¥¬ P2P¿œ∂ß¥¬ url¿Ã ¥Ÿ∏£¡ˆ∏∏ 3.0ø°º≠¥¬ request¥¬ º∫∞¯«œ¡ˆ∏∏ DBø°¥¬ ±‚∑œµ«¡ˆ æ ¥¬¥Ÿ. øÏº± µ— ¥Ÿ AP2P ∏µÂ∑Œ ∞≠¡¶«œø© ±‚∑œ«—¥Ÿ.
+	//1.0ÏóêÏÑúÎäî P2PÏùºÎïåÎäî urlÏù¥ Îã§Î•¥ÏßÄÎßå 3.0ÏóêÏÑúÎäî requestÎäî ÏÑ±Í≥µÌïòÏßÄÎßå DBÏóêÎäî Í∏∞Î°ùÎêòÏßÄ ÏïäÎäîÎã§. Ïö∞ÏÑ† Îëò Îã§ AP2P Î™®ÎìúÎ°ú Í∞ïÏ†úÌïòÏó¨ Í∏∞Î°ùÌïúÎã§.
 	if (true)//g_FT_mode == FT_MODE_AP2P)
 	{
 #ifdef LMM_SERVICE
@@ -1155,7 +1141,7 @@ bool CnFTDServerManager::request_file_transfer_history(CString filename, CString
 	else
 	{
 #ifdef LMM_SERVICE
-		//ø¯∑° 1.0¿« ∆ƒ¿œ¿¸º€ º“Ω∫ø°¥¬ PutLmmFileHistoryP2PInput∑Œ µ«æÓ¿÷¿∏≥™ ±‚∑œµ«¡ˆ æ ∞Ì ¿÷¥Ÿ. .netAPI∂Ûº≠ º“Ω∫∏¶ ªÏ∆Ï∫¡æﬂ «œ≥™
+		//ÏõêÎûò 1.0Ïùò ÌååÏùºÏ†ÑÏÜ° ÏÜåÏä§ÏóêÎäî PutLmmFileHistoryP2PInputÎ°ú ÎêòÏñ¥ÏûàÏúºÎÇò Í∏∞Î°ùÎêòÏßÄ ÏïäÍ≥† ÏûàÎã§. .netAPIÎùºÏÑú ÏÜåÏä§Î•º ÏÇ¥Ìé¥Î¥êÏïº ÌïòÎÇò
 		//param.sub_url.Format(_T("/api/v1.0/linkmemine/PutLmmFileHistoryP2PInput"));
 		param.sub_url.Format(_T("/api/v1.0/linkmemine/PutLmmFileHistoryInput2"));
 		param.body.Format(_T("{\"device_id\":\"%s\", \"host_pub_ip\":\"%s\", \"host_pri_ip\":\"%s\", \"mgrid\":\"%s\", \"viewer_pub_ip\":\"%s\", \"viewer_pri_ip\":\"%s\", \"start_time\":\"%s\", \"end_time\":\"%s\", \"fh_file_name\":\"%s\", \"fh_file_size\":\"%s\", \"action_type\":%d}"),
