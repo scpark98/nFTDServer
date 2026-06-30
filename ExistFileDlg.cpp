@@ -6,7 +6,7 @@
 #include "ExistFileDlg.h"
 #include "afxdialogex.h"
 
-#include "../../Common/Functions.h"
+#include "Common/Functions.h"
 
 // CExistFileDlg 대화 상자
 

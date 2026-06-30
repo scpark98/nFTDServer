@@ -57,121 +57,121 @@
     <ClInclude Include="nFTDFileTransferDialog.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CButton\SCSystemButtons\SCSystemButtons.h">
+    <ClInclude Include="$(CommonLibDir)\CButton\SCSystemButtons\SCSystemButtons.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.h">
+    <ClInclude Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.h">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\list_data.h">
+    <ClInclude Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\list_data.h">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CListCtrl\CVtListCtrlEx\VtListCtrlEx.h">
+    <ClInclude Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\VtListCtrlEx.h">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\ResizeCtrl.h">
+    <ClInclude Include="$(CommonLibDir)\ResizeCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\colors.h">
+    <ClInclude Include="$(CommonLibDir)\colors.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\ControlSplitter.h">
+    <ClInclude Include="$(CommonLibDir)\ControlSplitter.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\Functions.h">
+    <ClInclude Include="$(CommonLibDir)\Functions.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\MemoryDC.h">
+    <ClInclude Include="$(CommonLibDir)\MemoryDC.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CButton\GdiButton\GdiButton.h">
+    <ClInclude Include="$(CommonLibDir)\CButton\GdiButton\GdiButton.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CProgressCtrl\MacProgressCtrl\MacProgressCtrl.h">
+    <ClInclude Include="$(CommonLibDir)\CProgressCtrl\MacProgressCtrl\MacProgressCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CStatic\PathCtrl\PathCtrl.h">
+    <ClInclude Include="$(CommonLibDir)\CStatic\PathCtrl\PathCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CStatic\SCStatic\SCStatic.h">
+    <ClInclude Include="$(CommonLibDir)\CStatic\SCStatic\SCStatic.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CListBox\SCListBox\SCListBox.h">
+    <ClInclude Include="$(CommonLibDir)\CListBox\SCListBox\SCListBox.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\log\SCLog\SCLog.h">
+    <ClInclude Include="$(CommonLibDir)\log\SCLog\SCLog.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CDialog\SCProgressDlg\SCProgressDlg.h">
+    <ClInclude Include="$(CommonLibDir)\CDialog\SCProgressDlg\SCProgressDlg.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CTreeCtrl\SCTreeCtrl\SCTreeCtrl.h">
+    <ClInclude Include="$(CommonLibDir)\CTreeCtrl\SCTreeCtrl\SCTreeCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\system\ShellImageList\ShellImageList.h">
+    <ClInclude Include="$(CommonLibDir)\system\ShellImageList\ShellImageList.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\ui\theme\theme.h">
+    <ClInclude Include="$(CommonLibDir)\ui\theme\theme.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\ui\theme\ThemeLib.h">
+    <ClInclude Include="$(CommonLibDir)\ui\theme\ThemeLib.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CWnd\WndShadow\WndShadow.h">
+    <ClInclude Include="$(CommonLibDir)\CWnd\WndShadow\WndShadow.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.h">
+    <ClInclude Include="$(CommonLibDir)\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="ExistFileDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CEdit\SCEdit\SCEdit.h">
+    <ClInclude Include="$(CommonLibDir)\CEdit\SCEdit\SCEdit.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CDialog\SCThemeDlg\SCThemeDlg.h">
+    <ClInclude Include="$(CommonLibDir)\CDialog\SCThemeDlg\SCThemeDlg.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="MessageDlg.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\ini\EZIni\EZIni.h">
+    <ClInclude Include="$(CommonLibDir)\ini\EZIni\EZIni.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CDialog\SCShapeDlg\SCShapeDlg.h">
+    <ClInclude Include="$(CommonLibDir)\CDialog\SCShapeDlg\SCShapeDlg.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\messagebox\CSCMessageBox\SCMessageBox.h">
+    <ClInclude Include="$(CommonLibDir)\messagebox\CSCMessageBox\SCMessageBox.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\data_structure\SCParagraph\SCParagraph.h">
+    <ClInclude Include="$(CommonLibDir)\data_structure\SCParagraph\SCParagraph.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChangesPrivate.h">
+    <ClInclude Include="$(CommonLibDir)\file_system\SCDirWatcher\ReadDirectoryChangesPrivate.h">
       <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\SCDirWatcher.h">
+    <ClInclude Include="$(CommonLibDir)\file_system\SCDirWatcher\SCDirWatcher.h">
       <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ThreadSafeQueue.h">
+    <ClInclude Include="$(CommonLibDir)\file_system\SCDirWatcher\ThreadSafeQueue.h">
       <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChanges.h">
+    <ClInclude Include="$(CommonLibDir)\file_system\SCDirWatcher\ReadDirectoryChanges.h">
       <Filter>Common\SCDirWatcher</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\SCGdiplusBitmap.h">
+    <ClInclude Include="$(CommonLibDir)\SCGdiplusBitmap.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CMenu\CSCMenuBar\SCMenu.h">
+    <ClInclude Include="$(CommonLibDir)\CMenu\CSCMenuBar\SCMenu.h">
       <Filter>Common\SCMenuBar</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CMenu\CSCMenuBar\SCMenuBar.h">
+    <ClInclude Include="$(CommonLibDir)\CMenu\CSCMenuBar\SCMenuBar.h">
       <Filter>Common\SCMenuBar</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\CMenu\CSCMenuBar\SCMenuButton.h">
+    <ClInclude Include="$(CommonLibDir)\CMenu\CSCMenuBar\SCMenuButton.h">
       <Filter>Common\SCMenuBar</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\system\CrashHandler\CrashHandler\CrashHandler.h">
+    <ClInclude Include="$(CommonLibDir)\system\CrashHandler\CrashHandler\CrashHandler.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -194,112 +194,112 @@
     <ClCompile Include="nFTDFileTransferDialog.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CButton\SCSystemButtons\SCSystemButtons.cpp">
+    <ClCompile Include="$(CommonLibDir)\CButton\SCSystemButtons\SCSystemButtons.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\list_data.cpp">
+    <ClCompile Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\list_data.cpp">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\VtListCtrlEx.cpp">
+    <ClCompile Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\VtListCtrlEx.cpp">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.cpp">
+    <ClCompile Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.cpp">
       <Filter>Common\VtListCtrlEx</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\ResizeCtrl.cpp">
+    <ClCompile Include="$(CommonLibDir)\ResizeCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\colors.cpp">
+    <ClCompile Include="$(CommonLibDir)\colors.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\ControlSplitter.cpp">
+    <ClCompile Include="$(CommonLibDir)\ControlSplitter.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\Functions.cpp">
+    <ClCompile Include="$(CommonLibDir)\Functions.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CButton\GdiButton\GdiButton.cpp">
+    <ClCompile Include="$(CommonLibDir)\CButton\GdiButton\GdiButton.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CProgressCtrl\MacProgressCtrl\MacProgressCtrl.cpp">
+    <ClCompile Include="$(CommonLibDir)\CProgressCtrl\MacProgressCtrl\MacProgressCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CStatic\PathCtrl\PathCtrl.cpp">
+    <ClCompile Include="$(CommonLibDir)\CStatic\PathCtrl\PathCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CStatic\SCStatic\SCStatic.cpp">
+    <ClCompile Include="$(CommonLibDir)\CStatic\SCStatic\SCStatic.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CListBox\SCListBox\SCListBox.cpp">
+    <ClCompile Include="$(CommonLibDir)\CListBox\SCListBox\SCListBox.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\log\SCLog\SCLog.cpp">
+    <ClCompile Include="$(CommonLibDir)\log\SCLog\SCLog.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CDialog\SCProgressDlg\SCProgressDlg.cpp">
+    <ClCompile Include="$(CommonLibDir)\CDialog\SCProgressDlg\SCProgressDlg.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CTreeCtrl\SCTreeCtrl\SCTreeCtrl.cpp">
+    <ClCompile Include="$(CommonLibDir)\CTreeCtrl\SCTreeCtrl\SCTreeCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\system\ShellImageList\ShellImageList.cpp">
+    <ClCompile Include="$(CommonLibDir)\system\ShellImageList\ShellImageList.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\ui\theme\theme.cpp">
+    <ClCompile Include="$(CommonLibDir)\ui\theme\theme.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CWnd\WndShadow\WndShadow.cpp">
+    <ClCompile Include="$(CommonLibDir)\CWnd\WndShadow\WndShadow.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.cpp">
+    <ClCompile Include="$(CommonLibDir)\CSliderCtrl\SCSliderCtrl\SCSliderCtrl.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="ExistFileDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CEdit\SCEdit\SCEdit.cpp">
+    <ClCompile Include="$(CommonLibDir)\CEdit\SCEdit\SCEdit.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CDialog\SCThemeDlg\SCThemeDlg.cpp">
+    <ClCompile Include="$(CommonLibDir)\CDialog\SCThemeDlg\SCThemeDlg.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="MessageDlg.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\ini\EZIni\EZIni.cpp">
+    <ClCompile Include="$(CommonLibDir)\ini\EZIni\EZIni.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CDialog\SCShapeDlg\SCShapeDlg.cpp">
+    <ClCompile Include="$(CommonLibDir)\CDialog\SCShapeDlg\SCShapeDlg.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\messagebox\CSCMessageBox\SCMessageBox.cpp">
+    <ClCompile Include="$(CommonLibDir)\messagebox\CSCMessageBox\SCMessageBox.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\data_structure\SCParagraph\SCParagraph.cpp">
+    <ClCompile Include="$(CommonLibDir)\data_structure\SCParagraph\SCParagraph.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChangesPrivate.cpp">
+    <ClCompile Include="$(CommonLibDir)\file_system\SCDirWatcher\ReadDirectoryChangesPrivate.cpp">
       <Filter>Common\SCDirWatcher</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\file_system\SCDirWatcher\SCDirWatcher.cpp">
+    <ClCompile Include="$(CommonLibDir)\file_system\SCDirWatcher\SCDirWatcher.cpp">
       <Filter>Common\SCDirWatcher</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\file_system\SCDirWatcher\ReadDirectoryChanges.cpp">
+    <ClCompile Include="$(CommonLibDir)\file_system\SCDirWatcher\ReadDirectoryChanges.cpp">
       <Filter>Common\SCDirWatcher</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\SCGdiplusBitmap.cpp">
+    <ClCompile Include="$(CommonLibDir)\SCGdiplusBitmap.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CMenu\CSCMenuBar\SCMenuBar.cpp">
+    <ClCompile Include="$(CommonLibDir)\CMenu\CSCMenuBar\SCMenuBar.cpp">
       <Filter>Common\SCMenuBar</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CMenu\CSCMenuBar\SCMenuButton.cpp">
+    <ClCompile Include="$(CommonLibDir)\CMenu\CSCMenuBar\SCMenuButton.cpp">
       <Filter>Common\SCMenuBar</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\CMenu\CSCMenuBar\SCMenu.cpp">
+    <ClCompile Include="$(CommonLibDir)\CMenu\CSCMenuBar\SCMenu.cpp">
       <Filter>Common\SCMenuBar</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\system\CrashHandler\CrashHandler\CrashHandler.cpp">
+    <ClCompile Include="$(CommonLibDir)\system\CrashHandler\CrashHandler\CrashHandler.cpp">
       <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>

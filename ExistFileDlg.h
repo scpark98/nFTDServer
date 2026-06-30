@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 #include "nFTDServerSocket.h"
-#include "../../Common/CStatic/SCStatic/SCStatic.h"
-#include "../../Common/CDialog/SCThemeDlg/SCThemeDlg.h"
-#include "../../Common/CButton/GdiButton/GdiButton.h"
+#include "Common/CStatic/SCStatic/SCStatic.h"
+#include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
+#include "Common/CButton/GdiButton/GdiButton.h"
 
 // CExistFileDlg 대화 상자
 

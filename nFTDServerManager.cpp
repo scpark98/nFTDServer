@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "nFTDServer.h"
 #include "nFTDServerManager.h"
-#include "../../Common/Functions.h"
+#include "Common/Functions.h"
 
 CnFTDServerManager::CnFTDServerManager()
 {
