@@ -133,6 +133,23 @@ public:
 	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
 	bool				is_transfer_enable_for_list(int srcSide);
 	bool				is_transfer_enable_for_tree(int srcSide);
+	//전송 대상은 리스트 선택 항목 또는(선택이 없으면) 트리에서 선택한 현재 폴더다. 두 경우를 통합 판정한다.
+	bool				is_transfer_enable(int srcSide);
+	//리스트에서 선택된 항목 중 하나라도 보호(삭제/이름변경 금지) 대상이면 true. 다중선택 삭제 방어에 사용.
+	bool				any_selected_item_protected(int dwSide);
+
+	//선택 변경(LVN_ITEMCHANGED)은 딜레이 방지를 위해 timer_refresh_selection_status(50ms)로 지연 처리한다.
+	//타이머가 발화할 때 어느 리스트를 갱신할지를 GetFocus()로 추측하면 첫 실행 직후처럼 포커스가 아직 리스트에
+	//있지 않은 순간(연결 진행 다이얼로그 등)에 갱신이 통째로 스킵되어 전송버튼이 enable되지 않는다.
+	//→ 변경을 발생시킨 리스트를 여기에 기록해두고 타이머는 그 리스트를 갱신한다(포커스 비의존).
+	CVtListCtrlEx*		m_selection_status_target = NULL;
+
+	//전송버튼이 "보호 폴더 선택"으로 disable 됐을 때 그 사유를 hover 툴팁으로 표시한다.
+	//WS_DISABLED 윈도우는 마우스 메시지를 못 받아 컨트롤 자체로는 툴팁을 못 띄우므로(모든 MFC 컨트롤 공통 제약),
+	//툴팁을 parent 에서 선언하고 PreTranslateMessage 에서 릴레이해야 disabled 상태에도 표시된다.
+	CToolTipCtrl		m_tooltip;
+	//선택 항목 중 보호(전송 금지) 항목이 있으면 그 사유 문자열을, 없으면 빈 문자열을 리턴한다.
+	CString				get_transfer_block_reason(int dwSide);
 
 // 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME

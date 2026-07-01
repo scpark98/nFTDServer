@@ -33,6 +33,7 @@
 #define IDS_TEXT_LINKVNC                124
 #define NFTD_IDS_FILETRANSFER_CANCEL    124
 #define IDS_TEXT_LINKEIGHT              125
+#define IDS_PROTECTED_FOLDER_FILE       125
 #define IDS_REG_HKEY_LOCAL_MACH_LINKEIGHT 126
 #define IDS_COOPY_PATH                  127
 #define IDR_MAINFRAME                   128
@@ -59,6 +60,7 @@
 #define NFTD_ISD_FOLDER_FILE_LIST_LOADING 140
 #define NFTD_IDS_FILETRANSFER_CANCEL2   140
 #define IDS_EXIST_SRC_FILE_TITLE        141
+#define IDS_PROTECTED_FOLDER_FILE2      141
 #define IDS_EXIST_DST_FILE_TITLE        142
 #define IDS_DISABLE_SUCCEED_TRANSFER    143
 #define IDS_REFRESH                     144
@@ -201,6 +203,7 @@
 #define NFTD_IDS_OVERWRITE              2085
 #define NFTD_IDS_PASS                   2086
 #define NFTD_IDS_CHECK_ALL              2087
+#define NFTD_IDS_EXIST_TITLE            2088
 #define ID_LIST_32771                   32771
 #define ID_LIST_32772                   32772
 #define ID_LIST_32773                   32773
@@ -234,7 +237,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        169
+#define _APS_NEXT_RESOURCE_VALUE        168
 #define _APS_NEXT_COMMAND_VALUE         32799
 #define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101

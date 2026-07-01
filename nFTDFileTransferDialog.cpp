@@ -66,6 +66,9 @@ BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CSCThemeDlg)
 	//타이틀바/테두리 처리(LBUTTONDOWN/SETCURSOR/PAINT/ERASEBKGND/GETMINMAXINFO)는 base CSCThemeDlg 에 위임.
 	ON_WM_TIMER()
 	ON_WM_DESTROY()
+	//최신 Common 의 CSCSystemButtons 는 min/max/close 를 WM_SYSCOMMAND 가 아니라 Message_CSCSystemButtons 로 parent 에
+	//보낸다. 핸들러가 없으면 닫기 버튼이 무반응이므로(메인 dlg 와 동일 패턴) 여기서 처리한다.
+	ON_REGISTERED_MESSAGE(Message_CSCSystemButtons, &CnFTDFileTransferDialog::on_message_CSCSystemButtons)
 END_MESSAGE_MAP()
 
 
@@ -93,7 +96,8 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	SetWindowText(_S(NFTD_IDS_FILETRANSFER));
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
-	set_draw_border(true);
+	set_as_toolbar();
+	//set_draw_border(true);
 
 	m_sys_buttons.set_button_width(TOOLBAR_TITLE_BUTTON_WIDTH);
 
@@ -166,6 +170,30 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 	m_list.save_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 
 	CDialogEx::OnCancel();
+}
+
+//CSCSystemButtons(최소화/최대화/닫기)는 최신 Common 에서 Message_CSCSystemButtons 를 parent 로 보낸다.
+//parent 인 본 dlg 가 직접 cmd 를 처리해야 버튼이 동작한다(핸들러 없으면 닫기 무반응 — 어제 Common 적용 후 회귀).
+LRESULT CnFTDFileTransferDialog::on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam)
+{
+	CSCSystemButtonsMessage* msg = (CSCSystemButtonsMessage*)wParam;
+
+	switch (msg->cmd)
+	{
+		case SC_MINIMIZE:
+			ShowWindow(SW_MINIMIZE);
+			break;
+		case SC_RESTORE:
+		case SC_MAXIMIZE:
+			ShowWindow(IsZoomed() ? SW_RESTORE : SW_MAXIMIZE);
+			break;
+		case SC_CLOSE:
+			//종료 절차(전송 중이면 취소 확인, 완료면 창 닫기)는 OnBnClickedCancel 에 일원화돼 있다.
+			OnBnClickedCancel();
+			break;
+	}
+
+	return 0;
 }
 
 BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerManager, std::deque<WIN32_FIND_DATA>* filelist,
@@ -367,6 +395,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//추후 양방향 파일목록이 섞이도록 수정할 경우는 아래 for문 안으로 들어가야 한다.
 	m_static_copy.set_back_image_mirror(m_dstSide == SERVER_SIDE);
 
+	//취소 시 창 닫기 판단용: 이 시점까지 실제로 전송 완료(success/overwrite)된 항목 수.
+	//1개 이상 전송됐으면 취소해도 "완료 후 닫기" 체크박스를 따르고(결과 확인 위해 남길 수 있게), 0개면 볼 게 없으니 무조건 닫는다.
+	int transferred_count = 0;
+
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
@@ -383,6 +415,11 @@ void CnFTDFileTransferDialog::thread_transfer()
 		if (m_filelist.size() > 1000)	//간혹 전송 취소를 누르면 특정 변수값이 garbage로 채워지는 이상 현상이 발생하여 비정상적인 경우는 break하도록 함.
 			break;
 		m_static_message.set_textf(_T("%s"), get_part(m_filelist[i].cFileName, fn_name));
+
+		//진행 카운트(x/total)를 항목 종류(폴더/파일/스킵)와 무관하게 루프 최상단에서 올린다.
+		//폴더 생성 분기는 바이트 진행 콜백이 없어, 마지막 항목들이 폴더면 카운트가 멈춰 15/19 처럼 표시되던 문제를 방지.
+		m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
+			get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
 
 		memcpy(&to, &m_filelist[i], sizeof(to));
 
@@ -401,9 +438,11 @@ void CnFTDFileTransferDialog::thread_transfer()
 		bool insert_item_after_transfer_success = (get_char_count(temp, '\\') == 1);
 
 
-		//현재 전송중인 항목을 선택표시하면 왠지 산만하다. 그냥 EnsureVisible()만 처리하자.
+		//현재 전송중인 항목을 선택표시하면 왠지 산만하다. 그냥 스크롤만 처리하자.
 		//m_list.select_item(i, true, true, true);
-		m_list.EnsureVisible(i, FALSE);
+		//네이티브 EnsureVisible 는 CVtListCtrlEx 의 하단 여백(m_bottom_reserve) 모델을 무시해 마지막 행이 잘린 채 남는다.
+		//커스텀 ensure_visible(visible_last)로 라우팅해야 정본 스크롤 모델(마지막 행 완전 표시)을 그대로 탄다.
+		m_list.ensure_visible(i, CVtListCtrlEx::visible_last);
 
 		ULARGE_INTEGER	filesize;
 		filesize.LowPart = 0;
@@ -504,6 +543,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 		if ((res == transfer_result_success || res == transfer_result_overwrite))
 		{
+			transferred_count++;
+
 			//전송이 완료되면 리스트를 새로고침하거나
 			//해당 항목을 수동으로 리스트에 추가하고 선택상태로 표시, 스크롤되게 보여줘야 한다.
 			if (insert_item_after_transfer_success)
@@ -514,6 +555,17 @@ void CnFTDFileTransferDialog::thread_transfer()
 		}
 		else if (res == transfer_result_cancel)
 		{
+			//동일이름 처리창(CExistFileDlg)에서 옵션(이어서/덮어쓰기/건너뛰기)을 고르지 않고 X(닫기)를 누른 경우 =
+			//"남은 파일을 더 전송할 의사 없음" = 전송작업 전체 취소. ("닫기=취소" 로 정한 이유: Windows 탐색기의 파일 충돌
+			//대화상자도 X=복사 취소 / CExistFileDlg 가 모달이라 그때 전송창 취소버튼을 못 눌러 X 가 유일한 중단 수단 / 예전 동작 일치.)
+			//
+			//창을 닫을지 규칙:
+			//  - 전송 완료 1개 이상 → "완료 후 닫기" 체크박스(m_auto_close 원래값)를 따른다(결과 확인 위해 남길 수 있게).
+			//  - 전송 완료 0개      → 볼 게 없으니 체크박스와 무관하게 닫는다(여기서 m_auto_close=true 강제).
+			//닫기는 워커 스레드에서 직접 못 하므로(모달은 UI 스레드 소유) m_auto_close 플래그로 OnTimer(UI 스레드)에 위임한다.
+			if (transferred_count == 0)
+				m_auto_close = true;
+
 			m_static_copy.stop_gif();
 			break;
 		}
@@ -527,7 +579,9 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//if (m_pServerManager == manager_original && m_pServerManager != NULL && m_pServerManager != INVALID_HANDLE_VALUE && m_thread_transfer_started)
 	//	m_pServerManager->DataClose();
 
-	m_static_copy.stop_gif();
+	//전송 완료: stop_gif()는 애니 스레드를 끝내고 화면에서도 지워버린다(설계상). 완료 후엔 프레임이 남아야 하므로
+	//pause_gif(0)으로 첫 프레임에 정지시켜 그대로 보이게 한다(pos>=0 은 비-토글이라 아래 OnTimer 재호출에도 안전).
+	m_static_copy.pause_gif(0);
 	m_thread_transfer_started = false;
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 	TRACE(_T("exit thread_transfer()\n"));
@@ -573,7 +627,8 @@ void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
 
 		if (!m_thread_transfer_started)
 		{
-			m_static_copy.stop_gif();
+			//완료 상태: stop 이 아니라 pause 로 마지막 프레임을 남긴다(창이 안 닫히는 경우 gif 가 사라지지 않도록).
+			m_static_copy.pause_gif(0);
 
 			if (m_auto_close)
 			{

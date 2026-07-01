@@ -50,6 +50,8 @@ public:
 	CSCStatic m_static_dst_filesize;
 	afx_msg void OnBnClickedCheckApplyAll();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	//최신 Common 의 CSCSystemButtons(min/max/close)는 Message_CSCSystemButtons 를 parent 로 보내므로 여기서 처리한다.
+	afx_msg LRESULT on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam);
 	CSCStatic m_static_src_mtime;
 	CSCStatic m_static_dst_mtime;
 	CGdiButton m_button_ok;

@@ -50,6 +50,9 @@ BEGIN_MESSAGE_MAP(CExistFileDlg, CSCThemeDlg)
 	ON_BN_CLICKED(IDC_RADIO_OVERWRITE, &CExistFileDlg::OnBnClickedRadioOverwrite)
 	ON_BN_CLICKED(IDC_RADIO_SKIP, &CExistFileDlg::OnBnClickedRadioSkip)
 	ON_BN_CLICKED(IDC_CHECK_APPLY_ALL, &CExistFileDlg::OnBnClickedCheckApplyAll)
+	//최신 Common 의 CSCSystemButtons 는 닫기/최소/최대를 Message_CSCSystemButtons 로 parent 에 보낸다.
+	//핸들러가 없으면 닫기 버튼이 무반응(전송창과 동일 회귀).
+	ON_REGISTERED_MESSAGE(Message_CSCSystemButtons, &CExistFileDlg::on_message_CSCSystemButtons)
 END_MESSAGE_MAP()
 
 
@@ -57,13 +60,18 @@ END_MESSAGE_MAP()
 
 BOOL CExistFileDlg::OnInitDialog()
 {
+	//이 창은 고정 크기다. base OnInitDialog 가 m_use_resizable 를 보고 WS_THICKFRAME 부여 여부를 정하므로 그 전에 꺼야 한다.
+	//WS_THICKFRAME 이 붙으면 두꺼운 sizing 테두리 + 가장자리 resize 커서가 생긴다(실제 resize 는 원치 않음).
+	set_use_resizable(false);
+
 	CSCThemeDlg::OnInitDialog();
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
 	set_color_theme(theApp.m_color_theme);
 	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
-	set_draw_border(true);
+	set_as_toolbar();
+	//set_draw_border(true);	//DimGray 테두리가 진하게 보여 제거(전송창과 동일 처리). 필요 시 옅은 색으로 재지정.
 
 #ifdef _REMOTE_SDK
 	SetWindowText(_T("Remote SDK"));
@@ -229,7 +237,32 @@ void CExistFileDlg::OnBnClickedOk()
 
 void CExistFileDlg::OnBnClickedCancel()
 {
+	//X(우측 상단 닫기)/ESC = 전송 전체 취소(예전 동작). IDCANCEL 을 반환하면 caller(recv_file/send_file)가
+	//transfer_result_cancel 로 해석해 전송 루프가 멈추고, 전송목록창(부모)도 닫힌다.
 	CDialogEx::OnCancel();
+}
+
+//CSCSystemButtons(최소화/최대화/닫기)는 최신 Common 에서 Message_CSCSystemButtons 를 parent 로 보낸다.
+//parent 인 본 dlg 가 직접 처리해야 버튼이 동작한다(핸들러 없으면 닫기 무반응 — 전송창과 동일 회귀).
+LRESULT CExistFileDlg::on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam)
+{
+	CSCSystemButtonsMessage* msg = (CSCSystemButtonsMessage*)wParam;
+
+	switch (msg->cmd)
+	{
+		case SC_MINIMIZE:
+			ShowWindow(SW_MINIMIZE);
+			break;
+		case SC_RESTORE:
+		case SC_MAXIMIZE:
+			ShowWindow(IsZoomed() ? SW_RESTORE : SW_MAXIMIZE);
+			break;
+		case SC_CLOSE:
+			OnBnClickedCancel();
+			break;
+	}
+
+	return 0;
 }
 
 

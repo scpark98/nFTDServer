@@ -343,6 +343,15 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_button_remote_to_local.draw_drop_shadow(true, 1.8f, 1.6f);
 	m_button_remote_to_local.set_down_offset(1, 1);
 
+	//전송버튼이 보호 폴더 선택으로 disable 됐을 때 사유 툴팁. tool 텍스트는 refresh_selection_status 에서 동적 갱신.
+	//disabled 컨트롤에도 표시되려면 이 툴팁을 parent 가 소유하고 PreTranslateMessage 에서 릴레이해야 한다.
+	m_tooltip.Create(this);
+	m_tooltip.SetDelayTime(TTDT_INITIAL, 400);
+	m_tooltip.SetMaxTipWidth(400);
+	m_tooltip.AddTool(&m_button_local_to_remote, _T(""));
+	m_tooltip.AddTool(&m_button_remote_to_local, _T(""));
+	m_tooltip.Activate(TRUE);
+
 	m_progress_local.set_style(CSCSliderCtrl::style_progress);
 	m_progress_local.set_track_height(4);
 	m_progress_local.set_text_style(CSCSliderCtrl::text_style_none);
@@ -984,6 +993,22 @@ void CnFTDServerDlg::SetDefaultPathToDesktop(int type)
 BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
+
+	//disabled 컨트롤(전송버튼)에도 툴팁이 표시되도록 parent 에서 마우스 메시지를 툴팁에 릴레이한다.
+	//WS_DISABLED 윈도우는 마우스 메시지를 못 받으므로 컨트롤 자체 PreTranslateMessage 로는 불가 — 모든 MFC 컨트롤 공통.
+	if (m_tooltip.m_hWnd)
+	{
+		MSG msg = *pMsg;
+		msg.hwnd = (HWND)m_tooltip.SendMessage(TTM_WINDOWFROMPOINT, 0, (LPARAM) & (msg.pt));
+
+		CPoint pt = msg.pt;
+		if (msg.message >= WM_MOUSEFIRST && msg.message <= WM_MOUSELAST)
+			::ScreenToClient(msg.hwnd, &pt);
+
+		msg.lParam = MAKELONG(pt.x, pt.y);
+		m_tooltip.SendMessage(TTM_RELAYEVENT, 0, (LPARAM)&msg);
+	}
+
 	if (pMsg->message == WM_KEYDOWN)
 	{
 		TRACE(_T("keydown on CnFTDServerDlg\n"));
@@ -1858,6 +1883,25 @@ void CnFTDServerDlg::file_transfer()
 		m_transfer_list.push_back(data);
 	}
 
+	//실행부 강제(방어선 이원화): 버튼/메뉴 UI 게이트는 드래그앤드롭·조작된 요청을 못 막으므로, 실제 전송 시작 지점에서
+	//다시 검사한다. 소스에 보호 항목(드라이브 루트·시스템 폴더 등)이 하나라도 있으면 전송 금지.
+	for (auto& fd : m_transfer_list)
+	{
+		if (theApp.m_shell_imagelist.is_protected(m_srcSide, fd.cFileName))
+		{
+			m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더(및 그 하위)는 시스템 손상을 막기 위해 전송할 수 없습니다."));
+			m_transfer_list.clear();
+			return;
+		}
+	}
+	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
+	if (theApp.m_shell_imagelist.is_protected(m_dstSide, m_transfer_to, true))
+	{
+		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
+		m_transfer_list.clear();
+		return;
+	}
+
 	//m_transfer_from, m_transfer_to의 끝에 '\\'가 있을 경우의 보정.
 	if (m_transfer_from.GetLength() > 3 && m_transfer_from.Right(1) == '\\')
 		truncate(m_transfer_from, 1);
@@ -1986,12 +2030,12 @@ void CnFTDServerDlg::file_transfer()
 		if (m_dstSide == SERVER_SIDE)
 		{
 			m_tree_local.refresh(m_tree_local.GetSelectedItem());
-			m_list_local.refresh_list();
+			m_list_local.refresh_list(true, true);	//전송이 기존 파일을 덮어썼으면 제자리 쓰기(dir mtime 불변)라 캐시 우회 필요
 		}
 		else if (m_dstSide == CLIENT_SIDE)
 		{
 			m_tree_remote.refresh(m_tree_remote.GetSelectedItem());
-			m_list_remote.refresh_list();
+			m_list_remote.refresh_list(true, true);	//remote 는 캐시 미적용이라 무해하지만 일관성 위해 동일 처리
 		}
 	}
 	else
@@ -2035,24 +2079,8 @@ bool CnFTDServerDlg::is_transfer_enable_for_list(int dwSide)
 		if (dwSide == CLIENT_SIDE && m_list_local.get_path() == theApp.m_shell_imagelist.get_system_path(!dwSide, CSIDL_DRIVES))
 			return false;
 
-		//선택된 아이템이 드라이브 루트라면 전송 불가
-		for (auto drive_list : *theApp.m_shell_imagelist.m_volume[dwSide].get_drive_list())
-		{
-			//CString drive_root = convert_special_folder_to_real_path(drive_volume, &theApp.m_shell_imagelist, dwSide);
-			if (path.CompareNoCase(drive_list.path) == 0)
-				return false;
-		}
-
-		if (path == _T("C:\\Program Files") ||
-			path == _T("C:\\Program Files (x86)") ||
-			path == _T("C:\\Windows") ||
-			path == _T("C:\\Users") ||
-			path == _T("C:\\Documents and Settings") ||
-			path == _T("C:\\Program Files") ||
-			path == _T("C:\\Program Files (x86)") ||
-			path == _T("C:\\ProgramData") ||
-			path == _T("C:\\Recovery") ||
-			path == _T("C:\\System Volume Information"))
+		//드라이브 루트·주요 시스템 폴더(및 하위)는 전송 불가. 판정은 is_protected 단일 출처로 통합.
+		if (theApp.m_shell_imagelist.is_protected(dwSide, path))
 			return false;
 	}
 
@@ -2084,27 +2112,39 @@ bool CnFTDServerDlg::is_transfer_enable_for_tree(int dwSide)
 	if (dwSide == CLIENT_SIDE && m_list_local.get_path() == theApp.m_shell_imagelist.get_system_path(!dwSide, CSIDL_DRIVES))
 		return false;
 
-	//선택된 아이템이 드라이브 루트라면 전송 불가
-	for (auto drive_list : *theApp.m_shell_imagelist.m_volume[dwSide].get_drive_list())
-	{
-		if (path.CompareNoCase(drive_list.path) == 0)
-			return false;
-	}
-
-	//윈도우와 관계된 주요 폴더는 전송 대상에서 제외한다.
-	if (path == _T("C:\\Program Files") ||
-		path == _T("C:\\Program Files (x86)") ||
-		path == _T("C:\\Windows") ||
-		path == _T("C:\\Users") ||
-		path == _T("C:\\Documents and Settings") ||
-		path == _T("C:\\Program Files") ||
-		path == _T("C:\\Program Files (x86)") ||
-		path == _T("C:\\ProgramData") ||
-		path == _T("C:\\Recovery") ||
-		path == _T("C:\\System Volume Information"))
+	//드라이브 루트·주요 시스템 폴더(및 하위)는 전송 불가. 판정은 is_protected 단일 출처로 통합.
+	if (theApp.m_shell_imagelist.is_protected(dwSide, path))
 		return false;
 
 	return true;
+}
+
+//전송 대상은 리스트 선택 항목 또는(선택이 없으면) 트리에서 선택한 현재 폴더다.
+//리스트에 선택이 있으면 그 항목들을, 없으면 트리의 현재 폴더를 기준으로 전송 가능 여부를 판정한다.
+bool CnFTDServerDlg::is_transfer_enable(int dwSide)
+{
+	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+
+	if (plist->GetSelectedCount() > 0)
+		return is_transfer_enable_for_list(dwSide);
+
+	return is_transfer_enable_for_tree(dwSide);
+}
+
+//리스트에서 선택된 항목 중 하나라도 보호(삭제/이름변경 금지) 대상이면 true. 다중선택 삭제/이름변경 방어.
+//(우클릭한 단일 항목만 검사하면 정상+보호 항목을 함께 선택 후 정상 항목을 우클릭해 보호 항목까지 삭제되는 구멍이 있다.)
+bool CnFTDServerDlg::any_selected_item_protected(int dwSide)
+{
+	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+
+	std::deque<int> dq;
+	plist->get_selected_items(&dq);
+
+	for (int i = 0; i < dq.size(); i++)
+		if (theApp.m_shell_imagelist.is_protected(dwSide, plist->get_path(dq[i])))
+			return true;
+
+	return false;
 }
 
 void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
@@ -2300,7 +2340,7 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
 
 	//보호된 파일/폴더일 경우
-	if (item >= 0 && theApp.m_shell_imagelist.is_protected(SERVER_SIDE, m_list_local.get_path(item)))
+	if (any_selected_item_protected(SERVER_SIDE))
 	{
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
@@ -2385,7 +2425,7 @@ void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
 
 	//보호된 파일/폴더일 경우
-	if (item >= 0 && theApp.m_shell_imagelist.is_protected(CLIENT_SIDE, m_list_remote.get_path(item)))
+	if (any_selected_item_protected(CLIENT_SIDE))
 	{
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
@@ -2508,16 +2548,10 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 	{
 		KillTimer(timer_refresh_selection_status);
 
-		CVtListCtrlEx* plist = NULL;
-		if (GetFocus() == &m_list_local)
-			plist = &m_list_local;
-		else if (GetFocus() == &m_list_remote)
-			plist = &m_list_remote;
-		else
-			return;
-
-		if (plist)
-			refresh_selection_status(plist);
+		//변경을 발생시킨 리스트를 갱신한다. GetFocus() 로 추측하면 첫 실행 직후 포커스가 아직 리스트에 없는 순간
+		//갱신이 스킵되어 전송버튼이 enable 되지 않는 버그가 있었다(맨 처음 1회만 재현).
+		if (m_selection_status_target)
+			refresh_selection_status(m_selection_status_target);
 	}
 	else if (nIDEvent == timer_init_progress_and_connect)
 	{
@@ -2621,7 +2655,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
 			case file_cmd_refresh :
-				plist->refresh_list();
+				plist->refresh_list(true, true);	//명시적 새로고침 — 폴더 캐시 우회(제자리 편집 stale 방지)
 				ptree->refresh(ptree->GetSelectedItem());
 				break;
 			case file_cmd_new_folder :
@@ -2748,7 +2782,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_refresh:
-				plist->refresh_list();
+				plist->refresh_list(true, true);	//명시적 새로고침 — 폴더 캐시 우회(제자리 편집 stale 방지)
 				ptree->refresh(ptree->GetSelectedItem());
 				break;
 			case file_cmd_new_folder:
@@ -2897,7 +2931,7 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				break;
 			case file_cmd_refresh :
 				ptree->refresh(ptree->GetSelectedItem());
-				plist->refresh_list();
+				plist->refresh_list(true, true);	//명시적 새로고침 — 폴더 캐시 우회(제자리 편집 stale 방지)
 				break;
 			case file_cmd_property :
 				show_property_window(std::deque<CString> {param0});
@@ -2933,7 +2967,7 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				break;
 			case file_cmd_refresh:
 				ptree->refresh(ptree->GetSelectedItem());
-				plist->refresh_list();
+				plist->refresh_list(true, true);	//명시적 새로고침 — 폴더 캐시 우회(제자리 편집 stale 방지)
 				break;
 			case file_cmd_property:
 			{
@@ -3041,16 +3075,59 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 	{
 		m_static_count_local.set_text(str);
 
-		//선택여부에 따라 송수신 버튼 상태도 변한다.
-		m_button_local_to_remote.EnableWindow(is_transfer_enable_for_list(SERVER_SIDE));
+		//선택여부에 따라 송수신 버튼 상태도 변한다. 전송 대상은 리스트 선택 또는 트리 현재 폴더이므로 통합 판정한다.
+		bool enable = is_transfer_enable(SERVER_SIDE);
+		m_button_local_to_remote.EnableWindow(enable);
+		//disable 사유가 "보호 폴더/드라이브 루트 선택"이면 그 사유를 hover 툴팁으로 안내. enable 이면 툴팁 비움.
+		m_tooltip.UpdateTipText(enable ? _T("") : get_transfer_block_reason(SERVER_SIDE), &m_button_local_to_remote);
 	}
 	else if (plist == &m_list_remote)
 	{
 		m_static_count_remote.set_text(str);
 
-		//선택여부에 따라 송수신 버튼 상태도 변한다.
-		m_button_remote_to_local.EnableWindow(is_transfer_enable_for_list(CLIENT_SIDE));
+		//선택여부에 따라 송수신 버튼 상태도 변한다. 전송 대상은 리스트 선택 또는 트리 현재 폴더이므로 통합 판정한다.
+		bool enable = is_transfer_enable(CLIENT_SIDE);
+		m_button_remote_to_local.EnableWindow(enable);
+		m_tooltip.UpdateTipText(enable ? _T("") : get_transfer_block_reason(CLIENT_SIDE), &m_button_remote_to_local);
 	}
+}
+
+//전송 대상(리스트 선택 항목, 없으면 트리 현재 폴더) 중 보호(전송 금지) 대상이 있으면 그 사유 문자열을,
+//없으면 빈 문자열을 리턴한다. 판정 우선순위는 is_transfer_enable 과 동일하다.
+CString CnFTDServerDlg::get_transfer_block_reason(int dwSide)
+{
+	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCTreeCtrl*   ptree = (dwSide == SERVER_SIDE ? &m_tree_local : &m_tree_remote);
+
+	bool blocked = false;
+
+	std::deque<int> dq;
+	plist->get_selected_items(&dq);
+
+	if (dq.size() > 0)
+	{
+		//리스트 선택 항목 중 하나라도 보호 대상이면 금지.
+		for (int i = 0; i < dq.size() && !blocked; i++)
+		{
+			CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, plist->get_path(dq[i]));
+			if (theApp.m_shell_imagelist.is_protected(dwSide, path))
+				blocked = true;
+		}
+	}
+	else
+	{
+		//리스트 선택이 없으면 트리 현재 폴더가 대상.
+		CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, ptree->get_path());
+		if (theApp.m_shell_imagelist.is_protected(dwSide, path))
+			blocked = true;
+	}
+
+	//TODO: 리소스 문자열로 이관(다국어). 우선 리터럴.
+	if (blocked)
+		//return _T("드라이브 루트와 주요 시스템 폴더(및 그 하위)는 시스템 손상을 막기 위해 전송·삭제·이름변경할 수 없습니다.");
+		return _S(IDS_PROTECTED_FOLDER_FILE);
+
+	return _T("");
 }
 
 void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
@@ -3156,6 +3233,7 @@ void CnFTDServerDlg::OnLvnItemChangedListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	
 	//ItemChanged가 발생할때마다 바로 status를 변경하면 딜레이가 심하다. 타이머로 처리한다.
 	TRACE(_T("OnLvnItemChangedListLocal\n"));
+	m_selection_status_target = &m_list_local;
 	SetTimer(timer_refresh_selection_status, 50, NULL);
 	//refresh_selection_status(&m_list_local);
 
@@ -3173,7 +3251,8 @@ void CnFTDServerDlg::OnLvnItemChangedListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 		
 	//ItemChanged가 발생할때마다 바로 status를 변경하면 딜레이가 심하다. 타이머로 처리한다.
 	TRACE(_T("OnLvnItemChangedListRemote\n"));
-	SetTimer(timer_refresh_selection_status, 50, NULL); 
+	m_selection_status_target = &m_list_remote;
+	SetTimer(timer_refresh_selection_status, 50, NULL);
 	//refresh_selection_status(&m_list_remote);
 
 	*pResult = 0;
@@ -3591,6 +3670,11 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_OLD_NAME(4)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
 	TRACE(_T("action = %d, filename0 = %s, filename1 = %s\n"), msg->action, msg->path0, msg->path1);
+
+	//감시 중인 폴더에 변경(추가/삭제/이름변경/내용수정)이 감지되면 그 폴더의 콘텐츠 캐시를 무효화한다.
+	//특히 FILE_ACTION_MODIFIED(제자리 내용 수정)는 dir mtime 을 안 바꿔 mtime 기반 캐시가 놓치는 유일한 케이스라 여기서 잡아준다.
+	m_list_local.invalidate_folder_cache(m_list_local.get_path());
+
 	if (msg->action == FILE_ACTION_REMOVED)
 	{
 		m_list_local.delete_item(msg->path0);
