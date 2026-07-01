@@ -129,6 +129,10 @@ public:
 	CString				m_transfer_to;		//전송할 dst 폴더
 	void				file_transfer();	//위의 값들에 따라 전송 시작
 	void				add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DATA);
+	//전송 중 대상 폴더 뷰에 실제로 들어간 파일/폴더 이름들. 전송 완료 후 refresh_list 로 폴더를 리로드하면 선택/스크롤이
+	//날아가므로, 이 목록으로 전송된 항목을 다시 선택하고 마지막 항목으로 ensure_visible 해 사용자가 결과를 바로 보게 한다.
+	std::deque<CString>	m_transfered_names;
+	void				select_transfered_items(CVtListCtrlEx* plist);
 
 	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
 	bool				is_transfer_enable_for_list(int srcSide);

@@ -2022,6 +2022,7 @@ void CnFTDServerDlg::file_transfer()
 			return;
 		}
 
+		m_transfered_names.clear();	//이번 전송분 이름 수집 초기화(전송 중 add_transfered_file_to_dst_list 가 채운다).
 		m_FileTransferDlg.DoModal();
 		m_ServerManager.DataClose();
 		
@@ -2031,11 +2032,13 @@ void CnFTDServerDlg::file_transfer()
 		{
 			m_tree_local.refresh(m_tree_local.GetSelectedItem());
 			m_list_local.refresh_list(true, true);	//전송이 기존 파일을 덮어썼으면 제자리 쓰기(dir mtime 불변)라 캐시 우회 필요
+			select_transfered_items(&m_list_local);	//리로드로 지워진 선택/스크롤을 전송된 항목 기준으로 복원
 		}
 		else if (m_dstSide == CLIENT_SIDE)
 		{
 			m_tree_remote.refresh(m_tree_remote.GetSelectedItem());
 			m_list_remote.refresh_list(true, true);	//remote 는 캐시 미적용이라 무해하지만 일관성 위해 동일 처리
+			select_transfered_items(&m_list_remote);	//리로드로 지워진 선택/스크롤을 전송된 항목 기준으로 복원
 		}
 	}
 	else
@@ -2049,6 +2052,40 @@ void CnFTDServerDlg::add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DAT
 {
 	CVtListCtrlEx* plist = (dstSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 	plist->insert_item(-1, data, true, true);
+
+	//전송 완료 후 refresh_list 로 리로드되면 이 삽입/선택이 지워지므로, 이름을 기록해뒀다가 refresh 뒤에 다시 선택한다.
+	m_transfered_names.push_back(get_part(data.cFileName, fn_name));
+}
+
+//전송 완료 후(리스트가 refresh_list 로 리로드된 뒤) 이번에 전송된 항목들을 다시 선택하고 마지막 항목으로 스크롤한다.
+//insert_item 은 선택을 하지 않고 refresh_list 가 그마저 리로드로 지우므로, 여기서 이름 매칭으로 선택을 복원한다.
+void CnFTDServerDlg::select_transfered_items(CVtListCtrlEx* plist)
+{
+	if (m_transfered_names.empty())
+		return;
+
+	plist->select_item(-1, false);	//기존 선택 전체 해제 → 이번에 전송된 항목만 선택 상태로 남긴다.
+									//(select_item 은 SetItemState 호출 → nIndex=-1 은 "모든 항목". bSelect 기본값 true 로 부르면
+									// 전체 "선택"이 되므로 반드시 false 를 명시해 해제해야 한다.)
+
+	int last_sel = -1;
+	int count = plist->GetItemCount();
+	for (int i = 0; i < count; i++)
+	{
+		CString name = get_part(plist->get_path(i), fn_name);
+		for (const auto& tn : m_transfered_names)
+		{
+			if (name.CompareNoCase(tn) == 0)
+			{
+				plist->select_item(i, true, false, false);	//누적 선택(다른 전송 항목 유지), 스크롤은 아래에서 한 번만.
+				last_sel = i;
+				break;
+			}
+		}
+	}
+
+	if (last_sel >= 0)
+		plist->ensure_visible(last_sel, CVtListCtrlEx::visible_last);
 }
 
 //상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
