@@ -575,6 +575,10 @@ void CnFTDServerDlg::init_favorite()
 		//신규 추가("D:\\")와 경로가 일치하여 중복검사/토글이 어긋나지 않는다.
 		if (dq[i].GetLength() > 3 && dq[i].Right(1) == '\\')
 			truncate(dq[i], 1);
+		//드라이브 루트가 "X:"(역슬래시 없이) 저장돼 있었다면 정규 표기 "X:\\"로 승격 — 표시(드라이브 레이블)·저장·트리 이동 일관.
+		//favorite_add 가 이 경로를 컬럼1에 저장하고 곧 save_favorite 하므로, 재저장 시 "X:\\"로 마이그레이션된다.
+		if (dq[i].GetLength() == 2 && dq[i][1] == _T(':'))
+			dq[i] += _T("\\");
 		favorite_cmd(favorite_add, SERVER_SIDE, dq[i]);
 	}
 
