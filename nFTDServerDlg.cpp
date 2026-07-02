@@ -2004,7 +2004,36 @@ void CnFTDServerDlg::file_transfer()
 				return;
 			}
 
-			//폴더가 다르다면 move로 동작한다.
+			//폴더가 다르다면 move(윈도우 탐색기와 동일). 로컬끼리는 소켓 전송이 아니라 SHFileOperation FO_MOVE —
+			//이름충돌 시 탐색기 기본 대화상자, 크로스드라이브 자동 처리, FOF_ALLOWUNDO 로 되돌리기(휴지통) 가능.
+			//소스 목록: SHFileOperation 규약대로 '\0' 구분 + 끝에 '\0''\0'. (임베디드 null 안전 위해 std::basic_string 사용.)
+			std::basic_string<TCHAR> from_buf;
+			for (auto& fd : m_transfer_list)
+			{
+				CString src = fd.cFileName;
+				if (src.Find(_T(':')) < 0)		//리스트 d&d 는 이름만 저장 → 소스 폴더와 결합. 트리 d&d 는 이미 fullpath.
+					src = concat_path(m_transfer_from, src);
+				from_buf.append((LPCTSTR)src);
+				from_buf.push_back(_T('\0'));
+			}
+			from_buf.push_back(_T('\0'));
+
+			std::basic_string<TCHAR> to_buf = (LPCTSTR)m_transfer_to;	//대상 폴더.
+			to_buf.push_back(_T('\0'));
+			to_buf.push_back(_T('\0'));
+
+			SHFILEOPSTRUCT op = { 0 };
+			op.hwnd = GetSafeHwnd();
+			op.wFunc = FO_MOVE;
+			op.pFrom = from_buf.c_str();
+			op.pTo = to_buf.c_str();
+			op.fFlags = FOF_ALLOWUNDO;
+			SHFileOperation(&op);
+
+			//이동 후 로컬 트리/리스트 새로고침.
+			m_tree_local.refresh(m_tree_local.GetSelectedItem());
+			m_list_local.refresh_list(true, true);
+			return;
 		}
 	}
 	else
