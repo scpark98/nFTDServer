@@ -114,10 +114,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_REGISTERED_MESSAGE(Message_CSCSystemButtons, &CnFTDServerDlg::on_message_CSCSystemButtons)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_LOCAL, &CnFTDServerDlg::OnTvnSelchangedTreeLocal)
 	ON_NOTIFY(TVN_SELCHANGED, IDC_TREE_REMOTE, &CnFTDServerDlg::OnTvnSelchangedTreeRemote)
-	ON_NOTIFY(NM_RCLICK, IDC_TREE_LOCAL, &CnFTDServerDlg::OnNMRClickTreeLocal)
-	ON_NOTIFY(NM_RCLICK, IDC_TREE_REMOTE, &CnFTDServerDlg::OnNMRClickTreeRemote)
-	ON_NOTIFY(NM_RCLICK, IDC_LIST_LOCAL, &CnFTDServerDlg::OnNMRClickListLocal)
-	ON_NOTIFY(NM_RCLICK, IDC_LIST_REMOTE, &CnFTDServerDlg::OnNMRClickListRemote)
+	ON_WM_CONTEXTMENU()
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_SEND, &CnFTDServerDlg::OnListContextMenuSend)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_NEW_FOLDER, &CnFTDServerDlg::OnListContextMenuNewFolder)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_RENAME, &CnFTDServerDlg::OnListContextMenuRename)
@@ -137,8 +134,6 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_NOTIFY(NM_DBLCLK, IDC_LIST_REMOTE_FAVORITE, &CnFTDServerDlg::OnNMDblclkListRemoteFavorite)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_FAVORITE, &CnFTDServerDlg::OnListContextMenuFavorite)
 	ON_COMMAND(ID_FAVORITE_CONTEXT_MENU_DELETE, &CnFTDServerDlg::OnFavoriteContextMenuDelete)
-	ON_NOTIFY(NM_RCLICK, IDC_LIST_LOCAL_FAVORITE, &CnFTDServerDlg::OnNMRClickListLocalFavorite)
-	ON_NOTIFY(NM_RCLICK, IDC_LIST_REMOTE_FAVORITE, &CnFTDServerDlg::OnNMRClickListRemoteFavorite)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_LOCAL, &CnFTDServerDlg::OnLvnEndlabelEditListLocal)
 	ON_NOTIFY(LVN_ENDLABELEDIT, IDC_LIST_REMOTE, &CnFTDServerDlg::OnLvnEndlabelEditListRemote)
 	ON_MESSAGE(MESSAGE_CONNECT_FAIL, &CnFTDServerDlg::on_message)
@@ -481,7 +476,9 @@ void CnFTDServerDlg::init_treectrl()
 	//m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
-	m_tree_local.set_use_popup_menu();
+	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
+	m_tree_local.set_use_own_context_menu(false);
+	m_list_local.set_use_own_context_menu(false);
 
 	//filetransfer.ini? favorite.ini?에서 읽어와서 마지막 열었던 폴더를 복원시키는데
 	//anysupport는 linkmemine과 달리 favorite.ini를 활용하기 애매하다.
@@ -549,12 +546,15 @@ void CnFTDServerDlg::init_favorite()
 	m_list_local_favorite.set_font_size(9);
 	m_list_local_favorite.set_header_height(22);
 	m_list_local_favorite.restore_column_width(&theApp, _T("list local favorite"));
+	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 즐겨찾기 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
+	m_list_local_favorite.set_use_own_context_menu(false);
 
 	m_list_remote_favorite.SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_FLATSB);
 	m_list_remote_favorite.set_headings(headings);
 	m_list_remote_favorite.set_font_size(9);
 	m_list_remote_favorite.set_header_height(22);
 	m_list_remote_favorite.restore_column_width(&theApp, _T("list remote favorite"));
+	m_list_remote_favorite.set_use_own_context_menu(false);
 
 	CString favorite_ini;
 
@@ -571,8 +571,9 @@ void CnFTDServerDlg::init_favorite()
 
 	for (i = 0; i < dq.size(); i++)
 	{
-		//기존 즐겨찾기 폴더끝에 붙은 '\\' 제거.
-		if (dq[i].GetLength() > 2 && dq[i].Right(1) == '\\')
+		//기존 즐겨찾기 폴더끝에 붙은 '\\' 제거. 단 드라이브 루트("X:\\", 길이 3)는 '\\'를 유지해야
+		//신규 추가("D:\\")와 경로가 일치하여 중복검사/토글이 어긋나지 않는다.
+		if (dq[i].GetLength() > 3 && dq[i].Right(1) == '\\')
 			truncate(dq[i], 1);
 		favorite_cmd(favorite_add, SERVER_SIDE, dq[i]);
 	}
@@ -867,7 +868,9 @@ void CnFTDServerDlg::initialize()
 	InitServerManager();		// Server Manager 설정
 
 	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false, _T(""));
-	m_tree_remote.set_use_popup_menu();
+	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
+	m_tree_remote.set_use_own_context_menu(false);
+	m_list_remote.set_use_own_context_menu(false);
 	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false, _T(""));
@@ -2184,37 +2187,31 @@ bool CnFTDServerDlg::any_selected_item_protected(int dwSide)
 	return false;
 }
 
-void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
+//트리 우클릭 메뉴(로컬/원격 공통). WM_CONTEXTMENU 로 위임받아 호출된다. side: SERVER_SIDE/CLIENT_SIDE, point: 화면좌표.
+void CnFTDServerDlg::show_tree_context_menu(int side, CPoint point)
 {
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	TRACE("CnFTDServerDlg::OnNMRClickTreeLocal\n");
-	*pResult = 0;
+	CSCTreeCtrl& tree = (side == SERVER_SIDE) ? m_tree_local : m_tree_remote;
 
-	HTREEITEM hItem = NULL;// = pNMTreeView->itemNew.hItem;	//얻어오지 못한다.
-	CPoint pt;
-	::GetCursorPos(&pt);
-	m_tree_local.ScreenToClient(&pt);
-	hItem = m_tree_local.HitTest(pt);
+	CPoint pt = point;
+	tree.ScreenToClient(&pt);
+	HTREEITEM hItem = tree.HitTest(pt);
 
 	if (!hItem)
 		return;
 
-	TRACE(_T("label = %s\n"), m_tree_local.GetItemText(hItem));
-
 	//우클릭을 하면 일단 해당 노드를 선택상태로 만들어줘야 한다.
-	m_tree_local.SelectItem(hItem);
-
+	tree.SelectItem(hItem);
 
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_TREE_CONTEXT);
 
 	CMenu* pMenu = menu.GetSubMenu(0);
 
-	CString path = m_tree_local.get_path();
+	CString path = tree.get_path();
 
 	//즐겨찾기에 등록된 폴더인지 확인한다.
 #if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
-	int favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, path);
+	int favorite_index = favorite_cmd(favorite_find, side, path);
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
 #else
 	//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
@@ -2228,95 +2225,34 @@ void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
 
 	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
-	if (path == theApp.m_shell_imagelist.m_volume[0].get_label(CSIDL_DRIVES))
+	if (path == theApp.m_shell_imagelist.m_volume[side].get_label(CSIDL_DRIVES))
 		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
 
 	//tree에서는 빈 공간 클릭, 즉 선택된 항목이 없을 경우에 대한 처리는 불필요하다.
 
 	//보호된 파일/폴더일 경우
-	if (theApp.m_shell_imagelist.is_protected(SERVER_SIDE, path))
+	if (theApp.m_shell_imagelist.is_protected(side, path))
 	{
 		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
 		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
 
 	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
-	pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_SEND, (is_transfer_enable_for_tree(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
+	pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_SEND, (is_transfer_enable_for_tree(side) ? MF_ENABLED : MF_DISABLED));
 
-	::GetCursorPos(&pt);
-	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
 }
 
 
-void CnFTDServerDlg::OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult)
+//리스트 우클릭 메뉴(로컬/원격 공통). WM_CONTEXTMENU 로 위임받아 호출된다. side: SERVER_SIDE/CLIENT_SIDE, point: 화면좌표.
+void CnFTDServerDlg::show_list_context_menu(int side, CPoint point)
 {
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	TRACE("CnFTDServerDlg::OnNMRClickTreeRemote\n");
-	*pResult = 0;
+	CVtListCtrlEx& list = (side == SERVER_SIDE) ? m_list_local : m_list_remote;
 
-	HTREEITEM hItem = NULL;// = pNMTreeView->itemNew.hItem;	//얻어오지 못한다.
-	CPoint pt;
-	::GetCursorPos(&pt);
-	m_tree_remote.ScreenToClient(&pt);
-	hItem = m_tree_remote.HitTest(pt);
-
-	if (!hItem)
-		return;
-
-	TRACE(_T("label = %s\n"), m_tree_remote.GetItemText(hItem));
-
-	//우클릭을 하면 일단 해당 노드를 선택상태로 만들어줘야 한다.
-	m_tree_remote.SelectItem(hItem);
-
-
-	CMenu menu;
-	menu.LoadMenu(IDR_MENU_TREE_CONTEXT);
-
-	CMenu* pMenu = menu.GetSubMenu(0);
-
-	CString path = m_tree_remote.get_path();
-
-	//즐겨찾기에 등록된 폴더인지 확인한다.
-#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
-	int favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, path);
-	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
-#else
-	//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
-	pMenu->DeleteMenu(ID_TREE_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND);
-#endif
-
-	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
-	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, _S(IDS_OPEN_WITH_EXPLORER) + _T("(&E)"));
-	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
-	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_NEW_FOLDER, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_NEW_FOLDER, _S(IDS_NEW_FOLDER) + _T("(&N)"));
-	pMenu->ModifyMenu(ID_TREE_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_TREE_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
-
-	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
-	if (path == theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES))
-		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_FAVORITE, MF_DISABLED);
-
-	//tree에서는 빈 공간 클릭, 즉 선택된 항목이 없을 경우에 대한 처리는 불필요하다.
-
-	//보호된 파일/폴더일 경우
-	if (theApp.m_shell_imagelist.is_protected(CLIENT_SIDE, path))
-	{
-		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
-		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
-	}
-
-	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
-	pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_SEND, (is_transfer_enable_for_tree(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
-
-	::GetCursorPos(&pt);
-	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
-}
-
-
-void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	int item = pNMItemActivate->iItem;
+	//우클릭 위치의 항목(-1 = 빈 영역). 기존 NM_RCLICK 의 iItem 을 HitTest 로 대체.
+	CPoint pt = point;
+	list.ScreenToClient(&pt);
+	int item = list.HitTest(pt);
 
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
@@ -2326,22 +2262,22 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	CString fullpath;
 
 	std::deque<WIN32_FIND_DATA> dq;
-	m_list_local.get_selected_items(&dq);
+	list.get_selected_items(&dq);
 
 	//선택된 항목이 없으면 현재 경로를 취한다.
 	//멀티 선택이라면 0번 항목을 대상으로 한다.
 	if (dq.size() == 0)
-		fullpath = m_list_local.get_path();
+		fullpath = list.get_path();
 	else
 		fullpath = dq[0].cFileName;
-	
+
 	//파일 또는 폴더에서 우클릭하므로 즐겨찾기에 등록된 폴더인지는 폴더 경로로 비교해야 한다.
 #if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
 	int favorite_index;
 	if (dq.size() == 0 || !(dq[0].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-		favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, m_list_local.get_path());
+		favorite_index = favorite_cmd(favorite_find, side, list.get_path());
 	else
-		favorite_index = favorite_cmd(favorite_find, SERVER_SIDE, dq[0].cFileName);
+		favorite_index = favorite_cmd(favorite_find, side, dq[0].cFileName);
 
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
 #else
@@ -2359,8 +2295,9 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SELECT_ALL, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SELECT_ALL, _S(IDS_SELECT_ALL) + _T("(&A)") + _T("\tCtrl+A"));
 	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
 
-	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
-	if (m_list_local.get_path() == theApp.m_shell_imagelist.m_volume[0].get_label(CSIDL_DRIVES))
+	//"내 PC"(드라이브 목록) 뷰에서 "내 PC" 자체는 즐겨찾기 대상이 아니다. 단 선택된 드라이브가 있으면 그 드라이브
+	//루트를 즐겨찾기할 수 있으므로(트리와 동일), 선택이 없을 때만 비활성화한다.
+	if (list.get_path() == theApp.m_shell_imagelist.m_volume[side].get_label(CSIDL_DRIVES) && dq.size() == 0)
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
 
 	//선택된 항목이 없을 경우
@@ -2374,111 +2311,22 @@ void CnFTDServerDlg::OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 
 	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
-	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(SERVER_SIDE) ? MF_ENABLED : MF_DISABLED));
+	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(side) ? MF_ENABLED : MF_DISABLED));
 
 	//보호된 파일/폴더일 경우
-	if (any_selected_item_protected(SERVER_SIDE))
+	if (any_selected_item_protected(side))
 	{
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
 
 	//멀티 선택일 경우는 "열기" 명령을 수행하면 맨 첫 아이템에 대한 "열기"를 수행하지만 좀 애매하다. 우선 제외시킨다.
-	if (m_list_local.GetSelectedCount() > 1)
+	if (list.GetSelectedCount() > 1)
 	{
 		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_OPEN, MF_DISABLED);
 	}
 
-	CPoint pt;
-	GetCursorPos(&pt);
-	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
-
-	*pResult = 0;
-}
-
-
-void CnFTDServerDlg::OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	int item = pNMItemActivate->iItem;
-
-	CMenu menu;
-	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
-
-	CMenu* pMenu = menu.GetSubMenu(0);
-
-	CString fullpath;
-
-	std::deque<WIN32_FIND_DATA> dq;
-	m_list_remote.get_selected_items(&dq);
-
-	//선택된 항목이 없으면 현재 경로를 취한다.
-	//멀티 선택이라면 0번 항목을 대상으로 한다.
-	if (dq.size() == 0)
-		fullpath = m_list_remote.get_path();
-	else
-		fullpath = dq[0].cFileName;
-
-	//파일 또는 폴더에서 우클릭하므로 즐겨찾기에 등록된 폴더인지는 폴더 경로로 비교해야 한다.
-#if (!defined(_REMOTE_SDK) && !defined(_ANYSUPPORT))
-	int favorite_index;
-	if (dq.size() == 0 || !(dq[0].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-		favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, m_list_remote.get_path());
-	else
-		favorite_index = favorite_cmd(favorite_find, CLIENT_SIDE, dq[0].cFileName);
-
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_FAVORITE, (favorite_index >= 0 ? _S(IDS_FAVORITE_REMOVE) : _S(IDS_FAVORITE_ADD)) + _T("(&F)"));
-#else
-	//pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
-	pMenu->DeleteMenu(ID_LIST_CONTEXT_MENU_FAVORITE, MF_BYCOMMAND);
-#endif
-
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SEND, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SEND, _S(IDS_TRANSFER_START) + _T("(&S)"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_OPEN, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_OPEN, _S(IDS_OPEN) + _T("(&O)"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_OPEN_EXPLORER, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_OPEN_EXPLORER, _S(IDS_OPEN_WITH_EXPLORER) + _T("(&E)"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_REFRESH, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_NEW_FOLDER, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_NEW_FOLDER, _S(IDS_NEW_FOLDER) + _T("(&N)"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_DELETE, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_DELETE, _S(IDS_DELETE) + _T("(&D)") + _T("\tDel"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_RENAME, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_RENAME, _S(IDS_RENAME) + _T("(&M)") + _T("\tF2"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_SELECT_ALL, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_SELECT_ALL, _S(IDS_SELECT_ALL) + _T("(&A)") + _T("\tCtrl+A"));
-	pMenu->ModifyMenu(ID_LIST_CONTEXT_MENU_PROPERTY, MF_BYCOMMAND, ID_LIST_CONTEXT_MENU_PROPERTY, _S(IDS_PROPERTY) + _T("(&R)"));
-
-	//현재 경로가 "내 PC"인 경우는 즐겨찾기를 지원하지 않는다.
-	if (m_list_remote.get_path() == theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DRIVES))
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_FAVORITE, MF_DISABLED);
-
-	//선택된 항목이 없을 경우
-	if (item == -1)
-	{
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, MF_DISABLED);
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_OPEN, MF_DISABLED);
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_PROPERTY, MF_DISABLED);
-	}
-
-	//전송 가능 상태가 아닐 경우
-	pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_SEND, (is_transfer_enable_for_list(CLIENT_SIDE) ? MF_ENABLED : MF_DISABLED));
-
-	//보호된 파일/폴더일 경우
-	if (any_selected_item_protected(CLIENT_SIDE))
-	{
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_DELETE, MF_DISABLED);
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_RENAME, MF_DISABLED);
-	}
-
-	//멀티 선택일 경우는 "열기" 명령을 수행하면 맨 첫 아이템에 대한 "열기"를 수행하지만 좀 애매하다. 우선 제외시킨다.
-	if (m_list_remote.GetSelectedCount() > 1)
-	{
-		pMenu->EnableMenuItem(ID_LIST_CONTEXT_MENU_OPEN, MF_DISABLED);
-	}
-
-	CPoint pt;
-	GetCursorPos(&pt);
-	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
-
-	*pResult = 0;
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
 }
 
 
@@ -3129,40 +2977,27 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 	}
 }
 
-//전송 대상(리스트 선택 항목, 없으면 트리 현재 폴더) 중 보호(전송 금지) 대상이 있으면 그 사유 문자열을,
-//없으면 빈 문자열을 리턴한다. 판정 우선순위는 is_transfer_enable 과 동일하다.
+//리스트에서 선택한 전송 대상 중 보호(전송 금지) 대상이 있으면 그 사유 문자열을, 없으면 빈 문자열을 리턴한다.
+//선택 항목이 없으면(=전송할 파일 미선택) 버튼이 비활성이어도 "보호 폴더" 사유가 아니므로 빈 문자열을 리턴한다.
+//즉 이 툴팁은 사용자가 실제로 보호 대상을 "선택"했을 때만 안내한다. (트리 현재 폴더 자체는 사유 판정에서 제외 —
+//선택 없이 폴더에 머무는 것만으로 오해를 주는 보호 툴팁을 띄우지 않기 위함.)
 CString CnFTDServerDlg::get_transfer_block_reason(int dwSide)
 {
 	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
-	CSCTreeCtrl*   ptree = (dwSide == SERVER_SIDE ? &m_tree_local : &m_tree_remote);
-
-	bool blocked = false;
 
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
 
-	if (dq.size() > 0)
-	{
-		//리스트 선택 항목 중 하나라도 보호 대상이면 금지.
-		for (int i = 0; i < dq.size() && !blocked; i++)
-		{
-			CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, plist->get_path(dq[i]));
-			if (theApp.m_shell_imagelist.is_protected(dwSide, path))
-				blocked = true;
-		}
-	}
-	else
-	{
-		//리스트 선택이 없으면 트리 현재 폴더가 대상.
-		CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, ptree->get_path());
-		if (theApp.m_shell_imagelist.is_protected(dwSide, path))
-			blocked = true;
-	}
+	if (dq.size() == 0)
+		return _T("");
 
-	//TODO: 리소스 문자열로 이관(다국어). 우선 리터럴.
-	if (blocked)
-		//return _T("드라이브 루트와 주요 시스템 폴더(및 그 하위)는 시스템 손상을 막기 위해 전송·삭제·이름변경할 수 없습니다.");
-		return _S(IDS_PROTECTED_FOLDER_FILE);
+	//리스트 선택 항목 중 하나라도 보호 대상이면 그 사유를 안내.
+	for (int i = 0; i < dq.size(); i++)
+	{
+		CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, plist->get_path(dq[i]));
+		if (theApp.m_shell_imagelist.is_protected(dwSide, path))
+			return _S(IDS_PROTECTED_FOLDER_FILE);	//TODO: 다국어 — 이미 리소스 문자열 사용 중
+	}
 
 	return _T("");
 }
@@ -3254,9 +3089,20 @@ void CnFTDServerDlg::OnListContextMenuProperty()
 }
 
 
-void CnFTDServerDlg::OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/)
+//우클릭 컨텍스트 메뉴는 WM_CONTEXTMENU 단일 경로로 처리한다(정석). 공유 컨트롤(CSCTreeCtrl/CVtListCtrlEx)이
+//set_use_own_context_menu(false) 상태에서 우클릭 시 WM_CONTEXTMENU 를 부모로 forward 하며, wParam(=소스 hwnd)로
+//어느 컨트롤인지 구분한다. point 는 화면 좌표(키보드 메뉴키의 (-1,-1)은 컨트롤 쪽에서 이미 정규화됨).
+void CnFTDServerDlg::OnContextMenu(CWnd* pWnd, CPoint point)
 {
-	TRACE(_T("CnFTDServerDlg::OnContextMenu\n"));
+	switch (pWnd && pWnd->GetSafeHwnd() ? ::GetDlgCtrlID(pWnd->GetSafeHwnd()) : 0)
+	{
+	case IDC_TREE_LOCAL:			show_tree_context_menu(SERVER_SIDE, point);		break;
+	case IDC_TREE_REMOTE:			show_tree_context_menu(CLIENT_SIDE, point);		break;
+	case IDC_LIST_LOCAL:			show_list_context_menu(SERVER_SIDE, point);		break;
+	case IDC_LIST_REMOTE:			show_list_context_menu(CLIENT_SIDE, point);		break;
+	case IDC_LIST_LOCAL_FAVORITE:	show_favorite_context_menu(&m_list_local_favorite, point);	break;
+	case IDC_LIST_REMOTE_FAVORITE:	show_favorite_context_menu(&m_list_remote_favorite, point);	break;
+	}
 }
 
 
@@ -3392,7 +3238,14 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 			fullpath = plist->get_path();
 
 		fullpath = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, fullpath);
-		index = pfavoritelist->insert_item(-1, get_part(fullpath, fn_name));
+
+		//"즐겨찾기 폴더" 컬럼은 폴더명(fn_name). 단 드라이브 루트("D:\" · "D:")는 폴더명이 비므로
+		//드라이브 볼륨 레이블(예: "작업 디스크 (D:)")을 대신 표시한다.
+		CString display_name = get_part(fullpath, fn_name);
+		if (display_name.IsEmpty())
+			display_name = theApp.m_shell_imagelist.m_volume[side].get_drive_volume(fullpath);
+
+		index = pfavoritelist->insert_item(-1, display_name);
 		pfavoritelist->set_text(index, 1, fullpath);
 
 		//존재하지 않는 폴더일 경우는 붉은색으로 표시
@@ -3507,18 +3360,16 @@ void CnFTDServerDlg::OnFavoriteContextMenuDelete()
 }
 
 
-void CnFTDServerDlg::OnNMRClickListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult)
+//즐겨찾기 리스트 우클릭 메뉴(로컬/원격 공통). WM_CONTEXTMENU 로 위임받아 호출된다. point: 화면좌표.
+void CnFTDServerDlg::show_favorite_context_menu(CVtListCtrlEx* plist, CPoint point)
 {
-	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	int item = pNMItemActivate->iItem;
+	CPoint pt = point;
+	plist->ScreenToClient(&pt);
+	int item = plist->HitTest(pt);
 
 	//이 메뉴는 선택된 항목이 없을 경우 그냥 리턴한다.
 	if (item == -1)
-	{
-		*pResult = 0;
 		return;
-	}
 
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_FAVORITE_CONTEXT);
@@ -3527,47 +3378,7 @@ void CnFTDServerDlg::OnNMRClickListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult
 
 	pMenu->ModifyMenu(ID_FAVORITE_CONTEXT_MENU_DELETE, MF_BYCOMMAND, ID_FAVORITE_CONTEXT_MENU_DELETE, _S(IDS_FAVORITE_REMOVE) + _T("(&D)\tDel"));
 
-	//선택된 항목이 없을 경우
-	if (item == -1)
-		pMenu->EnableMenuItem(ID_FAVORITE_CONTEXT_MENU_DELETE, MF_DISABLED);
-
-	CPoint pt;
-	GetCursorPos(&pt);
-	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
-
-	*pResult = 0;
-}
-
-
-void CnFTDServerDlg::OnNMRClickListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
-	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
-	int item = pNMItemActivate->iItem;
-
-	//이 메뉴는 선택된 항목이 없을 경우 그냥 리턴한다.
-	if (item == -1)
-	{
-		*pResult = 0;
-		return;
-	}
-
-	CMenu menu;
-	menu.LoadMenu(IDR_MENU_FAVORITE_CONTEXT);
-
-	CMenu* pMenu = menu.GetSubMenu(0);
-
-	pMenu->ModifyMenu(ID_FAVORITE_CONTEXT_MENU_DELETE, MF_BYCOMMAND, ID_FAVORITE_CONTEXT_MENU_DELETE, _S(IDS_FAVORITE_REMOVE) + _T("(&D)\tDel"));
-
-	//선택된 항목이 없을 경우
-	if (item == -1)
-		pMenu->EnableMenuItem(ID_FAVORITE_CONTEXT_MENU_DELETE, MF_DISABLED);
-
-	CPoint pt;
-	GetCursorPos(&pt);
-	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, pt.x, pt.y, this);
-
-	*pResult = 0;
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
 }
 
 

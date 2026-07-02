@@ -202,10 +202,10 @@ public:
 	CSCStatic m_static_count_local;
 	CSCStatic m_static_count_remote;
 	afx_msg void OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnNMRClickTreeRemote(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnNMRClickListLocal(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnNMRClickListRemote(NMHDR* pNMHDR, LRESULT* pResult);
+	//우클릭 컨텍스트 메뉴는 WM_CONTEXTMENU(OnContextMenu)에서 컨트롤별로 분기 호출한다. side: SERVER_SIDE/CLIENT_SIDE.
+	void show_tree_context_menu(int side, CPoint point);
+	void show_list_context_menu(int side, CPoint point);
+	void show_favorite_context_menu(CVtListCtrlEx* plist, CPoint point);
 	afx_msg void OnListContextMenuSend();
 	afx_msg void OnListContextMenuNewFolder();
 	afx_msg void OnListContextMenuRename();
@@ -233,8 +233,6 @@ public:
 	afx_msg void OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnListContextMenuFavorite();
 	afx_msg void OnFavoriteContextMenuDelete();
-	afx_msg void OnNMRClickListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnNMRClickListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult);
 	CSCSliderCtrl m_slider_local_disk_space;
 	CSCSliderCtrl m_slider_remote_disk_space;
 	CSCStatic m_static_local_disk_space;

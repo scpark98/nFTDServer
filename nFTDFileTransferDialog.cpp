@@ -244,6 +244,8 @@ void CnFTDFileTransferDialog::init_list()
 
 	m_list.allow_edit(false);
 	m_list.allow_sort(false);
+	//전송창 리스트는 우클릭 메뉴가 없다. CVtListCtrlEx 기본(자체 메뉴 true)을 끄고 parent 로 위임(핸들러 없어 표시 안 됨) — 기존 동작 유지.
+	m_list.set_use_own_context_menu(false);
 	m_list.use_indent_from_prefix_space(true);
 }
 
