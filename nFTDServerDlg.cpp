@@ -1249,6 +1249,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		else if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CTreeCtrl)))
 		{
 			CSCTreeCtrl* pDropTreeCtrl = (CSCTreeCtrl*)msg->pTarget;
+			m_dstSide = (pDropTreeCtrl == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;	//트리로 드롭 시 side 설정(누락 버그).
 			HTREEITEM hItem = pDropTreeCtrl->GetDropHilightItem();
 
 			if (hItem)
@@ -2003,12 +2004,8 @@ void CnFTDServerDlg::file_transfer()
 				return;
 			}
 
-			//to의 바로 위 parent라면 리턴
-			if (m_transfer_from == get_parent_dir(m_transfer_to))
-			{
-				TRACE(_T("대상 폴더가 원본 폴더와 같습니다. skip.\n"));
-				return;
-			}
+			//NOTE: 예전엔 'from == parent(to)' 면 skip 했으나, 그건 "현재 폴더의 하위 폴더로 드롭"(가장 흔한 이동)을
+			//막아 로컬 d&d 가 무동작이 되는 버그였다. 순환 이동(폴더를 자기 하위로)은 SHFileOperation 이 안전하게 거부.
 
 			//폴더가 다르다면 move(윈도우 탐색기와 동일). 로컬끼리는 소켓 전송이 아니라 SHFileOperation FO_MOVE —
 			//이름충돌 시 탐색기 기본 대화상자, 크로스드라이브 자동 처리, FOF_ALLOWUNDO 로 되돌리기(휴지통) 가능.
@@ -2058,14 +2055,8 @@ void CnFTDServerDlg::file_transfer()
 				return;
 			}
 
-			//to의 바로 위 parent라면 리턴
-			if (m_transfer_from == get_parent_dir(m_transfer_to))
-			{
-				TRACE(_T("대상 폴더가 원본 폴더와 같습니다. skip"));
-				return;
-			}
-
-			//폴더가 다르다면 move로 동작한다.
+			//'from == parent(to)'(하위 폴더로 드롭) 가드는 제거 — 유효한 이동을 막던 버그였다.
+			//(remote→remote move 는 아직 미구현이라 아래 전송(복사)으로 진행.)
 		}
 	}
 
