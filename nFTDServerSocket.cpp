@@ -1322,7 +1322,13 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			return transfer_result_cancel;
 		}
 
-		ReadFile(hFile, packet, BUFFER_SIZE, &dwBytesRead, NULL);
+		if (!ReadFile(hFile, packet, BUFFER_SIZE, &dwBytesRead, NULL))
+		{
+			logWriteE(_T("send_file ReadFile error : %d"), GetLastError());
+			CloseHandle(hFile);
+			delete[] packet;
+			return transfer_result_fail;
+		}
 		if (dwBytesRead == 0)
 			break;
 
@@ -1623,6 +1629,11 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 				CloseHandle(hFile);
 				hFile = CreateFile(to.cFileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+				if (hFile == INVALID_HANDLE_VALUE)
+				{
+					logWriteE(_T("overwrite reopen error : %d"), GetLastError());
+					return transfer_result_fail;
+				}
 			}
 			else if ((dwWrite & WRITE_IGNORE) == WRITE_IGNORE)
 			{
@@ -1722,7 +1733,13 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 #endif
 
-		WriteFile(hFile, packet, dwBytesRead, &dwBytesWrite, NULL);
+		if (!WriteFile(hFile, packet, dwBytesRead, &dwBytesWrite, NULL) || dwBytesWrite != dwBytesRead)
+		{
+			logWriteE(_T("recv_file WriteFile error : %d"), GetLastError());
+			CloseHandle(hFile);
+			delete[] packet;
+			return transfer_result_fail;
+		}
 
 		Progress.ulReceivedSize.QuadPart += dwBytesRead;
 		received_size += dwBytesRead;

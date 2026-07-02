@@ -1265,6 +1265,24 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		std::deque<int> dq;
 		pDragListCtrl->get_selected_items(&dq);
 
+		//[윈도우 탐색기 동일] 드래그한 폴더를 자기 자신 위에 드롭(같은 리스트에서 drop 대상이 드래그 항목 중 하나)한 경우는
+		//아무 동작도 하지 않는다. 그대로 두면 file_transfer 의 change_directory 가 그 폴더로 진입하거나(=폴더 안으로 들어감)
+		//자기 자신으로의 전송이 시도된다.
+		if (msg->pTarget == (CWnd*)pDragListCtrl)
+		{
+			int dropped_index = pDragListCtrl->get_drop_index();
+			for (int i = 0; i < (int)dq.size(); i++)
+			{
+				if (dq[i] == dropped_index)
+				{
+					if (dropped_index >= 0)
+						pDragListCtrl->SetItemState(dropped_index, 0, LVIS_DROPHILITED);
+					m_transfer_list.clear();
+					return 0;
+				}
+			}
+		}
+
 		m_transfer_list.clear();
 		m_transfer_from = pDragListCtrl->get_path();
 
