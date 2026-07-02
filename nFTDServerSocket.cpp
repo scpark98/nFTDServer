@@ -328,6 +328,11 @@ BOOL CnFTDServerSocket::NextFileList(WIN32_FIND_DATA* pFileInfo)
 	{
 		return FALSE;
 	}
+	if (msgFindFileData.length > (MAX_PATH - 1) * sizeof(TCHAR))
+	{
+		logWriteE(_T("path length overflow : %d "), msgFindFileData.length);
+		return FALSE;
+	}
 	if (!m_sock.RecvExact((LPSTR)pFileInfo->cFileName, msgFindFileData.length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
@@ -384,6 +389,11 @@ BOOL CnFTDServerSocket::NextDriveList(PUINT pDriveType, LPTSTR lpDriveName)
 		return TRUE;
 	}
 
+	if (msgFindDriveData.length > (MAX_PATH - 1) * sizeof(TCHAR))
+	{
+		logWriteE(_T("path length overflow : %d "), msgFindDriveData.length);
+		return FALSE;
+	}
 	if (!m_sock.RecvExact((LPSTR)lpDriveName, msgFindDriveData.length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
@@ -902,6 +912,11 @@ BOOL CnFTDServerSocket::CurrentPath(DWORD nBufferLength, LPTSTR lpCurrentPath)
 		return FALSE;
 	}
 
+	if (str1.length > nBufferLength || str1.length > (MAX_PATH - 1) * sizeof(TCHAR))
+	{
+		logWriteE(_T("path length overflow : %d "), str1.length);
+		return FALSE;
+	}
 	if (!m_sock.RecvExact((LPSTR)lpCurrentPath, str1.length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
@@ -952,6 +967,11 @@ BOOL CnFTDServerSocket::get_remote_system_label(std::map<int, CString>* map)
 			return false;
 		}
 
+		if (len > (MAX_PATH - 1) * sizeof(TCHAR))
+		{
+			logWriteE(_T("path length overflow : %d "), len);
+			return false;
+		}
 		if (!m_sock.RecvExact((LPSTR)label, len, BLASTSOCK_BUFFER))
 		{
 			logWriteE(_T("CODE-2 : %d "), GetLastError());
@@ -1002,6 +1022,11 @@ BOOL CnFTDServerSocket::get_remote_system_path(std::map<int, CString>* map)
 			return false;
 		}
 
+		if (len > (MAX_PATH - 1) * sizeof(TCHAR))
+		{
+			logWriteE(_T("path length overflow : %d "), len);
+			return false;
+		}
 		if (!m_sock.RecvExact((LPSTR)path, len, BLASTSOCK_BUFFER))
 		{
 			logWriteE(_T("CODE-2 : %d "), GetLastError());
@@ -1070,6 +1095,11 @@ BOOL CnFTDServerSocket::GetDesktopPath(WIN32_FIND_DATA* pFileInfo)
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
 		return FALSE;
 	}
+	if (msgFindFileData.length > (MAX_PATH - 1) * sizeof(TCHAR))
+	{
+		logWriteE(_T("path length overflow : %d "), msgFindFileData.length);
+		return FALSE;
+	}
 	if (!m_sock.RecvExact((LPSTR)pFileInfo->cFileName, msgFindFileData.length, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-3 : %d"), GetLastError());
@@ -1098,6 +1128,11 @@ BOOL CnFTDServerSocket::GetDocumentPath(WIN32_FIND_DATA* pFileInfo)
 	if (!m_sock.RecvExact((LPSTR)&msgFindFileData, sz_msgFileInfo, BLASTSOCK_BUFFER))
 	{
 		logWriteE(_T("CODE-2 : %d"), GetLastError());
+		return FALSE;
+	}
+	if (msgFindFileData.length > (MAX_PATH - 1) * sizeof(TCHAR))
+	{
+		logWriteE(_T("path length overflow : %d "), msgFindFileData.length);
 		return FALSE;
 	}
 	if (!m_sock.RecvExact((LPSTR)pFileInfo->cFileName, msgFindFileData.length, BLASTSOCK_BUFFER))
