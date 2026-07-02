@@ -1448,6 +1448,16 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		logWrite(_T("DND tree: file_transfer 호출 직전 srcSide=%d dstSide=%d from=[%s] to=[%s]"), m_srcSide, m_dstSide, m_transfer_from, m_transfer_to);
 		file_transfer();
 
+		//[로컬 이동] file_transfer 의 FO_MOVE 로 소스 폴더가 실제로 이동됐으면 트리에서도 사라져야 한다.
+		//file_transfer 내부 refresh 는 "이동된 항목 자신"을 대상이라 소스가 트리에 그대로 남는다 → 소스의 부모 노드를 refresh 해서 제거.
+		if (m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE)
+		{
+			HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(pDragTreeCtrl->m_DragItem);
+			logWrite(_T("DND tree: 이동 후 소스 부모 노드 refresh (hSrcParent=%p)"), hSrcParent);
+			if (hSrcParent)
+				pDragTreeCtrl->refresh(hSrcParent);
+		}
+
 		return 0;
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_folder_list)
