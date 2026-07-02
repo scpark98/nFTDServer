@@ -473,7 +473,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 void CnFTDServerDlg::init_treectrl()
 {
-	//m_tree_local.set_use_drag_and_drop(true);
+	m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
@@ -875,7 +875,8 @@ void CnFTDServerDlg::initialize()
 	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
 	m_tree_remote.set_use_own_context_menu(false);
 	m_list_remote.set_use_own_context_menu(false);
-	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	m_tree_remote.set_use_drag_and_drop(true);
+	m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false, _T(""));
 	m_list_remote.set_use_drag_and_drop(true);
@@ -1393,12 +1394,16 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		CString droppedItemText;
 		CSCTreeCtrl* pDragTreeCtrl = (CSCTreeCtrl*)msg->pThis;
 
+		//드래그 소스 side. (기존엔 미설정이라 이전 조작의 stale 값이 쓰이는 버그였음.)
+		m_srcSide = (pDragTreeCtrl == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
+
 		m_transfer_from = pDragTreeCtrl->get_path(pDragTreeCtrl->m_DragItem);
 		TRACE(_T("drag item = %s. m_transfer_from = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
 
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
 		{
 			CVtListCtrlEx* pDropListCtrl = (CVtListCtrlEx*)msg->pTarget;
+			m_dstSide = (pDropListCtrl == &m_list_remote) ? CLIENT_SIDE : SERVER_SIDE;
 
 			if (pDragTreeCtrl->m_nDropIndex >= 0)
 			{
@@ -1423,6 +1428,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		else if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CTreeCtrl)))
 		{
 			CSCTreeCtrl* pDropTreeCtrl = (CSCTreeCtrl*)msg->pTarget;
+			m_dstSide = (pDropTreeCtrl == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
 
 			m_transfer_to = pDropTreeCtrl->get_path(pDragTreeCtrl->m_DropItem);
 			//TRACE(_T("drag item = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem));
