@@ -1400,6 +1400,10 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		m_transfer_from = pDragTreeCtrl->get_path(pDragTreeCtrl->m_DragItem);
 		TRACE(_T("drag item = %s. m_transfer_from = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
+		logWrite(_T("DND tree 진입: pThis=%s target=%s srcSide=%d DragItem=%s from=%s"),
+			(msg->pThis == &m_tree_local) ? _T("tree_local") : (msg->pThis == &m_tree_remote ? _T("tree_remote") : _T("?")),
+			msg->pTarget->IsKindOf(RUNTIME_CLASS(CTreeCtrl)) ? _T("Tree") : (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)) ? _T("List") : _T("etc")),
+			m_srcSide, pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
 
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
 		{
@@ -1434,12 +1438,14 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			m_transfer_to = pDropTreeCtrl->get_path(pDragTreeCtrl->m_DropItem);
 			//TRACE(_T("drag item = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem));
 			TRACE(_T("dropped on = %s. m_transfer_to = %s\n"), pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
+			logWrite(_T("DND tree→tree: dstSide=%d DropItem=%s to=%s"), m_dstSide, pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
 
 			//필요한 모든 처리가 끝나면 drophilited 표시를 없애준다.
 			//pDropTreeCtrl->SetItemState(hItem, 0, TVIS_DROPHILITED);	<= 이걸로는 해제 안된다.
 			pDropTreeCtrl->SelectDropTarget(NULL);
 		}
 
+		logWrite(_T("DND tree: file_transfer 호출 직전 srcSide=%d dstSide=%d from=[%s] to=[%s]"), m_srcSide, m_dstSide, m_transfer_from, m_transfer_to);
 		file_transfer();
 
 		return 0;
@@ -1905,6 +1911,9 @@ void CnFTDServerDlg::file_transfer()
 	m_transfer_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
 	m_transfer_to = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
 
+	logWrite(_T("DND file_transfer 진입: srcSide=%d dstSide=%d from=[%s] to=[%s] list=%d"),
+		m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, (int)m_transfer_list.size());
+
 	//목록이 없다면 m_transfer_from 이라는 1개의 폴더인 경우임.
 	if (m_transfer_list.size() == 0)
 	{
@@ -1913,6 +1922,7 @@ void CnFTDServerDlg::file_transfer()
 		FindClose(hFind);
 		_tcscpy(data.cFileName, m_transfer_from);	//cFileName에는 반드시 fullpath로 넣어줘야 한다.
 		m_transfer_list.push_back(data);
+		logWrite(_T("DND: list 비어있어 from 폴더 1개로 채움. cFileName=[%s]"), data.cFileName);
 	}
 
 	//실행부 강제(방어선 이원화): 버튼/메뉴 UI 게이트는 드래그앤드롭·조작된 요청을 못 막으므로, 실제 전송 시작 지점에서
@@ -1929,10 +1939,12 @@ void CnFTDServerDlg::file_transfer()
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
 	if (theApp.m_shell_imagelist.is_protected(m_dstSide, m_transfer_to, true))
 	{
+		logWrite(_T("DND: 대상 보호폴더라 거부. to=[%s]"), m_transfer_to);
 		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
 		m_transfer_list.clear();
 		return;
 	}
+	logWrite(_T("DND: 보호검사 통과. list=%d from=[%s] to=[%s]"), (int)m_transfer_list.size(), m_transfer_from, m_transfer_to);
 
 	//m_transfer_from, m_transfer_to의 끝에 '\\'가 있을 경우의 보정.
 	if (m_transfer_from.GetLength() > 3 && m_transfer_from.Right(1) == '\\')
@@ -2000,6 +2012,7 @@ void CnFTDServerDlg::file_transfer()
 			//from이 to와 같거나
 			if (m_transfer_from == m_transfer_to)
 			{
+				logWrite(_T("DND move: from==to (같은 폴더) → skip. from=[%s]"), m_transfer_from);
 				TRACE(_T("same folder. skip\n"));
 				return;
 			}
@@ -2018,6 +2031,7 @@ void CnFTDServerDlg::file_transfer()
 					src = concat_path(m_transfer_from, src);
 				from_buf.append((LPCTSTR)src);
 				from_buf.push_back(_T('\0'));
+				logWrite(_T("DND move: src=[%s]"), src);
 			}
 			from_buf.push_back(_T('\0'));
 
@@ -2031,7 +2045,8 @@ void CnFTDServerDlg::file_transfer()
 			op.pFrom = from_buf.c_str();
 			op.pTo = to_buf.c_str();
 			op.fFlags = FOF_ALLOWUNDO;
-			SHFileOperation(&op);
+			int move_rc = SHFileOperation(&op);
+			logWrite(_T("DND move: SHFileOperation FO_MOVE 실행 to=[%s] rc=%d(0=성공) aborted=%d"), m_transfer_to, move_rc, (int)op.fAnyOperationsAborted);
 
 			//이동 후 로컬 트리/리스트 새로고침.
 			m_tree_local.refresh(m_tree_local.GetSelectedItem());
