@@ -43,8 +43,9 @@ public:
 
 	CSCDirWatcher		m_dir_watcher;
 	LRESULT				on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam);
-	//로컬 감시 폴더를 (재)설정 — 반드시 실경로(특수폴더 표시형 X)를 받아 현재 폴더 + 하위(재귀)를 감시한다.
-	void				rewatch_local_folder(CString real_folder);
+	//로컬 dir watcher 를 현재 상태 기준으로 재설정한다: 리스트 현재 폴더 + 트리에서 펼쳐진 폴더들을 각각 '비재귀'로 감시.
+	//(펼쳐진 폴더의 직속 자식 = 화면에 보이는 노드들의 rename/추가/삭제를 잡고, 리스트 현재 폴더는 파일 변경까지 잡는다.)
+	void				rewatch_local();
 
 	//20250212 scpark
 	//파일전송 히스토리를 저장하려고 보니 기존 코드는 .NetAPI로 작성되어 있고

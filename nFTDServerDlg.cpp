@@ -1184,7 +1184,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			change_directory(path, SERVER_SIDE);
 
 			m_dir_watcher.stop();
-			rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path));
+			rewatch_local();
 		}
 		else if (msg->pThis == &m_list_remote)
 		{
@@ -1651,6 +1651,12 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				ptree->edit_item(hItem);
 		}
 	}
+	else if (msg->message == CSCTreeCtrl::message_expand_changed)
+	{
+		//로컬 트리의 확장/축소로 '펼쳐진 폴더 집합'이 바뀌면 dir watcher 를 다시 설정한다.
+		if (msg->pThis == &m_tree_local)
+			rewatch_local();
+	}
 	else if (msg->message == CSCTreeCtrl::message_request_property)
 	{
 		std::deque<CString> dq_fullpath{ msg->param0 };
@@ -1844,7 +1850,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 		m_tree_local.set_path(path, false);
 		m_list_local.set_path(path);
 		m_dir_watcher.stop();
-		rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path));
+		rewatch_local();
 
 		refresh_selection_status(&m_list_local);
 		refresh_disk_usage(false);
@@ -2773,7 +2779,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 					refresh_disk_usage(false);
 					refresh_selection_status(&m_list_local);
 					
-					rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_list_local.get_path()));
+					rewatch_local();
 				}
 				break;
 			case file_cmd_property :
@@ -3588,7 +3594,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_local.get_edit_new_text());
 	m_list_local.set_win32_find_data(item, item_data);
 
-	rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_list_local.get_path()));
+	rewatch_local();
 }
 
 
@@ -3689,24 +3695,38 @@ void CnFTDServerDlg::OnTreeContextMenuProperty()
 //이 프로그램을 통해 생성, 삭제, 이름변경을 할 때에는 모든 처리를 알아서 하게 작성되었으므로
 //이 이벤트를 여기서 또 처리하게되면 중복처리된다.
 //윈도우 탐색기와 같은 외부 프로그램에 의한 변경에 대해서만 이 이벤트들을 처리해야 한다.
-//로컬 감시 폴더 (재)설정 — 반드시 실경로를 받는다. 현재 폴더 + 하위(재귀) + 부모(비재귀, 현재 폴더 자신의 rename/삭제 감지용).
-void CnFTDServerDlg::rewatch_local_folder(CString real_folder)
+//로컬 dir watcher 를 현재 상태 기준으로 재설정: 리스트 현재 폴더 + 트리에서 펼쳐진 폴더들을 각각 '비재귀' 로 감시.
+//- 리스트 현재 폴더: 그 안 파일/폴더의 rename/삭제/추가(파일 변경 포함)를 잡는다. 트리에서 안 펼쳐져 있어도 반드시 포함.
+//- 펼쳐진 트리 폴더: 그 '직속 자식'(=화면에 보이는 폴더 노드)의 rename/추가/삭제를 잡는다. (자식 폴더 rename 은 부모에서 감지되므로)
+//재귀 감시를 쓰지 않으므로 거대 폴더 진입/드라이브 루트여도 그 폴더 '직속' 변경만 와서 볼륨이 낮다.
+void CnFTDServerDlg::rewatch_local()
 {
 	m_dir_watcher.stop();
 
-	if (real_folder.IsEmpty() || !PathIsDirectory(real_folder))
+	int count = 0;
+
+	CString cur = theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_list_local.get_path());
+	if (!cur.IsEmpty() && PathIsDirectory(cur))
 	{
-		logWrite(_T("DIRWATCH: 감시 대상 아님(폴더 없음) [%s]"), real_folder);
-		return;
+		m_dir_watcher.add(cur, false);
+		logWrite(_T("DIRWATCH watch(list): [%s]"), cur);
+		count++;
 	}
 
-	m_dir_watcher.add(real_folder, true);	//현재 폴더 + 하위(재귀)
+	for (HTREEITEM h = m_tree_local.GetFirstVisibleItem(); h != NULL; h = m_tree_local.GetNextVisibleItem(h))
+	{
+		if (!(m_tree_local.GetItemState(h, TVIS_EXPANDED) & TVIS_EXPANDED))
+			continue;
+		CString p = theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_tree_local.get_path(h));
+		if (!p.IsEmpty() && PathIsDirectory(p))
+		{
+			m_dir_watcher.add(p, false);	//CSCDirWatcher::add 는 is_watching 으로 중복 skip
+			logWrite(_T("DIRWATCH watch(tree expanded): [%s]"), p);
+			count++;
+		}
+	}
 
-	CString parent = get_parent_dir(real_folder);
-	if (!parent.IsEmpty() && parent.CompareNoCase(real_folder) != 0 && PathIsDirectory(parent))
-		m_dir_watcher.add(parent, false);	//부모(비재귀) — 현재 폴더 자신이 rename/삭제될 때 감지
-
-	logWrite(_T("DIRWATCH: 감시 시작 [%s](재귀) + 부모[%s](비재귀)"), real_folder, parent);
+	logWrite(_T("DIRWATCH: 로컬 감시 폴더 %d개(비재귀) 설정 완료"), count);
 }
 
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
