@@ -1042,6 +1042,20 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 				//삭제 시 물어보고 지우거나 아예 키를 이용한 삭제는 방지
 				//file_command_on_list(file_cmd_delete);
 				break;
+			case VK_F5 :
+				//F5 = 새로고침. 포커스가 트리면 트리, 리스트면 리스트를 새로고침(메뉴의 'F5' 힌트와 일치).
+				//기존엔 F5 케이스가 없어 메뉴엔 F5 라 적혀 있어도 실제 키는 무동작이었다.
+				if (GetFocus() == &m_tree_local || GetFocus() == &m_tree_remote)
+				{
+					file_command_on_tree(file_cmd_refresh);
+					return TRUE;
+				}
+				else if (GetFocus() == &m_list_local || GetFocus() == &m_list_remote)
+				{
+					file_command_on_list(file_cmd_refresh);
+					return TRUE;
+				}
+				break;
 			case '1' :
 				if (IsCtrlPressed() && IsShiftPressed())
 				{
@@ -2967,7 +2981,17 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				plist->insert_folder(-1, ptree->GetItemText(hItem), false);
 				break;
 			case file_cmd_refresh :
-				ptree->refresh(ptree->GetSelectedItem());
+				{
+					//선택 노드의 실제 폴더가 사라졌으면(외부에서 rename/삭제됨) 그 노드만 refresh 해선 stale 노드가 남고
+					//실제 폴더(새 이름)가 안 보인다 → 부모를 refresh 해서 stale 제거 + 실제 형제 반영.
+					HTREEITEM hSel = ptree->GetSelectedItem();
+					HTREEITEM hSelParent = ptree->GetParentItem(hSel);
+					CString sel_real = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, ptree->get_path(hSel));
+					if (hSelParent != NULL && !sel_real.IsEmpty() && !PathFileExists(sel_real))
+						ptree->refresh(hSelParent);
+					else
+						ptree->refresh(hSel);
+				}
 				plist->refresh_list(true, true);	//명시적 새로고침 — 폴더 캐시 우회(제자리 편집 stale 방지)
 				break;
 			case file_cmd_property :
