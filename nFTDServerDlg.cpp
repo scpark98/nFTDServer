@@ -1038,6 +1038,12 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 					favorite_cmd(favorite_delete, CLIENT_SIDE);
 					return TRUE;
 				}
+				else if (GetFocus() == &m_tree_local || GetFocus() == &m_tree_remote)
+				{
+					//트리 항목 Del = 휴지통 삭제(확인창 포함). 컨텍스트 메뉴 삭제와 동일 경로(FO_DELETE + FOF_ALLOWUNDO).
+					OnTreeContextMenuDelete();
+					return TRUE;
+				}
 
 				//삭제 시 물어보고 지우거나 아예 키를 이용한 삭제는 방지
 				//file_command_on_list(file_cmd_delete);
