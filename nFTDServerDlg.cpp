@@ -477,7 +477,7 @@ void CnFTDServerDlg::init_treectrl()
 {
 	m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
-	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
 	m_tree_local.set_use_own_context_menu(false);
 	m_list_local.set_use_own_context_menu(false);
@@ -497,7 +497,7 @@ void CnFTDServerDlg::init_listctrl()
 	m_list_local.set_as_shell_listctrl(&theApp.m_shell_imagelist, true);
 	m_list_local.set_use_drag_and_drop(true);
 	m_list_local.restore_column_width(&theApp, _T("list local"));
-	m_list_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//m_list_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	auto drive_list = theApp.m_shell_imagelist.m_volume[0].get_drive_list();
 	for (int i = 0; i < drive_list->size(); i++)
@@ -878,11 +878,11 @@ void CnFTDServerDlg::initialize()
 	m_tree_remote.set_use_own_context_menu(false);
 	m_list_remote.set_use_own_context_menu(false);
 	m_tree_remote.set_use_drag_and_drop(true);
-	m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false, _T(""));
 	m_list_remote.set_use_drag_and_drop(true);
-	m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	m_list_remote.restore_column_width(&theApp, _T("list remote"));
 
 	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist, false);
