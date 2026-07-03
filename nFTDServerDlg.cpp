@@ -3820,20 +3820,11 @@ void CnFTDServerDlg::OnTreeContextMenuDelete()
 		return;
 	}
 
-	//휴지통으로 삭제(FOF_ALLOWUNDO) — 표준 삭제 확인 대화상자 표시(탐색기와 동일). pFrom 은 '\0''\0' 종결.
-	std::basic_string<TCHAR> from = (LPCTSTR)path;
-	from.push_back(_T('\0'));
-	from.push_back(_T('\0'));
+	//휴지통으로 삭제 — 앱 공통 헬퍼 delete_file(fullpath, trash_can=true) 사용(리스트 삭제와 동일 경로: FO_DELETE + FOF_ALLOWUNDO). 완전삭제 아님.
+	bool ok = delete_file(path, true);
 
-	SHFILEOPSTRUCT op = { 0 };
-	op.hwnd = GetSafeHwnd();
-	op.wFunc = FO_DELETE;
-	op.pFrom = from.c_str();
-	op.fFlags = FOF_ALLOWUNDO;
-	int rc = SHFileOperation(&op);
-
-	//사용자가 취소하지 않고 실제로 삭제됐으면 트리 노드 제거 + 부모 [+] 정리 + 리스트/디스크 갱신.
-	if (rc == 0 && !op.fAnyOperationsAborted && !PathFileExists(path))
+	//실제로 삭제됐으면 트리 노드 제거 + 부모 [+] 정리 + 리스트/디스크 갱신.
+	if (ok && !PathFileExists(path))
 	{
 		HTREEITEM hParent = ptree->GetParentItem(hItem);
 		ptree->DeleteItem(hItem);
