@@ -1170,7 +1170,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			change_directory(path, SERVER_SIDE);
 
 			m_dir_watcher.stop();
-			m_dir_watcher.add(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path), false);
+			rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path));
 		}
 		else if (msg->pThis == &m_list_remote)
 		{
@@ -1830,7 +1830,7 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 		m_tree_local.set_path(path, false);
 		m_list_local.set_path(path);
 		m_dir_watcher.stop();
-		m_dir_watcher.add(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path), false);
+		rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, path));
 
 		refresh_selection_status(&m_list_local);
 		refresh_disk_usage(false);
@@ -2683,7 +2683,17 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				break;
 			case file_cmd_refresh :
 				plist->refresh_list(true, true);	//명시적 새로고침 — 폴더 캐시 우회(제자리 편집 stale 방지)
-				ptree->refresh(ptree->GetSelectedItem());
+				{
+					//선택 노드의 실제 폴더가 사라졌으면(외부 rename/삭제) 부모를 refresh 해서 stale 노드 제거 + 실제 형제 반영.
+					//(부모를 안 건드리면 사라진 선택 노드만 refresh 되어 이름변경된 폴더가 계속 안 보이던 간헐 버그.)
+					HTREEITEM hSel = ptree->GetSelectedItem();
+					HTREEITEM hSelParent = ptree->GetParentItem(hSel);
+					CString sel_real = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, ptree->get_path(hSel));
+					if (hSelParent != NULL && !sel_real.IsEmpty() && !PathFileExists(sel_real))
+						ptree->refresh(hSelParent);
+					else
+						ptree->refresh(hSel);
+				}
 				break;
 			case file_cmd_new_folder :
 				{
@@ -2749,7 +2759,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 					refresh_disk_usage(false);
 					refresh_selection_status(&m_list_local);
 					
-					m_dir_watcher.add(m_list_local.get_path(), false);
+					rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_list_local.get_path()));
 				}
 				break;
 			case file_cmd_property :
@@ -3554,7 +3564,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_local.get_edit_new_text());
 	m_list_local.set_win32_find_data(item, item_data);
 
-	m_dir_watcher.add(m_list_local.get_path(), false);
+	rewatch_local_folder(theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_list_local.get_path()));
 }
 
 
@@ -3655,32 +3665,85 @@ void CnFTDServerDlg::OnTreeContextMenuProperty()
 //이 프로그램을 통해 생성, 삭제, 이름변경을 할 때에는 모든 처리를 알아서 하게 작성되었으므로
 //이 이벤트를 여기서 또 처리하게되면 중복처리된다.
 //윈도우 탐색기와 같은 외부 프로그램에 의한 변경에 대해서만 이 이벤트들을 처리해야 한다.
+//로컬 감시 폴더 (재)설정 — 반드시 실경로를 받는다. 현재 폴더 + 하위(재귀) + 부모(비재귀, 현재 폴더 자신의 rename/삭제 감지용).
+void CnFTDServerDlg::rewatch_local_folder(CString real_folder)
+{
+	m_dir_watcher.stop();
+
+	if (real_folder.IsEmpty() || !PathIsDirectory(real_folder))
+	{
+		logWrite(_T("DIRWATCH: 감시 대상 아님(폴더 없음) [%s]"), real_folder);
+		return;
+	}
+
+	m_dir_watcher.add(real_folder, true);	//현재 폴더 + 하위(재귀)
+
+	CString parent = get_parent_dir(real_folder);
+	if (!parent.IsEmpty() && parent.CompareNoCase(real_folder) != 0 && PathIsDirectory(parent))
+		m_dir_watcher.add(parent, false);	//부모(비재귀) — 현재 폴더 자신이 rename/삭제될 때 감지
+
+	logWrite(_T("DIRWATCH: 감시 시작 [%s](재귀) + 부모[%s](비재귀)"), real_folder, parent);
+}
+
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
-	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_OLD_NAME(4)
+	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_OLD_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
-	TRACE(_T("action = %d, filename0 = %s, filename1 = %s\n"), msg->action, msg->path0, msg->path1);
+	logWrite(_T("DIRWATCH: action=%d path0=[%s] path1=[%s]"), msg->action, msg->path0, msg->path1);
 
-	//감시 중인 폴더에 변경(추가/삭제/이름변경/내용수정)이 감지되면 그 폴더의 콘텐츠 캐시를 무효화한다.
-	//특히 FILE_ACTION_MODIFIED(제자리 내용 수정)는 dir mtime 을 안 바꿔 mtime 기반 캐시가 놓치는 유일한 케이스라 여기서 잡아준다.
-	m_list_local.invalidate_folder_cache(m_list_local.get_path());
+	//변경된 항목의 '부모 폴더'(=내용이 바뀐 폴더)와 현재 리스트 폴더(둘 다 real path).
+	CString changed_parent = get_part(msg->path0, fn_folder);
+	CString cur_list       = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, m_list_local.get_path());
 
-	if (msg->action == FILE_ACTION_REMOVED)
+	//── [리스트] 리스트는 '현재 폴더의 내용'만 표시 → 변경의 부모가 현재 폴더일 때만 갱신(파일/폴더 무관).
+	if (changed_parent.CompareNoCase(cur_list) == 0)
 	{
-		m_list_local.delete_item(msg->path0);
-		//트리도 갱신: 현재 폴더(선택 노드) 아래 같은 이름 자식(폴더)이 트리에 있으면 제거. (파일이면 트리에 없어 no-op)
-		HTREEITEM hChild = m_tree_local.find_children_item(get_part(msg->path0, fn_name), m_tree_local.GetSelectedItem());
-		if (hChild)
-			m_tree_local.DeleteItem(hChild);
+		m_list_local.invalidate_folder_cache(m_list_local.get_path());
+		if (msg->action == FILE_ACTION_REMOVED)
+			m_list_local.delete_item(msg->path0);
+		else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+			m_list_local.rename(msg->path1, msg->path0);
+		else if (msg->action == FILE_ACTION_ADDED)
+			m_list_local.refresh_list(true, true);	//추가는 정렬 위치 계산이 필요 → 현재 폴더만 새로고침
 	}
-	else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+
+	//── [트리] 트리는 '폴더 계층'만 표시(파일 무관) → 변경의 부모 폴더에 해당하는 노드가 트리에 로드돼 있을 때만 그 노드를 서피컬 갱신.
+	if (msg->action == FILE_ACTION_REMOVED || msg->action == FILE_ACTION_RENAMED_OLD_NAME || msg->action == FILE_ACTION_ADDED)
 	{
-		m_list_local.rename(msg->path1, msg->path0);
-		//트리도 갱신: 현재 폴더 아래 자식 폴더 이름 old→new. path0/path1 중 실제 존재하는 쪽이 new(필드 순서에 의존하지 않도록 판별).
-		CString old_name, new_name;
-		if (PathFileExists(msg->path0)) { new_name = get_part(msg->path0, fn_name); old_name = get_part(msg->path1, fn_name); }
-		else                            { old_name = get_part(msg->path0, fn_name); new_name = get_part(msg->path1, fn_name); }
-		m_tree_local.rename_child_item(m_tree_local.GetSelectedItem(), old_name, new_name);
+		HTREEITEM hParentNode = m_tree_local.get_item_by_fullpath(changed_parent);
+		if (hParentNode)
+		{
+			if (msg->action == FILE_ACTION_REMOVED)
+			{
+				HTREEITEM hChild = m_tree_local.find_children_item(get_part(msg->path0, fn_name), hParentNode);
+				if (hChild) m_tree_local.DeleteItem(hChild);	//폴더였으면 자식 노드 존재 → 제거. 파일이면 매칭 노드 없어 no-op.
+			}
+			else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+			{
+				CString old_name, new_name;	//존재하는 쪽이 new(필드 순서 무관).
+				if (PathFileExists(msg->path0)) { new_name = get_part(msg->path0, fn_name); old_name = get_part(msg->path1, fn_name); }
+				else                            { old_name = get_part(msg->path0, fn_name); new_name = get_part(msg->path1, fn_name); }
+				m_tree_local.rename_child_item(hParentNode, old_name, new_name);	//폴더 자식만 매칭 → 파일 rename 은 no-op.
+			}
+			else if (msg->action == FILE_ACTION_ADDED)
+			{
+				if (PathIsDirectory(msg->path0) && m_tree_local.GetChildItem(hParentNode) != NULL)	//폴더 추가 + 자식 로드된 경우만
+				{
+					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
+					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(msg->path0, fn_name));
+					m_tree_local.insert_folder_sorted(hParentNode, &fd);
+				}
+			}
+		}
+	}
+
+	//── [재감시] 감시 중이던 '현재 폴더 자신'이 외부에서 rename 되면 감시 경로가 무효 → 새 경로로 이동(내부에서 재감시).
+	if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+	{
+		CString renamed_old = PathFileExists(msg->path0) ? msg->path1 : msg->path0;
+		CString renamed_new = PathFileExists(msg->path0) ? msg->path0 : msg->path1;
+		if (renamed_old.CompareNoCase(cur_list) == 0)
+			change_directory(renamed_new, SERVER_SIDE);
 	}
 
 	return 0;
