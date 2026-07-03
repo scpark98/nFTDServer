@@ -1623,6 +1623,20 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_FOLDER), folder, folder_name);
 		m_messagebox.DoModal(msg, MB_OK);
 	}
+	else if (msg->message == CSCTreeCtrl::message_edit_item)
+	{
+		//F2 등으로 편집 요청 — 선택 항목을 편집모드로 진입시킨다. 편집종료(edit_end) 시
+		//로컬은 MoveFile, 원격은 message_request_rename → socket Rename 이 수행된다. (컨텍스트 메뉴 이름변경과 동일 경로.)
+		CSCTreeCtrl* ptree = (CSCTreeCtrl*)msg->pThis;
+		HTREEITEM hItem = ptree->GetSelectedItem();
+		if (hItem)
+		{
+			int side = (ptree == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
+			CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ptree->get_path(hItem));
+			if (!theApp.m_shell_imagelist.is_protected(side, path))	//보호 폴더는 이름변경 금지(메뉴 disable 과 일관)
+				ptree->edit_item(hItem);
+		}
+	}
 	else if (msg->message == CSCTreeCtrl::message_request_property)
 	{
 		std::deque<CString> dq_fullpath{ msg->param0 };
@@ -3654,10 +3668,19 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	if (msg->action == FILE_ACTION_REMOVED)
 	{
 		m_list_local.delete_item(msg->path0);
+		//트리도 갱신: 현재 폴더(선택 노드) 아래 같은 이름 자식(폴더)이 트리에 있으면 제거. (파일이면 트리에 없어 no-op)
+		HTREEITEM hChild = m_tree_local.find_children_item(get_part(msg->path0, fn_name), m_tree_local.GetSelectedItem());
+		if (hChild)
+			m_tree_local.DeleteItem(hChild);
 	}
 	else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
 	{
 		m_list_local.rename(msg->path1, msg->path0);
+		//트리도 갱신: 현재 폴더 아래 자식 폴더 이름 old→new. path0/path1 중 실제 존재하는 쪽이 new(필드 순서에 의존하지 않도록 판별).
+		CString old_name, new_name;
+		if (PathFileExists(msg->path0)) { new_name = get_part(msg->path0, fn_name); old_name = get_part(msg->path1, fn_name); }
+		else                            { old_name = get_part(msg->path0, fn_name); new_name = get_part(msg->path1, fn_name); }
+		m_tree_local.rename_child_item(m_tree_local.GetSelectedItem(), old_name, new_name);
 	}
 
 	return 0;
