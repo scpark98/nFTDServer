@@ -3731,7 +3731,7 @@ void CnFTDServerDlg::rewatch_local()
 
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
-	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_OLD_NAME(4)/NEW_NAME(5)
+	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_NEW_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
 	logWrite(_T("DIRWATCH: action=%d path0=[%s] path1=[%s]"), msg->action, msg->path0, msg->path1);
 
@@ -3745,14 +3745,14 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 		m_list_local.invalidate_folder_cache(m_list_local.get_path());
 		if (msg->action == FILE_ACTION_REMOVED)
 			m_list_local.delete_item(msg->path0);
-		else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+		else if (msg->action == FILE_ACTION_RENAMED_NEW_NAME)
 			m_list_local.rename(msg->path1, msg->path0);
 		else if (msg->action == FILE_ACTION_ADDED)
 			m_list_local.refresh_list(true, true);	//추가는 정렬 위치 계산이 필요 → 현재 폴더만 새로고침
 	}
 
 	//── [트리] 트리는 '폴더 계층'만 표시(파일 무관) → 변경의 부모 폴더에 해당하는 노드가 트리에 로드돼 있을 때만 그 노드를 서피컬 갱신.
-	if (msg->action == FILE_ACTION_REMOVED || msg->action == FILE_ACTION_RENAMED_OLD_NAME || msg->action == FILE_ACTION_ADDED)
+	if (msg->action == FILE_ACTION_REMOVED || msg->action == FILE_ACTION_RENAMED_NEW_NAME || msg->action == FILE_ACTION_ADDED)
 	{
 		HTREEITEM hParentNode = m_tree_local.get_item_by_fullpath(changed_parent);
 		if (hParentNode)
@@ -3762,7 +3762,7 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 				HTREEITEM hChild = m_tree_local.find_children_item(get_part(msg->path0, fn_name), hParentNode);
 				if (hChild) m_tree_local.DeleteItem(hChild);	//폴더였으면 자식 노드 존재 → 제거. 파일이면 매칭 노드 없어 no-op.
 			}
-			else if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+			else if (msg->action == FILE_ACTION_RENAMED_NEW_NAME)
 			{
 				CString old_name, new_name;	//존재하는 쪽이 new(필드 순서 무관).
 				if (PathFileExists(msg->path0)) { new_name = get_part(msg->path0, fn_name); old_name = get_part(msg->path1, fn_name); }
@@ -3782,7 +3782,7 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	}
 
 	//── [재감시] 감시 중이던 '현재 폴더 자신'이 외부에서 rename 되면 감시 경로가 무효 → 새 경로로 이동(내부에서 재감시).
-	if (msg->action == FILE_ACTION_RENAMED_OLD_NAME)
+	if (msg->action == FILE_ACTION_RENAMED_NEW_NAME)
 	{
 		CString renamed_old = PathFileExists(msg->path0) ? msg->path1 : msg->path0;
 		CString renamed_new = PathFileExists(msg->path0) ? msg->path0 : msg->path1;
