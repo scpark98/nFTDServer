@@ -1579,10 +1579,11 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 						dq[i].nFileSizeLow = 0;
 					}
 
-					//dq가 fullpath로 넘어오므로 폴더명만 넣어줘야 한다.
-					TCHAR* p = dq[i].cFileName;
-					p += folder_length;
-					_tcscpy(dq[i].cFileName, p);
+					//dq 가 fullpath 로 넘어오므로 폴더명(leaf)만 남긴다. 같은 버퍼 내 겹침 복사(_tcscpy 로 dst<src, UB)를
+					//피하려 CString 경유 bounded 복사. folder_length 가 길이를 넘으면 원본 유지(방어).
+					CString full_name = dq[i].cFileName;
+					CString leaf_name = (folder_length < full_name.GetLength()) ? full_name.Mid(folder_length) : full_name;
+					_tcscpy_s(dq[i].cFileName, _countof(dq[i].cFileName), (LPCTSTR)leaf_name);
 					m_tree_remote.insert_folder(m_tree_remote.get_expanding_item(), &dq[i], has_child);
 				}
 
