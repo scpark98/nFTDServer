@@ -1479,6 +1479,14 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 				//자식이 생긴 대상 폴더는 항상 "확장 가능 + 펼쳐진" 상태로 표시 — 상태(펼침/접힘/미로드)에 따라 결과가 달라지던 문제 제거.
 				pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
+
+				//[중요] OnTvnItemexpanding 이 SetRedraw(FALSE) 를 걸고 OnTvnItemexpanded 가 SetRedraw(TRUE) 로 복구하는데,
+				//프로그램적 Expand 에서 이 쌍이 어긋나면 갱신이 꺼진 채 남아 "간혹 안 펼쳐짐"으로 보인다. 방어적으로 갱신 복구.
+				pDstTree->SetRedraw(TRUE);
+				pDstTree->Invalidate(FALSE);
+				logWrite(_T("DND tree: dst Expand 후 expanded=%d child_exists=%d"),
+					(pDstTree->GetItemState(hDstTreeItem, TVIS_EXPANDED) & TVIS_EXPANDED) ? 1 : 0,
+					pDstTree->GetChildItem(hDstTreeItem) != NULL ? 1 : 0);
 			}
 
 			//소스 노드 제거. 부모에 남은 자식이 없으면 [+] 도 제거.
