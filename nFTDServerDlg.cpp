@@ -1405,6 +1405,9 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			msg->pTarget->IsKindOf(RUNTIME_CLASS(CTreeCtrl)) ? _T("Tree") : (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)) ? _T("List") : _T("etc")),
 			m_srcSide, pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
 
+		CSCTreeCtrl* pDstTree = NULL;		//대상이 트리일 때만 세팅(서피컬 노드 추가용).
+		HTREEITEM   hDstTreeItem = NULL;
+
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
 		{
 			CVtListCtrlEx* pDropListCtrl = (CVtListCtrlEx*)msg->pTarget;
@@ -1440,6 +1443,9 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			TRACE(_T("dropped on = %s. m_transfer_to = %s\n"), pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
 			logWrite(_T("DND tree→tree: dstSide=%d DropItem=%s to=%s"), m_dstSide, pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
 
+			pDstTree = pDropTreeCtrl;			//서피컬 대상(트리) 저장.
+			hDstTreeItem = pDragTreeCtrl->m_DropItem;
+
 			//필요한 모든 처리가 끝나면 drophilited 표시를 없애준다.
 			//pDropTreeCtrl->SetItemState(hItem, 0, TVIS_DROPHILITED);	<= 이걸로는 해제 안된다.
 			pDropTreeCtrl->SelectDropTarget(NULL);
@@ -1448,14 +1454,39 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		logWrite(_T("DND tree: file_transfer 호출 직전 srcSide=%d dstSide=%d from=[%s] to=[%s]"), m_srcSide, m_dstSide, m_transfer_from, m_transfer_to);
 		file_transfer();
 
-		//[로컬 이동] file_transfer 의 FO_MOVE 로 소스 폴더가 실제로 이동됐으면 트리에서도 사라져야 한다.
-		//file_transfer 내부 refresh 는 "이동된 항목 자신"을 대상이라 소스가 트리에 그대로 남는다 → 소스의 부모 노드를 refresh 해서 제거.
-		if (m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE)
+		//[로컬 이동] refresh 대신 서피컬로 갱신: 소스 노드는 트리에서 제거, 대상 노드 아래에 이동된 폴더 노드를 추가.
+		//PathFileExists(from)==false 로 실제 이동 성공을 확인(from==to 스킵/실패면 트리 안 건드림).
+		if (m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !PathFileExists(m_transfer_from))
 		{
-			HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(pDragTreeCtrl->m_DragItem);
-			logWrite(_T("DND tree: 이동 후 소스 부모 노드 refresh (hSrcParent=%p)"), hSrcParent);
-			if (hSrcParent)
-				pDragTreeCtrl->refresh(hSrcParent);
+			HTREEITEM hDrag = pDragTreeCtrl->m_DragItem;
+			HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(hDrag);
+
+			//대상이 트리면 대상 노드 아래에 이동된 폴더 노드를 추가.
+			if (pDstTree && hDstTreeItem)
+			{
+				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 삽입(확장 시 재열거 안 함)
+				{
+					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
+					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(m_transfer_from, fn_name));
+					pDstTree->insert_folder(hDstTreeItem, &fd, true);
+				}
+				else												//자식 미로드 → 삽입 않고 [+] 만 보장(확장 시 전체 열거로 표시)
+				{
+					TVITEM tv; ZeroMemory(&tv, sizeof(tv));
+					tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hDstTreeItem;   tv.cChildren = 1;
+					pDstTree->SetItem(&tv);
+				}
+			}
+
+			//소스 노드 제거. 부모에 남은 자식이 없으면 [+] 도 제거.
+			pDragTreeCtrl->DeleteItem(hDrag);
+			if (hSrcParent && pDragTreeCtrl->GetChildItem(hSrcParent) == NULL)
+			{
+				TVITEM tv; ZeroMemory(&tv, sizeof(tv));
+				tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hSrcParent;   tv.cChildren = 0;
+				pDragTreeCtrl->SetItem(&tv);
+			}
+			logWrite(_T("DND tree: 서피컬 갱신(소스 노드 제거 + 대상 노드 추가) 완료"));
 		}
 
 		return 0;
@@ -2058,8 +2089,7 @@ void CnFTDServerDlg::file_transfer()
 			int move_rc = SHFileOperation(&op);
 			logWrite(_T("DND move: SHFileOperation FO_MOVE 실행 to=[%s] rc=%d(0=성공) aborted=%d"), m_transfer_to, move_rc, (int)op.fAnyOperationsAborted);
 
-			//이동 후 로컬 트리/리스트 새로고침.
-			m_tree_local.refresh(m_tree_local.GetSelectedItem());
+			//이동 후 로컬 리스트만 새로고침. 트리는 호출부(트리 핸들러)가 서피컬로(소스 노드 제거/대상 노드 추가) 갱신 → 과한 트리 refresh 방지.
 			m_list_local.refresh_list(true, true);
 			return;
 		}
