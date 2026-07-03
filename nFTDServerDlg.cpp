@@ -1468,7 +1468,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				{
 					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
 					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(m_transfer_from, fn_name));
-					pDstTree->insert_folder(hDstTreeItem, &fd, true);
+					pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//오름차순(탐색기식) 정렬 위치에 삽입
 				}
 				else												//자식 미로드 → 삽입 않고 [+] 만 보장(확장 시 전체 열거로 표시)
 				{
