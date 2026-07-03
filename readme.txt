@@ -230,3 +230,41 @@ nFTDServer.exe -p 43.202.85.142 443 1
 [전송속도]
 -P2P  send : 17.80 MB/s, recv : 15.45 MB/s
 -AP2P send :  3.92 MB/s, recv : 15.45 MB/s
+
+[20260703 작업내용]
+  d&d (드래그&드롭)
+
+  1. 트리 d&d 활성화 + 로컬 이동(move) ? 트리 드래그 켜고, local↔local은 SHFileOperation 이동(서피컬
+  노드 갱신). [로컬전용: remote↔remote 이동 미구현]
+  2. 폴더 전송 시 폴더 레벨 보존 ? A(자식들)를 C로 드롭 → C\A\자식으로 보존(트리 드래그 base 보정).
+  3. 이동 대상 폴더 처리 ? 이동된 폴더를 오름차순 정렬 위치에 삽입 + 대상 항상 펼침 + 자기 부모로
+  드롭 시 조용히 무동작.
+  4. cross-control 드롭 하이라이트 ? local tree→remote tree 드롭 시 대상 트리 하이라이트 + 드래그 중
+  잘못된 hover 제거.
+  5. 드래그 use-after-free 크래시 수정 ? m_pDragImage delete 후 NULL 처리.
+
+  트리 파일 조작
+
+  6. 트리 이름변경(F2 + 우클릭 메뉴) ? 편집모드→로컬 MoveFile / 원격 socket Rename(양쪽 동작).
+  7. 트리 삭제(우클릭 메뉴 + Del) ? delete_file로 휴지통 삭제(완전삭제 아님). [로컬전용: 원격 트리
+  삭제 미구현]
+  8. 보호 폴더 메뉴 disable ? 드라이브 루트·시스템 폴더는 삭제/이름변경 비활성 + 실행부 방어.
+
+  새로고침 / 외부 변경 반영
+
+  9. 트리 새로고침 stale-node 수정 + F5 배선 ? 선택 노드가 사라졌으면 부모 refresh, 미배선이던 F5
+  연결.
+  10. dir watcher 재설계 ? 리스트 현재 폴더 + 트리 펼쳐진 폴더들을 비재귀 감시(재귀 폐지로 볼륨↓),
+  확장/축소·이동 시 재설정 → 탐색기 변경이 트리/리스트에 반영. [로컬전용: 원격 폴더 변경 감지 별도
+  필요]
+  11. watcher rename 치명 버그 수정 ? rename이 action=5(NEW_NAME)로 오는데 4를 검사해 죽어있던 것 →
+  4→5.
+  12. UI 결함 2건 ? hover 밑줄(TVS_TRACKSELECT) 제거, 트리 refresh 과다 방지.
+
+  Common 라이브러리 유틸(재사용)
+
+  13. CSCTreeCtrl 추가 ? insert_folder_sorted(탐색기식 정렬 삽입), get_item_by_fullpath(강제확장 없이
+  경로→노드), message_expand_changed(확장/축소 통지).
+
+  원격 확장 후보: 7(트리 삭제), 1(remote↔remote 이동), 10(원격 변경 감지) ? 원격은 소켓 명령/원격측
+  처리가 필요해 로컬과 구조가 다릅니다. 원하시면 다음에 이들부터 원격 버전으로 진행하겠습니다.

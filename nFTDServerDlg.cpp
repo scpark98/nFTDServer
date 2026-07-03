@@ -2009,7 +2009,8 @@ void CnFTDServerDlg::file_transfer()
 		WIN32_FIND_DATA data;
 		HANDLE hFind = FindFirstFile(m_transfer_from, &data);
 		FindClose(hFind);
-		_tcscpy(data.cFileName, m_transfer_from);	//cFileName에는 반드시 fullpath로 넣어줘야 한다.
+		//cFileName(TCHAR[MAX_PATH])에 fullpath 를 넣되, 경로가 MAX_PATH 를 넘겨도 스택을 깨지 않도록 bounded 복사(초과 시 잘림).
+		_sntprintf_s(data.cFileName, _countof(data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)m_transfer_from);
 		m_transfer_list.push_back(data);
 		logWrite(_T("DND: list 비어있어 from 폴더 1개로 채움. cFileName=[%s]"), data.cFileName);
 	}
@@ -3597,7 +3598,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
 	auto item_data = (WIN32_FIND_DATA)m_list_local.get_win32_find_data(item);
 	CString folder = get_part(item_data.cFileName, fn_folder);
-	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_local.get_edit_new_text());
+	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s\\%s"), (LPCTSTR)folder, (LPCTSTR)m_list_local.get_edit_new_text());
 	m_list_local.set_win32_find_data(item, item_data);
 
 	rewatch_local();
@@ -3629,7 +3630,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
 	auto item_data = (WIN32_FIND_DATA)m_list_remote.get_win32_find_data(item);
 	CString folder = get_part(item_data.cFileName, fn_folder);
-	_stprintf(item_data.cFileName, _T("%s\\%s"), folder, m_list_remote.get_edit_new_text());
+	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s\\%s"), (LPCTSTR)folder, (LPCTSTR)m_list_remote.get_edit_new_text());
 	m_list_remote.set_win32_find_data(item, item_data);
 }
 
@@ -3651,7 +3652,7 @@ void CnFTDServerDlg::OnTreeContextMenuSend()
 	WIN32_FIND_DATA data;
 	ZeroMemory(&data, sizeof(data));
 	data.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
-	_stprintf(data.cFileName, _T("%s"), path);
+	_sntprintf_s(data.cFileName, _countof(data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)path);
 
 	m_transfer_list.clear();
 	m_transfer_list.push_back(data);
