@@ -2356,11 +2356,13 @@ void CnFTDServerDlg::show_tree_context_menu(int side, CPoint point)
 
 	//tree에서는 빈 공간 클릭, 즉 선택된 항목이 없을 경우에 대한 처리는 불필요하다.
 
-	//보호된 파일/폴더일 경우
-	if (theApp.m_shell_imagelist.is_protected(side, path))
+	//보호된 파일/폴더(드라이브 루트·주요 시스템 폴더)일 경우 삭제/이름변경 비활성.
+	//is_protected 는 실제 경로 기준이므로 get_path()(특수폴더 표시형)를 real path 로 변환해 판정한다.
+	CString real_path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, path);
+	if (theApp.m_shell_imagelist.is_protected(side, real_path))
 	{
-		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
-		//pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
+		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
 	}
 
 	//전송 가능 상태가 아닐 경우(ex. 상대편이 "내 PC"를 열고 있다면 전송 불가 등)
@@ -3663,10 +3665,60 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 
 void CnFTDServerDlg::OnTreeContextMenuDelete()
 {
-	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	//우클릭한 트리(로컬/원격)를 focus 기준으로 판별.
+	CSCTreeCtrl* ptree = (GetFocus() == &m_tree_remote) ? &m_tree_remote : &m_tree_local;
+	HTREEITEM hItem = ptree->GetSelectedItem();
+	if (hItem == NULL)
+		return;
+
+	//우선 로컬 트리만 구현(사용자 요청). 원격 트리 삭제는 이후.
+	if (ptree != &m_tree_local)
+		return;
+
+	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, ptree->get_path(hItem));
+
+	//실행부 방어선: 보호 폴더(드라이브 루트·시스템 폴더)는 삭제 금지 — 메뉴 disable 과 이원화(조작된 경로 방지).
+	if (theApp.m_shell_imagelist.is_protected(SERVER_SIDE, path))
+	{
+		m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더는 삭제할 수 없습니다."));
+		return;
+	}
+
+	//휴지통으로 삭제(FOF_ALLOWUNDO) — 표준 삭제 확인 대화상자 표시(탐색기와 동일). pFrom 은 '\0''\0' 종결.
+	std::basic_string<TCHAR> from = (LPCTSTR)path;
+	from.push_back(_T('\0'));
+	from.push_back(_T('\0'));
+
+	SHFILEOPSTRUCT op = { 0 };
+	op.hwnd = GetSafeHwnd();
+	op.wFunc = FO_DELETE;
+	op.pFrom = from.c_str();
+	op.fFlags = FOF_ALLOWUNDO;
+	int rc = SHFileOperation(&op);
+
+	//사용자가 취소하지 않고 실제로 삭제됐으면 트리 노드 제거 + 부모 [+] 정리 + 리스트/디스크 갱신.
+	if (rc == 0 && !op.fAnyOperationsAborted && !PathFileExists(path))
+	{
+		HTREEITEM hParent = ptree->GetParentItem(hItem);
+		ptree->DeleteItem(hItem);
+		if (hParent && ptree->GetChildItem(hParent) == NULL)
+		{
+			TVITEM tv; ZeroMemory(&tv, sizeof(tv));
+			tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hParent;   tv.cChildren = 0;
+			ptree->SetItem(&tv);
+		}
+		m_list_local.refresh_list(true, true);	//리스트가 삭제된 폴더/그 부모를 보고 있으면 갱신.
+		refresh_disk_usage(false);
+	}
 }
 
 void CnFTDServerDlg::OnTreeContextMenuRename()
 {
-	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+	//우클릭한 트리를 focus 기준으로 판별. 편집모드 진입만 하면 CSCTreeCtrl::edit_end 가
+	//로컬은 MoveFile 로 실제 폴더명 변경, 원격은 message_request_rename → socket Rename 을 수행한다.
+	CSCTreeCtrl* ptree = (GetFocus() == &m_tree_remote) ? &m_tree_remote : &m_tree_local;
+	HTREEITEM hItem = ptree->GetSelectedItem();
+	if (hItem == NULL)
+		return;
+	ptree->edit_item(hItem);
 }
