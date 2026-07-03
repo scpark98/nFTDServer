@@ -1488,9 +1488,25 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			{
 				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 정렬 위치에 삽입.
 				{
-					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
-					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(m_transfer_from, fn_name));
-					pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//오름차순(탐색기식) 정렬 위치에 삽입
+					CString   moved_name = get_part(m_transfer_from, fn_name);
+					HTREEITEM hExisting  = pDstTree->find_children_item(moved_name, hDstTreeItem);
+					if (hExisting != NULL)
+					{
+						//[병합] 대상에 같은 이름 폴더가 이미 있음(Windows 병합 대화상자로 합쳐졌거나, from==to 위치). 중복 노드 추가 금지.
+						//기존 노드가 펼쳐져 있으면 병합으로 하위가 바뀌었을 수 있으니 자식을 재열거해 최신 상태로 갱신.
+						if ((pDstTree->GetItemState(hExisting, TVIS_EXPANDED) & TVIS_EXPANDED) && pDstTree->GetChildItem(hExisting) != NULL)
+						{
+							HTREEITEM hc = pDstTree->GetChildItem(hExisting);
+							while (hc) { HTREEITEM hnext = pDstTree->GetNextSiblingItem(hc); pDstTree->DeleteItem(hc); hc = hnext; }
+							pDstTree->insert_folder(hExisting, pDstTree->get_path(hExisting));
+						}
+					}
+					else
+					{
+						WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
+						_tcscpy_s(fd.cFileName, _countof(fd.cFileName), moved_name);
+						pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//오름차순(탐색기식) 정렬 위치에 삽입
+					}
 				}
 				else												//자식 미로드 → 직접 전체 열거해서 로드(이동 폴더 포함, 정렬됨).
 				{													//Expand 지연로딩에 의존하면, 대상이 '이미 펼쳐진' 상태일 때 Expand 가 no-op → OnTvnItemexpanding 미호출 → 열거 누락(로그 expanded=1 child_exists=0)이었음.
