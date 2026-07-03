@@ -248,4 +248,6 @@ public:
 	afx_msg void OnTreeContextMenuSend();
 	CSCSliderCtrl m_progress_local;
 	CSCSliderCtrl m_progress_remote;
+	afx_msg void OnTreeContextMenuDelete();
+	afx_msg void OnTreeContextMenuRename();
 };

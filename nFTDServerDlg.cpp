@@ -144,6 +144,8 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_OPEN_EXPLORER, &CnFTDServerDlg::OnTreeContextMenuOpenExplorer)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_SEND, &CnFTDServerDlg::OnTreeContextMenuSend)
 	ON_REGISTERED_MESSAGE(Message_CSCDirWatcher, &CnFTDServerDlg::on_message_CSCDirWatcher)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_DELETE, &CnFTDServerDlg::OnTreeContextMenuDelete)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_RENAME, &CnFTDServerDlg::OnTreeContextMenuRename)
 END_MESSAGE_MAP()
 
 
@@ -2129,6 +2131,13 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 
+	//[폴더 레벨 보존] 트리 드래그처럼 소스가 '단일 폴더이고 그 폴더 자신이 m_transfer_from'인 경우, 전송의 dst 는
+	//각 파일 fullpath 에서 m_transfer_from → m_transfer_to 로 치환해 만든다(nFTDFileTransferDialog). from=A 면 A\child → to\child 가
+	//되어 A 폴더 레벨이 사라진다. base 를 A 의 부모로 조정하면 A\child → to\A\child 로 폴더가 보존된다(리스트 드래그와 동일 모델).
+	//로컬 move(same-side)는 위에서 이미 return 하므로 이 조정은 전송(cross-side)에만 적용된다.
+	if (m_transfer_list.size() == 1 && m_transfer_from.CompareNoCase(m_transfer_list[0].cFileName) == 0)
+		m_transfer_from = get_parent_dir(m_transfer_from);
+
 	if (m_FileTransferDlg.FileTransferInitalize(&m_ServerManager, &m_transfer_list, pulDiskSpace,
 												m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, m_check_close_after_all.GetCheck()))
 	{
@@ -3650,4 +3659,14 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	}
 
 	return 0;
+}
+
+void CnFTDServerDlg::OnTreeContextMenuDelete()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+}
+
+void CnFTDServerDlg::OnTreeContextMenuRename()
+{
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
 }
