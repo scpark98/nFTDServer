@@ -1464,27 +1464,22 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			//대상이 트리면 대상 노드 아래에 이동된 폴더 노드를 추가.
 			if (pDstTree && hDstTreeItem)
 			{
-				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 정렬 위치에 삽입(아래 Expand 가 재열거하지 않음)
+				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 정렬 위치에 삽입.
 				{
 					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
 					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(m_transfer_from, fn_name));
 					pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//오름차순(탐색기식) 정렬 위치에 삽입
 				}
-				else												//자식 미로드 → 여기선 삽입하지 않고, 확장 가능하도록 [+] 만 세팅. 아래 Expand 가 OnTvnItemexpanding 으로 전체 열거해 채운다(이동 폴더 포함).
-				{
-					TVITEM tv; ZeroMemory(&tv, sizeof(tv));
-					tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hDstTreeItem;   tv.cChildren = 1;
-					pDstTree->SetItem(&tv);
+				else												//자식 미로드 → 직접 전체 열거해서 로드(이동 폴더 포함, 정렬됨).
+				{													//Expand 지연로딩에 의존하면, 대상이 '이미 펼쳐진' 상태일 때 Expand 가 no-op → OnTvnItemexpanding 미호출 → 열거 누락(로그 expanded=1 child_exists=0)이었음.
+					pDstTree->insert_folder(hDstTreeItem, pDstTree->get_path(hDstTreeItem));
 				}
 
-				//자식이 생긴 대상 폴더는 항상 "확장 가능 + 펼쳐진" 상태로 표시 — 상태(펼침/접힘/미로드)에 따라 결과가 달라지던 문제 제거.
+				//이제 자식이 확실히 로드됨 → 접혀 있으면 실제로 펼치고, 이미 펼쳐져 있으면 방금 추가된 자식이 그대로 보인다.
 				pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
-
-				//[중요] OnTvnItemexpanding 이 SetRedraw(FALSE) 를 걸고 OnTvnItemexpanded 가 SetRedraw(TRUE) 로 복구하는데,
-				//프로그램적 Expand 에서 이 쌍이 어긋나면 갱신이 꺼진 채 남아 "간혹 안 펼쳐짐"으로 보인다. 방어적으로 갱신 복구.
-				pDstTree->SetRedraw(TRUE);
+				pDstTree->SetRedraw(TRUE);		//OnTvnItemexpanding 의 SetRedraw(FALSE) 가 짝(expanded)을 못 만나 남는 경우 방어적 복구.
 				pDstTree->Invalidate(FALSE);
-				logWrite(_T("DND tree: dst Expand 후 expanded=%d child_exists=%d"),
+				logWrite(_T("DND tree: dst 갱신 후 expanded=%d child_exists=%d"),
 					(pDstTree->GetItemState(hDstTreeItem, TVIS_EXPANDED) & TVIS_EXPANDED) ? 1 : 0,
 					pDstTree->GetChildItem(hDstTreeItem) != NULL ? 1 : 0);
 			}
