@@ -1464,18 +1464,21 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			//대상이 트리면 대상 노드 아래에 이동된 폴더 노드를 추가.
 			if (pDstTree && hDstTreeItem)
 			{
-				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 삽입(확장 시 재열거 안 함)
+				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 정렬 위치에 삽입(아래 Expand 가 재열거하지 않음)
 				{
 					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
 					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(m_transfer_from, fn_name));
 					pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//오름차순(탐색기식) 정렬 위치에 삽입
 				}
-				else												//자식 미로드 → 삽입 않고 [+] 만 보장(확장 시 전체 열거로 표시)
+				else												//자식 미로드 → 여기선 삽입하지 않고, 확장 가능하도록 [+] 만 세팅. 아래 Expand 가 OnTvnItemexpanding 으로 전체 열거해 채운다(이동 폴더 포함).
 				{
 					TVITEM tv; ZeroMemory(&tv, sizeof(tv));
 					tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hDstTreeItem;   tv.cChildren = 1;
 					pDstTree->SetItem(&tv);
 				}
+
+				//자식이 생긴 대상 폴더는 항상 "확장 가능 + 펼쳐진" 상태로 표시 — 상태(펼침/접힘/미로드)에 따라 결과가 달라지던 문제 제거.
+				pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
 			}
 
 			//소스 노드 제거. 부모에 남은 자식이 없으면 [+] 도 제거.
