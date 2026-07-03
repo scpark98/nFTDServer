@@ -2064,6 +2064,14 @@ void CnFTDServerDlg::file_transfer()
 				return;
 			}
 
+			//[윈도우 탐색기 동일] 자식을 이미 들어있는 부모(=현재 위치)로 드롭 = 변화 없음 → 메시지박스 없이 조용히 무동작.
+			//(SHFileOperation FO_MOVE 는 이 경우 "대상 폴더가 원본 폴더와 같습니다" 중단 대화상자를 띄우므로 미리 차단.)
+			if (get_parent_dir(m_transfer_from) == m_transfer_to)
+			{
+				logWrite(_T("DND move: 이미 부모 폴더에 있음(자기 위치로 드롭) → 무동작. from=[%s] to=[%s]"), m_transfer_from, m_transfer_to);
+				return;
+			}
+
 			//NOTE: 예전엔 'from == parent(to)' 면 skip 했으나, 그건 "현재 폴더의 하위 폴더로 드롭"(가장 흔한 이동)을
 			//막아 로컬 d&d 가 무동작이 되는 버그였다. 순환 이동(폴더를 자기 하위로)은 SHFileOperation 이 안전하게 거부.
 
