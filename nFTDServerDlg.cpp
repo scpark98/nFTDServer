@@ -423,7 +423,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 					ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-p 192.168.0.48 7002 10000001"), 0, SW_SHOWNORMAL);
 				#else
 					//for P2P direct connection test
-					ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-l 4433"), 0, SW_SHOWNORMAL);
+					ShellExecute(NULL, _T("open"), get_exe_directory() + _T("\\nFTDClient2.exe"), _T("-l 4567"), 0, SW_SHOWNORMAL);
 				#endif
 			}
 		}
@@ -3824,40 +3824,46 @@ void CnFTDServerDlg::OnTreeContextMenuDelete()
 {
 	//우클릭한 트리(로컬/원격)를 focus 기준으로 판별.
 	CSCTreeCtrl* ptree = (GetFocus() == &m_tree_remote) ? &m_tree_remote : &m_tree_local;
+	int side = (ptree == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
 	HTREEITEM hItem = ptree->GetSelectedItem();
 	if (hItem == NULL)
 		return;
 
-	//우선 로컬 트리만 구현(사용자 요청). 원격 트리 삭제는 이후.
-	if (ptree != &m_tree_local)
-		return;
-
-	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, ptree->get_path(hItem));
+	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ptree->get_path(hItem));
 
 	//실행부 방어선: 보호 폴더(드라이브 루트·시스템 폴더)는 삭제 금지 — 메뉴 disable 과 이원화(조작된 경로 방지).
-	if (theApp.m_shell_imagelist.is_protected(SERVER_SIDE, path))
+	if (theApp.m_shell_imagelist.is_protected(side, path))
 	{
 		m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더는 삭제할 수 없습니다."));
 		return;
 	}
 
-	//휴지통으로 삭제 — 앱 공통 헬퍼 delete_file(fullpath, trash_can=true) 사용(리스트 삭제와 동일 경로: FO_DELETE + FOF_ALLOWUNDO). 완전삭제 아님.
-	bool ok = delete_file(path, true);
+	//20260704 by claude. 삭제 수행. 로컬은 공통 헬퍼 delete_file(휴지통, FO_DELETE + FOF_ALLOWUNDO)로 직접, 원격은 소켓
+	//file_command(file_cmd_delete)로 client 에 위임(client 가 자기 FS 에서 휴지통 삭제 — 리스트 원격 삭제와 동일 경로).
+	//성공 판정: 로컬은 실제 삭제 확인(PathFileExists), 원격은 소켓 응답값.
+	bool ok = false;
+	if (side == SERVER_SIDE)
+		ok = delete_file(path, true) && !PathFileExists(path);
+	else
+		ok = (m_ServerManager.m_socket.file_command(file_cmd_delete, path) != FALSE);
 
-	//실제로 삭제됐으면 트리 노드 제거 + 부모 [+] 정리 + 리스트/디스크 갱신.
-	if (ok && !PathFileExists(path))
+	if (!ok)
+		return;
+
+	//트리 노드 제거 + 부모 [+] 정리 (로컬/원격 공통).
+	HTREEITEM hParent = ptree->GetParentItem(hItem);
+	ptree->DeleteItem(hItem);
+	if (hParent && ptree->GetChildItem(hParent) == NULL)
 	{
-		HTREEITEM hParent = ptree->GetParentItem(hItem);
-		ptree->DeleteItem(hItem);
-		if (hParent && ptree->GetChildItem(hParent) == NULL)
-		{
-			TVITEM tv; ZeroMemory(&tv, sizeof(tv));
-			tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hParent;   tv.cChildren = 0;
-			ptree->SetItem(&tv);
-		}
-		m_list_local.refresh_list(true, true);	//리스트가 삭제된 폴더/그 부모를 보고 있으면 갱신.
-		refresh_disk_usage(false);
+		TVITEM tv; ZeroMemory(&tv, sizeof(tv));
+		tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hParent;   tv.cChildren = 0;
+		ptree->SetItem(&tv);
 	}
+
+	//해당 쪽 리스트(삭제된 폴더/그 부모를 보고 있으면)와 디스크 사용량 갱신.
+	CVtListCtrlEx* plist = (side == SERVER_SIDE) ? &m_list_local : &m_list_remote;
+	plist->refresh_list(true, true);
+	refresh_disk_usage(side == CLIENT_SIDE);
 }
 
 void CnFTDServerDlg::OnTreeContextMenuRename()
