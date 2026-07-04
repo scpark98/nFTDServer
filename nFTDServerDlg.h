@@ -253,4 +253,7 @@ public:
 	CSCSliderCtrl m_progress_remote;
 	afx_msg void OnTreeContextMenuDelete();
 	afx_msg void OnTreeContextMenuRename();
+	afx_msg void OnTreeContextMenuPathToClipboard();
+	afx_msg void OnListContextMenuPathToClipboard();
+	afx_msg void OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
 };

@@ -146,6 +146,9 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_REGISTERED_MESSAGE(Message_CSCDirWatcher, &CnFTDServerDlg::on_message_CSCDirWatcher)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_DELETE, &CnFTDServerDlg::OnTreeContextMenuDelete)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_RENAME, &CnFTDServerDlg::OnTreeContextMenuRename)
+	ON_COMMAND(ID_TREE_CONTEXT_MENU_PATH_TO_CLIPBOARD, &CnFTDServerDlg::OnTreeContextMenuPathToClipboard)
+	ON_COMMAND(ID_LIST_CONTEXT_MENU_PATH_TO_CLIPBOARD, &CnFTDServerDlg::OnListContextMenuPathToClipboard)
+	ON_NOTIFY(NM_RCLICK, IDC_TREE_LOCAL, &CnFTDServerDlg::OnNMRClickTreeLocal)
 END_MESSAGE_MAP()
 
 
@@ -3866,4 +3869,31 @@ void CnFTDServerDlg::OnTreeContextMenuRename()
 	if (hItem == NULL)
 		return;
 	ptree->edit_item(hItem);
+}
+
+void CnFTDServerDlg::OnTreeContextMenuPathToClipboard()
+{
+	CSCTreeCtrl* ptree = (GetFocus() == &m_tree_remote) ? &m_tree_remote : &m_tree_local;
+	int side = (ptree == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
+
+	//get_path() 는 표시형("내 PC\로컬 디스크 (C:)\...")이라 탐색기 등에 붙여넣을 실제 경로로 변환해서 넣는다. (by claude)
+	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ptree->get_path());
+	copy_to_clipboard(m_hWnd, path);
+}
+
+void CnFTDServerDlg::OnListContextMenuPathToClipboard()
+{
+	CVtListCtrlEx* plist = (GetFocus() == &m_list_remote) ? &m_list_remote : &m_list_local;
+
+	//선택 항목이 있으면 그 항목(파일/폴더)의 fullpath, 없으면 현재 폴더 경로. get_path(index) 는 내부에서 실경로로 변환됨. (by claude)
+	std::deque<int> dq;
+	plist->get_selected_items(&dq);
+	CString path = (dq.size() > 0) ? plist->get_path(dq[0]) : plist->get_path();
+	copy_to_clipboard(m_hWnd, path);
+}
+
+void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
+	*pResult = 0;
 }
