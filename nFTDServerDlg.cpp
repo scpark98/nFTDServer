@@ -397,7 +397,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	GetClientRect(rc);
 	m_check_close_after_all.SetWindowPos(NULL,
 										rc.right - m_sys_buttons.get_size().cx - 12 - rz.Width(),
-										(get_titlebar_height() - rz.Height()) / 2 + 1,
+										(get_titlebar_height() - rz.Height()) / 2 - 1,
 										rz.Width(),
 										rz.Height(), SWP_NOZORDER);
 
@@ -3876,7 +3876,7 @@ void CnFTDServerDlg::OnTreeContextMenuPathToClipboard()
 	CSCTreeCtrl* ptree = (GetFocus() == &m_tree_remote) ? &m_tree_remote : &m_tree_local;
 	int side = (ptree == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
 
-	//get_path() 는 표시형("내 PC\로컬 디스크 (C:)\...")이라 탐색기 등에 붙여넣을 실제 경로로 변환해서 넣는다. (by claude)
+	//20260704 by claude. get_path() 는 표시형("내 PC\로컬 디스크 (C:)\...")이라 탐색기 등에 붙여넣을 실제 경로로 변환해서 넣는다.
 	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ptree->get_path());
 	copy_to_clipboard(m_hWnd, path);
 }
@@ -3885,7 +3885,7 @@ void CnFTDServerDlg::OnListContextMenuPathToClipboard()
 {
 	CVtListCtrlEx* plist = (GetFocus() == &m_list_remote) ? &m_list_remote : &m_list_local;
 
-	//선택 항목이 있으면 그 항목(파일/폴더)의 fullpath, 없으면 현재 폴더 경로. get_path(index) 는 내부에서 실경로로 변환됨. (by claude)
+	//20260704 by claude. 선택 항목이 있으면 그 항목(파일/폴더)의 fullpath, 없으면 현재 폴더 경로. get_path(index) 는 내부에서 실경로로 변환됨.
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
 	CString path = (dq.size() > 0) ? plist->get_path(dq[0]) : plist->get_path();
