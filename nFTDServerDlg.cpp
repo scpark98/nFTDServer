@@ -1481,7 +1481,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		//[로컬 이동] refresh 대신 서피컬로 갱신: 소스 노드는 트리에서 제거, 대상 노드 아래에 이동된 폴더 노드를 추가.
 		//PathFileExists(from)==false 로 실제 이동 성공을 확인(from==to 스킵/실패면 트리 안 건드림).
-		if (m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !PathFileExists(m_transfer_from))
+		//20260704 by claude. 복사(!m_drag_copy)는 소스가 남으므로 이 서피컬(소스 제거) 대상이 아님 → 아래 else 에서 refresh.
+		if (m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !m_drag_copy && !PathFileExists(m_transfer_from))
 		{
 			HTREEITEM hDrag = pDragTreeCtrl->m_DragItem;
 			HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(hDrag);
@@ -1534,6 +1535,14 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				pDragTreeCtrl->SetItem(&tv);
 			}
 			logWrite(_T("DND tree: 서피컬 갱신(소스 노드 제거 + 대상 노드 추가) 완료"));
+		}
+		//20260704 by claude. 같은 쪽 복사(로컬 FO_COPY) / 리모트 이동·복사(file_command)는 file_transfer 가 파일 작업만 하고
+		//트리는 미갱신 → 소스·대상 트리를 refresh 로 반영(복사는 소스 유지, 이동은 소스에서 사라짐도 반영). cross-side 전송은 file_transfer 가 이미 트리 refresh.
+		else if (m_srcSide == m_dstSide)
+		{
+			pDragTreeCtrl->refresh(pDragTreeCtrl->GetSelectedItem());
+			if (pDstTree && hDstTreeItem)
+				pDstTree->refresh(hDstTreeItem);
 		}
 
 		return 0;
@@ -2017,8 +2026,21 @@ void CnFTDServerDlg::set_color_theme(int theme)
 //m_transfer_to		: 수신 폴더
 void CnFTDServerDlg::file_transfer()
 {
+	//20260704 by claude. 드롭 순간 Ctrl 눌림 = 복사(같은 쪽 드래그에만 의미. cross-side 는 항상 전송/복사라 무관).
+	//GetAsyncKeyState 는 호출 시점의 '실시간 물리 키 상태' → SetCapture 드래그 중에도 드롭 순간 Ctrl 눌림을 안정적으로 감지.
+	//20260704 by claude. [보류] 같은 폴더에 같은 이름으로 복사 시 이름충돌 자동 리네임("파일 (1)")을 안 해 복사가 실패하는 케이스가 있어
+	//기능 보류. 아래 감지 문장만 주석 처리 → m_drag_copy 는 항상 false(=이동)로 동작. 재개 시: 이 줄 복구 + SHFileOperation 에
+	//FOF_RENAMEONCOLLISION 추가(탐색기식 자동 리네임) 검토. 그 외 copy 코드(프로토콜/client/트리 갱신 등)는 모두 그대로 남겨둔다.
+	//m_drag_copy = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;	//[보류] Ctrl 액션 복사만 보류.
+	//m_drag_copy 는 아래 convert 후 '드라이브 판정'으로 결정한다(탐색기 기본): 같은 드라이브 = 이동, 다른 드라이브 = 복사.
+
 	m_transfer_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
 	m_transfer_to = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
+
+	//20260704 by claude. 드래그 이동/복사 판정(탐색기 기본): 소스와 대상의 드라이브가 같으면 이동, 다르면 '무조건 복사'.
+	//Ctrl 키 기반 복사는 보류(위) — 재개 시 여기에 || (Ctrl 눌림) 을 OR 로 추가한다. cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용.
+	m_drag_copy = (m_transfer_from.Left(2).CompareNoCase(m_transfer_to.Left(2)) != 0);
+	logWrite(_T("DND file_transfer: m_drag_copy=%d (from_drive=%s to_drive=%s)"), (int)m_drag_copy, m_transfer_from.Left(2), m_transfer_to.Left(2));
 
 	logWrite(_T("DND file_transfer 진입: srcSide=%d dstSide=%d from=[%s] to=[%s] list=%d"),
 		m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, (int)m_transfer_list.size());
@@ -2063,8 +2085,12 @@ void CnFTDServerDlg::file_transfer()
 		truncate(m_transfer_to, 1);
 
 	//트리로 drop된 경우 list가 해당 폴더를 표시하고 있지 않다면 change_directory()해준다.
-	if ((m_dstSide == SERVER_SIDE && m_list_local.get_path() != m_transfer_to) ||
-		(m_dstSide == CLIENT_SIDE && m_list_remote.get_path() != m_transfer_to))
+	//20260704 by claude. 단 같은 쪽(로컬↔로컬·리모트↔리모트) 이동/복사는 뷰가 '소스'에 남아야 하므로 대상으로 change_directory 하지 않는다.
+	//(특히 리모트는 이 change_directory 가 m_remoteCurrentPath 를 대상으로 바꿔, 뒤의 m_transfer_from 재계산(convert(1, m_remoteCurrentPath))이
+	// 대상으로 덮어써져 from==to 로 조용히 skip 되던 버그의 원인 — cross-side 전송일 때만 대상 폴더를 표시한다.)
+	if (m_srcSide != m_dstSide &&
+		((m_dstSide == SERVER_SIDE && m_list_local.get_path() != m_transfer_to) ||
+		 (m_dstSide == CLIENT_SIDE && m_list_remote.get_path() != m_transfer_to)))
 		change_directory(m_transfer_to, m_dstSide);
 
 	//l to l, l to r, r to l, r to l 4가지 모두 나눠서 처리?? 우선 ltr, rtl 2가지만 고려한다.
@@ -2119,17 +2145,19 @@ void CnFTDServerDlg::file_transfer()
 		//서버에서 서버로 전송할 경우
 		if (m_srcSide == m_dstSide)
 		{
-			//from이 to와 같거나
-			if (m_transfer_from == m_transfer_to)
+			//from 이 to 와 같으면(같은 폴더) 이동은 무동작. 단 복사(Ctrl)는 같은 폴더에 '복사본' 생성이 유효하므로 통과.
+			//20260704 by claude. 기존엔 copy 여부와 무관하게 skip 해서 '같은 폴더 안 드롭' 시 복사가 아예 실행 안 됐음.
+			if (!m_drag_copy && m_transfer_from == m_transfer_to)
 			{
 				logWrite(_T("DND move: from==to (같은 폴더) → skip. from=[%s]"), m_transfer_from);
 				TRACE(_T("same folder. skip\n"));
 				return;
 			}
 
-			//[윈도우 탐색기 동일] 자식을 이미 들어있는 부모(=현재 위치)로 드롭 = 변화 없음 → 메시지박스 없이 조용히 무동작.
-			//(SHFileOperation FO_MOVE 는 이 경우 "대상 폴더가 원본 폴더와 같습니다" 중단 대화상자를 띄우므로 미리 차단.)
-			if (get_parent_dir(m_transfer_from) == m_transfer_to)
+			//[윈도우 탐색기 동일] 자식을 이미 들어있는 부모(=현재 위치)로 '이동' 드롭 = 변화 없음 → 조용히 무동작.
+			//(FO_MOVE 는 이 경우 "대상 폴더가 원본 폴더와 같습니다" 중단 대화상자를 띄우므로 미리 차단.)
+			//20260704 by claude. 복사(Ctrl)는 같은 부모로도 '복사본' 생성이 유효하므로 통과시킨다.
+			if (!m_drag_copy && get_parent_dir(m_transfer_from) == m_transfer_to)
 			{
 				logWrite(_T("DND move: 이미 부모 폴더에 있음(자기 위치로 드롭) → 무동작. from=[%s] to=[%s]"), m_transfer_from, m_transfer_to);
 				return;
@@ -2159,14 +2187,15 @@ void CnFTDServerDlg::file_transfer()
 
 			SHFILEOPSTRUCT op = { 0 };
 			op.hwnd = GetSafeHwnd();
-			op.wFunc = FO_MOVE;
+			op.wFunc = m_drag_copy ? FO_COPY : FO_MOVE;	//20260704 by claude. Ctrl = 복사
 			op.pFrom = from_buf.c_str();
 			op.pTo = to_buf.c_str();
 			op.fFlags = FOF_ALLOWUNDO;
 			int move_rc = SHFileOperation(&op);
-			logWrite(_T("DND move: SHFileOperation FO_MOVE 실행 to=[%s] rc=%d(0=성공) aborted=%d"), m_transfer_to, move_rc, (int)op.fAnyOperationsAborted);
+			logWrite(_T("DND %s: SHFileOperation %s 실행 to=[%s] rc=%d(0=성공) aborted=%d"),
+				m_drag_copy ? _T("copy") : _T("move"), m_drag_copy ? _T("FO_COPY") : _T("FO_MOVE"), m_transfer_to, move_rc, (int)op.fAnyOperationsAborted);
 
-			//이동 후 로컬 리스트만 새로고침. 트리는 호출부(트리 핸들러)가 서피컬로(소스 노드 제거/대상 노드 추가) 갱신 → 과한 트리 refresh 방지.
+			//이동/복사 후 로컬 리스트만 새로고침. 트리는 호출부(트리 핸들러)가 갱신(이동=서피컬 소스제거/대상추가, 복사=대상 refresh).
 			m_list_local.refresh_list(true, true);
 			return;
 		}
@@ -2177,18 +2206,35 @@ void CnFTDServerDlg::file_transfer()
 		pulDiskSpace = &m_ulServerDiskSpace;
 		m_transfer_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(1, m_remoteCurrentPath);
 
-		//remote에서 remote로 전송할 경우
+		//remote에서 remote로 = 같은 client 머신 내 작업
 		if (m_srcSide == m_dstSide)
 		{
-			//from이 to와 같거나
-			if (m_transfer_from == m_transfer_to)
+			//from 이 to 와 같으면 이동은 무동작. 복사(Ctrl)는 같은 폴더 '복사본' 이 유효하므로 통과.
+			//20260704 by claude. 로컬과 동일 — copy 는 same-folder 도 허용.
+			if (!m_drag_copy && m_transfer_from == m_transfer_to)
 			{
 				TRACE(_T("same folder. skip"));
 				return;
 			}
 
-			//'from == parent(to)'(하위 폴더로 드롭) 가드는 제거 — 유효한 이동을 막던 버그였다.
-			//(remote→remote move 는 아직 미구현이라 아래 전송(복사)으로 진행.)
+			//20260704 by claude. 리모트→리모트는 같은 client 머신 내 이동/복사 → 소켓 전송이 아니라 client 의 SHFileOperation 에 위임.
+			//각 소스에 file_command(move/copy)를 보내 client 가 FO_MOVE/FO_COPY 로 처리(이름충돌 대화상자·크로스드라이브·되돌리기 네이티브).
+			//Ctrl=복사, 기본=이동(기존 미구현이던 리모트 이동을 여기서 구현). 이동 시 자기 부모로 드롭(무동작)은 client SHFileOperation 이 안전 처리.
+			int cmd = m_drag_copy ? file_cmd_copy : file_cmd_move;
+			std::deque<CString> srcs;
+			for (auto& fd : m_transfer_list)
+			{
+				CString src = fd.cFileName;
+				if (src.Find(_T(':')) < 0)		//리스트 d&d 는 이름만 저장 → 소스 폴더와 결합. 트리 d&d 는 이미 fullpath.
+					src = concat_path(m_transfer_from, src);
+				srcs.push_back(src);
+			}
+			m_ServerManager.m_socket.file_command(cmd, NULL, m_transfer_to, &srcs);	//배치: N개 소스 + 대상 폴더
+			logWrite(_T("DND remote %s: to=[%s] count=%d 배치 전송"), m_drag_copy ? _T("copy") : _T("move"), m_transfer_to, (int)srcs.size());
+
+			//대상/소스가 보이는 원격 리스트 갱신. 트리는 호출부(트리 핸들러)가 갱신.
+			m_list_remote.refresh_list(true, true);
+			return;
 		}
 	}
 

@@ -465,7 +465,9 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 		return false;
 	}
 
-	if (cmd == file_cmd_property)
+	//20260704 by claude. move/copy 도 여러 소스를 한 번에 배치 전송(property 와 동일한 N개 문자열 전송) → client 가 한 SHFileOperation 으로
+	//처리(탐색기 진행/충돌 다이얼로그 1회). 대상 폴더는 아래 param1 로 별도 전송.
+	if (cmd == file_cmd_property || cmd == file_cmd_move || cmd == file_cmd_copy)
 	{
 		if (dqlist == NULL)
 			return false;
@@ -513,7 +515,7 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 		}
 	}
 
-	if (cmd == file_cmd_rename && param1)
+	if ((cmd == file_cmd_rename || cmd == file_cmd_move || cmd == file_cmd_copy) && param1)	//20260704 by claude. move/copy 도 대상(param1) 전송
 	{
 		//param1 길이 전송
 		length = _tcslen(param1) * 2;

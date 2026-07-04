@@ -82,6 +82,7 @@ public:
 	//l to l, r to r도 처리해야 하므로 src, dst가 어디인지 구분해야 한다.
 	int					m_srcSide = SERVER_SIDE;
 	int					m_dstSide = CLIENT_SIDE;
+	bool				m_drag_copy = false;	//20260704 by claude. 드롭 시 Ctrl 눌림 = 복사(기본은 이동). 같은 쪽(로컬/리모트) 드래그에만 적용.
 	bool				m_bViewerMode;
 
 	ULARGE_INTEGER		m_ulClientDiskSpace;

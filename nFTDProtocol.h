@@ -65,6 +65,8 @@ enum FILE_COMMAND
 	file_cmd_property,
 	file_cmd_favorite,
 	file_cmd_check_exist,
+	file_cmd_move,					//20260704 by claude. 같은 쪽(리모트→리모트) 드래그 이동 — client 가 SHFileOperation FO_MOVE (src=param0, dst폴더=param1).
+	file_cmd_copy,					//20260704 by claude. Ctrl+드래그 복사 — client 가 SHFileOperation FO_COPY.
 };
 
 
