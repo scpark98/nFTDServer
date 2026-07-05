@@ -479,7 +479,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 void CnFTDServerDlg::init_treectrl()
 {
 	m_tree_local.set_use_drag_and_drop(true);
-	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
+	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);	//shell 트리는 내부에서 라인 간격 30px 로 설정.
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//20260705 by claude. 드래그 중 대상에 따른 문구("+ …로 복사")를 계산해 드래그 이미지에 표시. 소스=로컬 트리.
 	m_tree_local.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_tree_local, pDropWnd, pt); });
@@ -880,7 +880,7 @@ void CnFTDServerDlg::initialize()
 {
 	InitServerManager();		// Server Manager 설정
 
-	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false, _T(""));
+	m_tree_remote.set_as_shell_treectrl(&theApp.m_shell_imagelist, false, _T(""));	//shell 트리는 내부에서 라인 간격 30px 로 설정.
 	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
 	m_tree_remote.set_use_own_context_menu(false);
 	m_list_remote.set_use_own_context_menu(false);
