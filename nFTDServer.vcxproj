@@ -1951,6 +1951,18 @@
     <None Include="res\nFTDServer.rc2" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="res\icon_overwrite.png" />
+    <Image Include="res\icon_overwrite_20.png" />
+    <Image Include="res\icon_overwrite_24.png" />
+    <Image Include="res\icon_overwrite_28.png" />
+    <Image Include="res\icon_resume.png" />
+    <Image Include="res\icon_resume_20.png" />
+    <Image Include="res\icon_resume_24.png" />
+    <Image Include="res\icon_resume_28.png" />
+    <Image Include="res\icon_skip.png" />
+    <Image Include="res\icon_skip_20.png" />
+    <Image Include="res\icon_skip_24.png" />
+    <Image Include="res\icon_skip_28.png" />
     <Image Include="res\images\arrow_left_to_right.png" />
     <Image Include="res\images\arrow_right_to_left.png" />
     <Image Include="res\images\drag_multi_files.png" />

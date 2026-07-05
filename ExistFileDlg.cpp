@@ -197,19 +197,35 @@ BOOL CExistFileDlg::OnInitDialog()
 		m_radio_succeed.EnableWindow(FALSE);
 	}
 
-	//권장 처리 + 라디오 자동선택 + 상단 verdict 배너(배경색으로 강조). (기억된 라디오값보다 상황별 권장을 우선.)
-	CString verdict;
-	Gdiplus::Color cr_vtext, cr_vback;
-	const Gdiplus::Color cr_green_t(96, 205, 130), cr_blue_t(96, 165, 245), cr_gray_t(176, 182, 190);
-	const Gdiplus::Color bg_green(30, 52, 40), bg_blue(28, 44, 62), bg_gray(48, 52, 60);
-	if (identical)         { verdict = _T("완전히 동일 — 건너뛰기 권장");                    cr_vtext = cr_gray_t;  cr_vback = bg_gray;  m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
-	else if (size_cmp < 0) { verdict = _T("대상이 더 큼 — 이어서 전송 불가, 덮어쓰기 권장");            cr_vtext = cr_green_t; cr_vback = bg_green; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else if (size_cmp > 0) { verdict = _T("대상이 더 작음(전송 중단 추정) — 이어서 전송 권장");          cr_vtext = cr_blue_t;  cr_vback = bg_blue;  m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else if (time_cmp > 0) { verdict = _T("크기 동일·원본이 더 최신 — 덮어쓰기 권장");        cr_vtext = cr_green_t; cr_vback = bg_green; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else                   { verdict = _T("크기 동일·대상이 더 최신 — 건너뛰기 권장");        cr_vtext = cr_gray_t;  cr_vback = bg_gray;  m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
-	m_static_message.set_back_color(cr_vback);
-	m_static_message.set_text_color(cr_vtext);
-	m_static_message.set_text(verdict);
+	//20260705 by claude. 권장 처리 + 라디오 자동선택 + 상단 verdict 배너를 '하이브리드' 스타일로 표시:
+	//round border static + 솔리드 의미색 배경(컨트롤 전체 rect) + 상태글자=흰색 + 권장문구=의미색·bold(tagged text).
+	//이전엔 flat 배경색 + 단색 텍스트라 상하 타이트·저가독이었음. 의미색 — 파랑=이어서 전송 / 주황=덮어쓰기 / 초록=건너뛰기.
+	const Gdiplus::Color bg_resume(44, 71, 98), bd_resume(180, 121, 184, 255), rec_resume(121, 184, 255);
+	const Gdiplus::Color bg_over  (90, 71, 42), bd_over  (180, 250, 190, 119), rec_over  (250, 190, 119);
+	const Gdiplus::Color bg_skip  (44, 82, 65), bd_skip  (180, 127, 219, 170), rec_skip  (127, 219, 170);
+
+	CString v_state, v_rec;
+	Gdiplus::Color v_bg, v_bd, v_rec_cr;
+	UINT v_icon;	//20260705 by claude. 상태별 좌측 아이콘(PNG 리소스, 타입 "PNG"). 파랑=이어서 / 주황=덮어쓰기 / 초록=건너뛰기.
+	if (identical)         { v_state = _T("완전히 동일");                    v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
+	else if (size_cmp < 0) { v_state = _T("대상이 더 큼 · 이어서 전송 불가"); v_rec = _T("덮어쓰기 권장");   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
+	else if (size_cmp > 0) { v_state = _T("대상이 더 작음 · 전송 중단 추정"); v_rec = _T("이어서 전송 권장"); v_bg = bg_resume; v_bd = bd_resume; v_rec_cr = rec_resume; v_icon = IDB_RESUME24;    m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED); }
+	else if (time_cmp > 0) { v_state = _T("크기 동일 · 원본이 더 최신");     v_rec = _T("덮어쓰기 권장");   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
+	else                   { v_state = _T("크기 동일 · 대상이 더 최신");     v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
+
+	CString v_tagged;
+	v_tagged.Format(_T("<cr=255,255,255>%s</cr>   <cr=150,160,170>›</cr>   <cr=%d,%d,%d><b>%s</b></cr>"),
+		v_state.GetString(), v_rec_cr.GetR(), v_rec_cr.GetG(), v_rec_cr.GetB(), v_rec.GetString());
+
+	m_static_message.set_font_size(10);						//약간 더 크게(기본보다 +1~2, 필요 시 조정). 상태=흰색, 권장=의미색+bold.
+	m_static_message.set_font_weight(FW_NORMAL);			//상태글자는 normal, 권장문구만 <b> 로 bold
+	m_static_message.set_back_color(v_bg);					//솔리드 의미색 배경(컨트롤 전체 rect → 상하 여백 확보)
+	m_static_message.set_round(8, v_bd, m_theme.cr_back);	//round border(의미색). 코너는 다이얼로그 배경으로 블렌드
+	m_static_message.set_margin(10, 0, 0, 0);				//20260705 by claude. 라운드 좌측 여백(아이콘 시작 위치를 모서리에서 띄움). 필요 시 조정.
+	m_static_message.add_header_image(v_icon);				//상태별 좌측 아이콘(PNG 리소스). 텍스트와의 간격은 set_header_gap 으로 조정.
+	m_static_message.set_header_gap(8);						//아이콘-텍스트 간격(px). 필요 시 조정.
+	m_static_message.set_valign(DT_VCENTER);
+	m_static_message.set_tagged_text(v_tagged);
 
 	//파일명(완전 동일 시 회색). '&' 리터럴 표시 위해 plain + no_prefix 유지.
 	Gdiplus::Color cr_name = identical ? cr_same : m_theme.cr_text;

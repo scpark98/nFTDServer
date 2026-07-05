@@ -101,13 +101,26 @@
 #define IDR_GIF_DELETE                  167
 #define IDR_TREE_CONTEXT_MENU           168
 #define IDS_SHOW_ON_AGENT               168
+#define IDB_OVERWRITE                   168
 #define IDS_MAKE_FILE_FOLDER_LIST       169
+#define IDB_RESUME                      169
 #define IDS_ALREADY_EXIST_SAME_NAME_ITEM 170
+#define IDB_SKIP                        170
 #define IDS_ALREADY_EXIST_SAME_NAME_FOLDER 171
+#define IDB_OVERWRITE20                 171
 #define IDS_FAIL_TO_GET_PROPERTY        172
+#define IDB_OVERWRITE24                 172
 #define IDS_HIGH_SPEED_MODE             173
+#define IDB_OVERWRITE28                 173
 #define IDS_SHOW_ON_AGENT2              174
 #define IDS_SHOW_ON_CLIENT              174
+#define IDB_RESUME20                    174
+#define IDB_RESUME24                    175
+#define IDB_RESUME28                    176
+#define IDB_SKIP20                      177
+#define IDB_SKIP24                      178
+#define IDB_PNG9                        179
+#define IDB_SKIP28                      179
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -241,7 +254,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        168
+#define _APS_NEXT_RESOURCE_VALUE        180
 #define _APS_NEXT_COMMAND_VALUE         32803
 #define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101

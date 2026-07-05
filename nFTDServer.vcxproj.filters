@@ -389,6 +389,42 @@
     <Image Include="res\images\arrow_right_to_left.png">
       <Filter>리소스 파일</Filter>
     </Image>
+    <Image Include="res\icon_overwrite.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_resume.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_skip.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_overwrite_20.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_overwrite_24.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_overwrite_28.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_resume_20.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_resume_24.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_resume_28.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_skip_20.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_skip_24.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_skip_28.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="readme.txt" />
