@@ -480,7 +480,9 @@ void CnFTDServerDlg::init_treectrl()
 {
 	m_tree_local.set_use_drag_and_drop(true);
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);
-	//m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//20260705 by claude. 드래그 중 대상에 따른 문구("+ …로 복사")를 계산해 드래그 이미지에 표시. 소스=로컬 트리.
+	m_tree_local.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_tree_local, pDropWnd, pt); });
 	//컨트롤 자체 메뉴 대신 이 앱이 제공하는 메뉴(OnContextMenu)를 쓰므로 false 로 위임한다.
 	m_tree_local.set_use_own_context_menu(false);
 	m_list_local.set_use_own_context_menu(false);
@@ -500,7 +502,9 @@ void CnFTDServerDlg::init_listctrl()
 	m_list_local.set_as_shell_listctrl(&theApp.m_shell_imagelist, true);
 	m_list_local.set_use_drag_and_drop(true);
 	m_list_local.restore_column_width(&theApp, _T("list local"));
-	//m_list_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	m_list_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//20260705 by claude. 소스=로컬 리스트. 드래그 중 대상 드라이브에 따라 "+ …로 복사" 문구 표시.
+	m_list_local.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_list_local, pDropWnd, pt); });
 
 	auto drive_list = theApp.m_shell_imagelist.m_volume[0].get_drive_list();
 	for (int i = 0; i < drive_list->size(); i++)
@@ -881,11 +885,15 @@ void CnFTDServerDlg::initialize()
 	m_tree_remote.set_use_own_context_menu(false);
 	m_list_remote.set_use_own_context_menu(false);
 	m_tree_remote.set_use_drag_and_drop(true);
-	//m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//20260705 by claude. 소스=리모트 트리. 리모트→리모트 같은 드라이브=이동(문구 없음), 다른 드라이브=복사, 로컬↔리모트=전송(문구 없음).
+	m_tree_remote.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_tree_remote, pDropWnd, pt); });
 
 	m_list_remote.set_as_shell_listctrl(&theApp.m_shell_imagelist, false, _T(""));
 	m_list_remote.set_use_drag_and_drop(true);
-	//m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	m_list_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
+	//20260705 by claude. 소스=리모트 리스트. 리모트→리모트 다른 드라이브=복사, 로컬↔리모트=전송(문구 없음).
+	m_list_remote.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_list_remote, pDropWnd, pt); });
 	m_list_remote.restore_column_width(&theApp, _T("list remote"));
 
 	m_path_remote.set_shell_imagelist(&theApp.m_shell_imagelist, false);
@@ -2024,23 +2032,133 @@ void CnFTDServerDlg::set_color_theme(int theme)
 //m_dstSide			: 수신측
 //m_transfer_from	: 송신 폴더
 //m_transfer_to		: 수신 폴더
+//20260705 by claude. 드래그 중 대상에 따라 드래그 이미지 하단에 표시할 문구를 계산한다. DroppedHandler 의 타깃 해석과 같은
+//기준(트리=HitTest 항목, 리스트=폴더 항목 위면 그 하위 폴더·아니면 현재 폴더)으로 src/dst 를 잡아, 실제 드롭 결과와 문구가
+//일치하도록 한다. cross-side(로컬↔리모트)=파일전송이라 문구 없음, 같은 side·같은 드라이브=이동(문구 없음), 다른 드라이브=복사.
+bool CnFTDServerDlg::drag_is_copy(const CString& from_path, const CString& to_path)
+{
+	//실시간 물리 키(GetAsyncKeyState) — SetCapture 드래그 중에도 안정적으로 Ctrl/Shift 눌림을 본다.
+	bool ctrl  = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+	bool shift = (GetAsyncKeyState(VK_SHIFT)   & 0x8000) != 0;
+	if (ctrl)
+		return true;	//Ctrl = 강제 복사(탐색기 동일)
+	if (shift)
+		return false;	//Shift = 강제 이동
+	//키 없음 → 드라이브 기준: 같은 드라이브 = 이동, 다른 드라이브 = 복사.
+	if (from_path.GetLength() < 2 || to_path.GetLength() < 2)
+		return false;
+	return (from_path.Left(2).CompareNoCase(to_path.Left(2)) != 0);
+}
+
+CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint pt_screen)
+{
+	if (pDragWnd == NULL || pDropWnd == NULL)
+		return _T("");
+
+	//--- 소스 side + 소스 경로(드래그 항목/현재 폴더) ---
+	int		src_side;
+	CString	src_path;
+	if (pDragWnd == &m_tree_local)			{ src_side = SERVER_SIDE; src_path = m_tree_local.get_path(m_tree_local.m_DragItem); }
+	else if (pDragWnd == &m_tree_remote)	{ src_side = CLIENT_SIDE; src_path = m_tree_remote.get_path(m_tree_remote.m_DragItem); }
+	else if (pDragWnd == &m_list_local)		{ src_side = SERVER_SIDE; src_path = m_list_local.get_path(); }
+	else if (pDragWnd == &m_list_remote)	{ src_side = CLIENT_SIDE; src_path = m_remoteCurrentPath; }
+	else
+		return _T("");
+
+	//--- 타깃 side + 타깃 폴더(커서 아래) + 표시명 ---
+	int		dst_side;
+	CString	dst_path;
+	CString	dst_name;		//문구에 보일 폴더명 — 컨트롤 항목 텍스트(드라이브면 "로컬 디스크 (D:)" 같은 레이블)를 우선 사용.
+	CPoint	cli = pt_screen;
+
+	if (pDropWnd == &m_tree_local || pDropWnd == &m_tree_remote)
+	{
+		CSCTreeCtrl* pt = (CSCTreeCtrl*)pDropWnd;
+		dst_side = (pDropWnd == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
+		pt->ScreenToClient(&cli);
+		UINT flags = 0;
+		HTREEITEM h = pt->HitTest(cli, &flags);
+		if (h == NULL)
+			return _T("");
+		dst_path = pt->get_path(h);
+		dst_name = pt->GetItemText(h);
+	}
+	else if (pDropWnd == &m_list_local || pDropWnd == &m_list_remote)
+	{
+		CVtListCtrlEx* pl = (CVtListCtrlEx*)pDropWnd;
+		dst_side = (pDropWnd == &m_list_remote) ? CLIENT_SIDE : SERVER_SIDE;
+		CString base_path = (pDropWnd == &m_list_remote) ? m_remoteCurrentPath : pl->get_path();
+		pl->ScreenToClient(&cli);
+		UINT flags = 0;
+		int idx = pl->HitTest(cli, &flags);
+		//폴더 항목(크기 컬럼 empty) 위면 그 하위 폴더로, 아니면 현재 폴더로 드롭.
+		if (idx >= 0 && pl->get_text(idx, CVtListCtrlEx::col_filesize).IsEmpty())
+		{
+			dst_path = concat_path(base_path, pl->get_text(idx, CVtListCtrlEx::col_filename));
+			dst_name = pl->get_text(idx, CVtListCtrlEx::col_filename);
+		}
+		else
+			dst_path = base_path;
+	}
+	else
+		return _T("");
+
+	//cross-side = 파일전송(이 앱 기본 기능) → 문구 없음.
+	if (src_side != dst_side)
+		return _T("");
+
+	//같은 side: 실제 경로로 변환 후 드라이브 비교.
+	CString from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(src_side, src_path);
+	CString to   = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dst_side, dst_path);
+	if (from.GetLength() < 2 || to.GetLength() < 2)
+		return _T("");
+
+	bool	is_copy = drag_is_copy(from, to);	//Ctrl=복사 / Shift=이동 / 없으면 드라이브 기준(같은 드라이브=이동, 다른=복사)
+
+	//같은 폴더(소스가 이미 들어있는 폴더)로의 '이동'은 무동작이라 문구를 표시하지 않는다(탐색기 동일). 단 복사는 같은 폴더에도
+	//'복사본' 생성이 유효하므로 표시. 소스 컨테이너: 리스트=현재 폴더(from), 트리=드래그한 폴더의 부모(자기 자신에 드롭도 무동작).
+	if (!is_copy)
+	{
+		auto same_path = [](CString a, CString b) -> bool
+		{
+			if (a.GetLength() > 3 && a.Right(1) == _T('\\')) a = a.Left(a.GetLength() - 1);
+			if (b.GetLength() > 3 && b.Right(1) == _T('\\')) b = b.Left(b.GetLength() - 1);
+			return a.CompareNoCase(b) == 0;
+		};
+		bool	is_list_src = (pDragWnd == &m_list_local || pDragWnd == &m_list_remote);
+		CString	src_container = is_list_src ? from : get_parent_dir(from);
+		if (same_path(to, src_container) || (!is_list_src && same_path(to, from)))
+			return _T("");
+	}
+
+	//기호(+/→)와 동작어(복사/이동)를 bold + 강조색으로, 폴더명은 기본색으로 — CSCShapeDlg/CSCParagraph 의 tagged text(<b>/<cr=..>).
+	//표시명: 컨트롤 항목 텍스트(dst_name) 우선 → 폴더 leaf → 실제 경로. 드라이브 루트는 leaf 가 비므로 항목 레이블/경로로 표시.
+	CString folder_name = dst_name;
+	if (folder_name.IsEmpty())
+		folder_name = get_part(to, fn_name);
+	if (folder_name.IsEmpty())
+		folder_name = to;
+	//기호(+/→)·동작어(복사/이동) 모두 <b> 로 강조. 굵기(faux-bold thickness)는 compose 에서 run 별로 — 기호는 강하게, 한글 단어는
+	//semibold(약하게) 처리해 CJK 뭉개짐 없이 가독성 유지.
+	CString text;
+	if (is_copy)
+		text.Format(_T("<b><cr=seagreen>+</cr></b> %s(으)로 <b><cr=seagreen>복사</cr></b>"), folder_name);
+	else
+		text.Format(_T("<b><cr=royalblue>→</cr></b> %s(으)로 <b><cr=royalblue>이동</cr></b>"), folder_name);
+	return text;
+}
+
 void CnFTDServerDlg::file_transfer()
 {
-	//20260704 by claude. 드롭 순간 Ctrl 눌림 = 복사(같은 쪽 드래그에만 의미. cross-side 는 항상 전송/복사라 무관).
-	//GetAsyncKeyState 는 호출 시점의 '실시간 물리 키 상태' → SetCapture 드래그 중에도 드롭 순간 Ctrl 눌림을 안정적으로 감지.
-	//20260704 by claude. [보류] 같은 폴더에 같은 이름으로 복사 시 이름충돌 자동 리네임("파일 (1)")을 안 해 복사가 실패하는 케이스가 있어
-	//기능 보류. 아래 감지 문장만 주석 처리 → m_drag_copy 는 항상 false(=이동)로 동작. 재개 시: 이 줄 복구 + SHFileOperation 에
-	//FOF_RENAMEONCOLLISION 추가(탐색기식 자동 리네임) 검토. 그 외 copy 코드(프로토콜/client/트리 갱신 등)는 모두 그대로 남겨둔다.
-	//m_drag_copy = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;	//[보류] Ctrl 액션 복사만 보류.
-	//m_drag_copy 는 아래 convert 후 '드라이브 판정'으로 결정한다(탐색기 기본): 같은 드라이브 = 이동, 다른 드라이브 = 복사.
-
 	m_transfer_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
 	m_transfer_to = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
 
-	//20260704 by claude. 드래그 이동/복사 판정(탐색기 기본): 소스와 대상의 드라이브가 같으면 이동, 다르면 '무조건 복사'.
-	//Ctrl 키 기반 복사는 보류(위) — 재개 시 여기에 || (Ctrl 눌림) 을 OR 로 추가한다. cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용.
-	m_drag_copy = (m_transfer_from.Left(2).CompareNoCase(m_transfer_to.Left(2)) != 0);
-	logWrite(_T("DND file_transfer: m_drag_copy=%d (from_drive=%s to_drive=%s)"), (int)m_drag_copy, m_transfer_from.Left(2), m_transfer_to.Left(2));
+	//20260705 by claude. 드래그 이동/복사 판정(탐색기 기본, drag_is_copy): Ctrl=강제 복사, Shift=강제 이동, 키 없으면 드라이브
+	//기준(같은 드라이브=이동, 다른 드라이브=복사). cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용. 같은 폴더에 같은
+	//이름으로 복사 시 이름충돌은 아래 SHFileOperation 에 FOF_RENAMEONCOLLISION 을 줘 탐색기처럼 "… - 복사본" 으로 자동 리네임.
+	m_drag_copy = drag_is_copy(m_transfer_from, m_transfer_to);
+	logWrite(_T("DND file_transfer: m_drag_copy=%d (from_drive=%s to_drive=%s ctrl=%d shift=%d)"), (int)m_drag_copy,
+		m_transfer_from.Left(2), m_transfer_to.Left(2), (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0, (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0);
 
 	logWrite(_T("DND file_transfer 진입: srcSide=%d dstSide=%d from=[%s] to=[%s] list=%d"),
 		m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, (int)m_transfer_list.size());
@@ -2187,16 +2305,27 @@ void CnFTDServerDlg::file_transfer()
 
 			SHFILEOPSTRUCT op = { 0 };
 			op.hwnd = GetSafeHwnd();
-			op.wFunc = m_drag_copy ? FO_COPY : FO_MOVE;	//20260704 by claude. Ctrl = 복사
+			op.wFunc = m_drag_copy ? FO_COPY : FO_MOVE;	//Ctrl=복사 / Shift=이동 / 드라이브 기준(drag_is_copy)
 			op.pFrom = from_buf.c_str();
 			op.pTo = to_buf.c_str();
-			op.fFlags = FOF_ALLOWUNDO;
+			//20260705 by claude. 복사 시 대상에 같은 이름이 있으면 FOF_RENAMEONCOLLISION 으로 탐색기처럼 "… - 복사본"/"… (2)" 자동 리네임.
+			op.fFlags = FOF_ALLOWUNDO | (m_drag_copy ? FOF_RENAMEONCOLLISION : 0);
 			int move_rc = SHFileOperation(&op);
 			logWrite(_T("DND %s: SHFileOperation %s 실행 to=[%s] rc=%d(0=성공) aborted=%d"),
 				m_drag_copy ? _T("copy") : _T("move"), m_drag_copy ? _T("FO_COPY") : _T("FO_MOVE"), m_transfer_to, move_rc, (int)op.fAnyOperationsAborted);
 
+			//20260705 by claude. 복사는 소스 항목이 그대로 남으므로 refresh 로 사라진 선택을 원래 소스 항목으로 복원(사용자 기대: 복사
+			//후에도 원본이 선택 유지). 이동은 소스가 사라져 복원 대상 없음.
+			std::deque<CString> sel_names;
+			if (m_drag_copy)
+				for (auto& fd : m_transfer_list)
+					sel_names.push_back(get_part(fd.cFileName, fn_name));
+
 			//이동/복사 후 로컬 리스트만 새로고침. 트리는 호출부(트리 핸들러)가 갱신(이동=서피컬 소스제거/대상추가, 복사=대상 refresh).
 			m_list_local.refresh_list(true, true);
+
+			if (!sel_names.empty())
+				reselect_list_by_names(&m_list_local, sel_names);
 			return;
 		}
 	}
@@ -2222,18 +2351,24 @@ void CnFTDServerDlg::file_transfer()
 			//Ctrl=복사, 기본=이동(기존 미구현이던 리모트 이동을 여기서 구현). 이동 시 자기 부모로 드롭(무동작)은 client SHFileOperation 이 안전 처리.
 			int cmd = m_drag_copy ? file_cmd_copy : file_cmd_move;
 			std::deque<CString> srcs;
+			std::deque<CString> sel_names;	//20260705 by claude. 복사 후 원본 선택 복원용(로컬과 동일).
 			for (auto& fd : m_transfer_list)
 			{
 				CString src = fd.cFileName;
 				if (src.Find(_T(':')) < 0)		//리스트 d&d 는 이름만 저장 → 소스 폴더와 결합. 트리 d&d 는 이미 fullpath.
 					src = concat_path(m_transfer_from, src);
 				srcs.push_back(src);
+				if (m_drag_copy)
+					sel_names.push_back(get_part(fd.cFileName, fn_name));
 			}
 			m_ServerManager.m_socket.file_command(cmd, NULL, m_transfer_to, &srcs);	//배치: N개 소스 + 대상 폴더
 			logWrite(_T("DND remote %s: to=[%s] count=%d 배치 전송"), m_drag_copy ? _T("copy") : _T("move"), m_transfer_to, (int)srcs.size());
 
 			//대상/소스가 보이는 원격 리스트 갱신. 트리는 호출부(트리 핸들러)가 갱신.
 			m_list_remote.refresh_list(true, true);
+
+			if (!sel_names.empty())
+				reselect_list_by_names(&m_list_remote, sel_names);
 			return;
 		}
 	}
@@ -2314,6 +2449,33 @@ void CnFTDServerDlg::select_transfered_items(CVtListCtrlEx* plist)
 			if (name.CompareNoCase(tn) == 0)
 			{
 				plist->select_item(i, true, false, false);	//누적 선택(다른 전송 항목 유지), 스크롤은 아래에서 한 번만.
+				last_sel = i;
+				break;
+			}
+		}
+	}
+
+	if (last_sel >= 0)
+		plist->ensure_visible(last_sel, CVtListCtrlEx::visible_last);
+}
+
+void CnFTDServerDlg::reselect_list_by_names(CVtListCtrlEx* plist, const std::deque<CString>& names)
+{
+	if (names.empty())
+		return;
+
+	plist->select_item(-1, false);	//기존 선택 전체 해제 후 names 에 해당하는 항목만 다시 선택.
+
+	int last_sel = -1;
+	int count = plist->GetItemCount();
+	for (int i = 0; i < count; i++)
+	{
+		CString name = get_part(plist->get_path(i), fn_name);
+		for (const auto& n : names)
+		{
+			if (name.CompareNoCase(n) == 0)
+			{
+				plist->select_item(i, true, false, false);	//누적 선택, 스크롤은 아래에서 한 번만.
 				last_sel = i;
 				break;
 			}
@@ -2821,6 +2983,10 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				break;
 			case file_cmd_delete :
 				{
+					//20260705 by claude. 삭제 중 워처 정지. delete_file(SHFileOperation)은 내부 메시지 펌프를 돌리는데, 그 사이 디렉터리
+					//워처가 refresh 를 재진입시켜 m_list_db 를 재구성하면 아래 루프의 index/delete_item 의 erase 가 어긋나 크래시한다.
+					//(리스트는 LVS_OWNERDATA 라 m_list_db 가 곧 데이터. 재구성되면 stale index 로 erase → end() 초과.) 끝에 rewatch_local() 로 재개.
+					m_dir_watcher.stop();
 
 					int deleted_count = 0;
 
