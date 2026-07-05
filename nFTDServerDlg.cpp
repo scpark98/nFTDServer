@@ -21,6 +21,10 @@
 #define new DEBUG_NEW
 #endif
 
+//20260705 by claude. 트리/리스트 populate 시 항목 수가 이 값 이하면 progress(로딩바)를 아예 표시하지 않는다. 대부분의 폴더는
+//항목이 적어 progress 가 순식간에 나타났다 사라지는 깜빡임만 유발하므로, 시작 시 알려지는 총 개수로 표시 여부를 판단한다.
+static const int PROGRESS_SHOW_MIN_COUNT = 200;
+
 
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
@@ -1389,7 +1393,9 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		CSCSliderCtrl* slider = (msg->pThis == &m_list_local ? &m_progress_local : &m_progress_remote);
 		if ((int)lParam < 0)
 		{
-			slider->ShowWindow(SW_SHOW);
+			//20260705 by claude. 항목 수가 적으면 progress 를 아예 표시하지 않는다(폴더 변경마다 깜빡임 방지). 총 개수는 시작 신호(reserved)에 실려 온다.
+			if ((int)msg->reserved > PROGRESS_SHOW_MIN_COUNT)
+				slider->ShowWindow(SW_SHOW);
 			slider->SetRange(0, msg->reserved);
 		}
 		else
@@ -1592,7 +1598,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 				m_progress_remote.SetRange(0, dq.size());
 				m_progress_remote.SetPos(0);
-				m_progress_remote.ShowWindow(SW_SHOW);
+				if ((int)dq.size() > PROGRESS_SHOW_MIN_COUNT)		//20260705 by claude. 항목 적으면 표시 안 함(깜빡임 방지). 리모트도 로컬과 동일 정책.
+					m_progress_remote.ShowWindow(SW_SHOW);
 
 				for (i = 0; i < dq.size(); i++)
 				{
@@ -1726,7 +1733,9 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		CSCSliderCtrl* slider = (msg->pThis == &m_tree_local ? &m_progress_local : &m_progress_remote);
 		if ((int)lParam < 0)
 		{
-			slider->ShowWindow(SW_SHOW);
+			//20260705 by claude. 항목 수가 적으면 progress 를 아예 표시하지 않는다(폴더 변경마다 깜빡임 방지). 총 개수는 시작 신호(reserved)에 실려 온다.
+			if ((int)msg->reserved > PROGRESS_SHOW_MIN_COUNT)
+				slider->ShowWindow(SW_SHOW);
 			slider->SetRange(0, msg->reserved);
 		}
 		else
@@ -1935,7 +1944,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 
 			m_progress_remote.SetRange(0, dq.size());
 			m_progress_remote.SetPos(0);
-			m_progress_remote.ShowWindow(SW_SHOW);
+			if ((int)dq.size() > PROGRESS_SHOW_MIN_COUNT)		//20260705 by claude. 항목 적으면 표시 안 함(깜빡임 방지). 리모트도 로컬과 동일 정책.
+				m_progress_remote.ShowWindow(SW_SHOW);
 
 			CString filename;
 			CString fullpath;
