@@ -210,8 +210,15 @@ BOOL CExistFileDlg::OnInitDialog()
 	if (identical)         { v_state = _T("완전히 동일");                    v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
 	else if (size_cmp < 0) { v_state = _T("대상이 더 큼 · 이어서 전송 불가"); v_rec = _T("덮어쓰기 권장");   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
 	else if (size_cmp > 0) { v_state = _T("대상이 더 작음 · 전송 중단 추정"); v_rec = _T("이어서 전송 권장"); v_bg = bg_resume; v_bd = bd_resume; v_rec_cr = rec_resume; v_icon = IDB_RESUME24;    m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else if (time_cmp > 0) { v_state = _T("크기 동일 · 원본이 더 최신");     v_rec = _T("덮어쓰기 권장");   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else                   { v_state = _T("크기 동일 · 대상이 더 최신");     v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
+	else /* size_cmp == 0 · 크기 완전 동일하고 날짜만 다름 */
+	{
+		//20260706 by claude. 크기가 완전히 동일하면 같은 파일로 간주 → 날짜가 달라도 '건너뛰기 권장'.
+		//날짜 방향(원본/대상 누가 더 최신)은 v_state 및 하단 수정시각 라인에 '정보'로만 표시하고,
+		//이어서 전송/덮어쓰기 추천의 근거로는 쓰지 않는다(이전엔 원본이 더 최신이면 덮어쓰기를 권장했음).
+		v_state = (time_cmp > 0) ? _T("크기 동일 · 원본이 더 최신") : _T("크기 동일 · 대상이 더 최신");
+		v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;
+		m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED);
+	}
 
 	CString v_tagged;
 	v_tagged.Format(_T("<cr=255,255,255>%s</cr>   <cr=150,160,170>›</cr>   <cr=%d,%d,%d><b>%s</b></cr>"),
