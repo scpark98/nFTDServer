@@ -17,6 +17,13 @@ CExistFileDlg::CExistFileDlg(CWnd* pParent, WIN32_FIND_DATA src_file, WIN32_FIND
 {
 	m_src_file = src_file;
 	m_dst_file = dst_file;
+
+	//20260706 by claude. 타이틀바 높이는 base OnInitDialog 안의 apply_client_titlebar_layout(WYSIWYG 레이아웃 보정)이
+	//참조하므로 반드시 OnInitDialog 전(ctor)에 확정해야 한다(SCThemeDlg.h 주석 명시). set_titlebar_height()를 쓰면
+	//아직 create 전인 m_sys_buttons.MoveWindow 에서 ASSERT 나므로, 여기선 window 조작 없는 멤버 직접 대입만 한다.
+	//(이전엔 base 뒤에서 set_titlebar_height 호출 → 레이아웃이 기본값 32 로 예약되고 실제 타이틀바는 24 라 8px 어긋났다.
+	// 이 창은 고정크기 + CResizeCtrl 없음이라 그 드리프트가 그대로 노출됨.)
+	m_titlebar_height = TOOLBAR_TITLE_HEIGHT;
 }
 
 CExistFileDlg::~CExistFileDlg()
@@ -68,7 +75,6 @@ BOOL CExistFileDlg::OnInitDialog()
 
 	// TODO:  여기에 추가 초기화 작업을 추가합니다.
 	set_color_theme(theApp.m_color_theme);
-	set_titlebar_height(TOOLBAR_TITLE_HEIGHT);
 	show_titlebar_logo(false);
 	set_as_toolbar();
 	//set_draw_border(true);	//DimGray 테두리가 진하게 보여 제거(전송창과 동일 처리). 필요 시 옅은 색으로 재지정.
@@ -160,14 +166,14 @@ BOOL CExistFileDlg::OnInitDialog()
 
 	//크기/시각 비교 마커.
 	CString src_size_tag, dst_size_tag, src_time_tag, dst_time_tag;
-	if (identical)         { src_size_tag = dst_size_tag = _T("= 동일"); }
-	else if (size_cmp > 0) { src_size_tag = _T("▲ 더 큼");   dst_size_tag = _T("▼ 더 작음"); }
-	else if (size_cmp < 0) { src_size_tag = _T("▼ 더 작음"); dst_size_tag = _T("▲ 더 큼"); }
-	else                   { src_size_tag = dst_size_tag = _T("= 같음"); }
-	if (identical)         { src_time_tag = dst_time_tag = _T("= 동일"); }
-	else if (time_cmp > 0) { src_time_tag = _T("▲ 더 최신");   dst_time_tag = _T("▼ 더 오래됨"); }
-	else if (time_cmp < 0) { src_time_tag = _T("▼ 더 오래됨"); dst_time_tag = _T("▲ 더 최신"); }
-	else                   { src_time_tag = dst_time_tag = _T("= 같음"); }
+	if (identical)         { src_size_tag = dst_size_tag = _S(IDS_CMP_SAME); }
+	else if (size_cmp > 0) { src_size_tag = _S(IDS_CMP_LARGER);  dst_size_tag = _S(IDS_CMP_SMALLER); }
+	else if (size_cmp < 0) { src_size_tag = _S(IDS_CMP_SMALLER); dst_size_tag = _S(IDS_CMP_LARGER); }
+	else                   { src_size_tag = dst_size_tag = _S(IDS_CMP_EQUAL); }
+	if (identical)         { src_time_tag = dst_time_tag = _S(IDS_CMP_SAME); }
+	else if (time_cmp > 0) { src_time_tag = _S(IDS_CMP_NEWER);   dst_time_tag = _S(IDS_CMP_OLDER); }
+	else if (time_cmp < 0) { src_time_tag = _S(IDS_CMP_OLDER);   dst_time_tag = _S(IDS_CMP_NEWER); }
+	else                   { src_time_tag = dst_time_tag = _S(IDS_CMP_EQUAL); }
 
 	//항목 상태: 3=완전동일(회색 전체), 2=강조(녹색+bold), 1=약화(amber), 0=같음(normal).
 	int src_size_state = identical ? 3 : (size_cmp > 0 ? 2 : (size_cmp < 0 ? 1 : 0));
@@ -185,7 +191,7 @@ BOOL CExistFileDlg::OnInitDialog()
 	};
 
 	//제목의 크기 관계 표기.
-	if (identical)         { m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" (완전 동일)")); m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" (완전 동일)")); }
+	if (identical)         { m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_TITLE_IDENTICAL)); m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_TITLE_IDENTICAL)); }
 	else if (size_cmp > 0) { m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE)); }
 	else if (size_cmp < 0) { m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_LARGER_FILE_SIZE)); }
 	else                   { m_static_src_file_title.set_text(_S(IDS_EXIST_SRC_FILE_TITLE) + _T(" ") + _S(IDS_EQUAL_FILE_SIZE)); m_static_dst_file_title.set_text(_S(IDS_EXIST_DST_FILE_TITLE) + _T(" ") + _S(IDS_EQUAL_FILE_SIZE)); }
@@ -207,16 +213,16 @@ BOOL CExistFileDlg::OnInitDialog()
 	CString v_state, v_rec;
 	Gdiplus::Color v_bg, v_bd, v_rec_cr;
 	UINT v_icon;	//20260705 by claude. 상태별 좌측 아이콘(PNG 리소스, 타입 "PNG"). 파랑=이어서 / 주황=덮어쓰기 / 초록=건너뛰기.
-	if (identical)         { v_state = _T("완전히 동일");                    v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
-	else if (size_cmp < 0) { v_state = _T("대상이 더 큼 · 이어서 전송 불가"); v_rec = _T("덮어쓰기 권장");   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else if (size_cmp > 0) { v_state = _T("대상이 더 작음 · 전송 중단 추정"); v_rec = _T("이어서 전송 권장"); v_bg = bg_resume; v_bd = bd_resume; v_rec_cr = rec_resume; v_icon = IDB_RESUME24;    m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED); }
+	if (identical)         { v_state = _S(IDS_ST_IDENTICAL);                    v_rec = _S(IDS_REC_SKIP);   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
+	else if (size_cmp < 0) { v_state = _S(IDS_ST_TARGET_LARGER); v_rec = _S(IDS_REC_OVERWRITE);   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
+	else if (size_cmp > 0) { v_state = _S(IDS_ST_TARGET_SMALLER); v_rec = _S(IDS_REC_RESUME); v_bg = bg_resume; v_bd = bd_resume; v_rec_cr = rec_resume; v_icon = IDB_RESUME24;    m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED); }
 	else /* size_cmp == 0 · 크기 완전 동일하고 날짜만 다름 */
 	{
 		//20260706 by claude. 크기가 완전히 동일하면 같은 파일로 간주 → 날짜가 달라도 '건너뛰기 권장'.
 		//날짜 방향(원본/대상 누가 더 최신)은 v_state 및 하단 수정시각 라인에 '정보'로만 표시하고,
 		//이어서 전송/덮어쓰기 추천의 근거로는 쓰지 않는다(이전엔 원본이 더 최신이면 덮어쓰기를 권장했음).
-		v_state = (time_cmp > 0) ? _T("크기 동일 · 원본이 더 최신") : _T("크기 동일 · 대상이 더 최신");
-		v_rec = _T("건너뛰기 권장");   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;
+		v_state = (time_cmp > 0) ? _S(IDS_ST_SRC_NEWER) : _S(IDS_ST_TGT_NEWER);
+		v_rec = _S(IDS_REC_SKIP);   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;
 		m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED);
 	}
 
@@ -248,6 +254,28 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_static_dst_filesize.set_valign(DT_VCENTER);  m_static_dst_filesize.set_tagged_text(cmp_line(_S(IDS_FILE_SIZE), dst_size_val, dst_size_tag, dst_size_state));
 	m_static_src_mtime.set_valign(DT_VCENTER);     m_static_src_mtime.set_tagged_text(cmp_line(_S(IDS_FILE_LAST_MODIFIED_TIME), get_file_time_str(m_src_file.ftLastWriteTime), src_time_tag, src_time_state));
 	m_static_dst_mtime.set_valign(DT_VCENTER);     m_static_dst_mtime.set_tagged_text(cmp_line(_S(IDS_FILE_LAST_MODIFIED_TIME), get_file_time_str(m_dst_file.ftLastWriteTime), dst_time_tag, dst_time_state));
+
+	//20260706 by claude. [진단 임시·주석] 여백 비대칭 측정 — client 와 주요 컨트롤의 rect/각 변 여백(px). 재조사 시 해제. §2J
+	//{
+	//	CRect rcC;
+	//	GetClientRect(&rcC);
+	//	auto log_ctrl = [&](LPCTSTR name, CWnd& w)
+	//	{
+	//		if (!::IsWindow(w.GetSafeHwnd()))
+	//			return;
+	//		CRect r;
+	//		w.GetWindowRect(&r);
+	//		ScreenToClient(&r);
+	//		logWrite(_T("[EXISTLAYOUT] %-10s rect=(%d,%d,%d,%d)  L=%d R=%d T=%d B=%d"),
+	//			name, r.left, r.top, r.right, r.bottom,
+	//			r.left - rcC.left, rcC.right - r.right, r.top - rcC.top, rcC.bottom - r.bottom);
+	//	};
+	//	logWrite(_T("[EXISTLAYOUT] client=%dx%d  titlebar=%d"), rcC.Width(), rcC.Height(), m_titlebar_height);
+	//	log_ctrl(_T("banner"), m_static_message);
+	//	log_ctrl(_T("src_title"), m_static_src_file_title);
+	//	log_ctrl(_T("ok_btn"), m_button_ok);
+	//	log_ctrl(_T("check_all"), m_check_apply_all);
+	//}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 예외: OCX 속성 페이지는 FALSE를 반환해야 합니다.

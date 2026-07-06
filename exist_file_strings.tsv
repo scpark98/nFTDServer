@@ -1,0 +1,16 @@
+﻿ID	한글	영어	일본어
+IDS_CMP_SAME	= 동일	= Same	= 同一
+IDS_CMP_LARGER	▲ 더 큼	▲ Larger	▲ 大きい
+IDS_CMP_SMALLER	▼ 더 작음	▼ Smaller	▼ 小さい
+IDS_CMP_NEWER	▲ 더 최신	▲ Newer	▲ 新しい
+IDS_CMP_OLDER	▼ 더 오래됨	▼ Older	▼ 古い
+IDS_CMP_EQUAL	= 같음	= Equal	= 同じ
+IDS_TITLE_IDENTICAL	(완전 동일)	(Identical)	(同一)
+IDS_ST_IDENTICAL	완전히 동일	Identical	完全に同一
+IDS_ST_TARGET_LARGER	대상이 더 큼 · 이어서 전송 불가	Target larger · Can't resume	対象が大きい · 再開不可
+IDS_ST_TARGET_SMALLER	대상이 더 작음 · 전송 중단 추정	Target smaller · Likely incomplete	対象が小さい · 中断の可能性
+IDS_ST_SRC_NEWER	크기 동일 · 원본이 더 최신	Same size · Source newer	サイズ同一 · 元が新しい
+IDS_ST_TGT_NEWER	크기 동일 · 대상이 더 최신	Same size · Target newer	サイズ同一 · 対象が新しい
+IDS_REC_SKIP	건너뛰기 권장	★ Skip	★ スキップ
+IDS_REC_OVERWRITE	덮어쓰기 권장	★ Overwrite	★ 上書き
+IDS_REC_RESUME	이어서 전송 권장	★ Resume	★ 再開

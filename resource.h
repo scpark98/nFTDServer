@@ -249,12 +249,27 @@
 #define ID_TREE_CONTEXT_MENU_RENAME     32800
 #define ID_TREE_CONTEXT_MENU_PATH_TO_CLIPBOARD 32801
 #define ID_LIST_CONTEXT_MENU_PATH_TO_CLIPBOARD 32802
+#define IDS_CMP_SAME                    180
+#define IDS_CMP_LARGER                  181
+#define IDS_CMP_SMALLER                 182
+#define IDS_CMP_NEWER                   183
+#define IDS_CMP_OLDER                   184
+#define IDS_CMP_EQUAL                   185
+#define IDS_TITLE_IDENTICAL             186
+#define IDS_ST_IDENTICAL                187
+#define IDS_ST_TARGET_LARGER            188
+#define IDS_ST_TARGET_SMALLER           189
+#define IDS_ST_SRC_NEWER                190
+#define IDS_ST_TGT_NEWER                191
+#define IDS_REC_SKIP                    192
+#define IDS_REC_OVERWRITE               193
+#define IDS_REC_RESUME                  194
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        180
+#define _APS_NEXT_RESOURCE_VALUE        195
 #define _APS_NEXT_COMMAND_VALUE         32803
 #define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
