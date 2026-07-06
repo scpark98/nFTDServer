@@ -184,10 +184,12 @@ BOOL CExistFileDlg::OnInitDialog()
 	//tagged text 빌더: "크기"/"수정한 날짜" 레이블은 normal, 값+마커만 상태별 색/굵기(목업과 동일한 부분 강조).
 	auto cmp_line = [](const CString& label, const CString& value, const CString& tag, int state) -> CString
 	{
-		if (state == 3) return _T("<cr=150,156,164>") + label + _T(" : ") + value + _T("   ") + tag + _T("</cr>");	//완전동일: 전체 회색
-		if (state == 2) return label + _T(" : <cr=60,175,95><b>") + value + _T("   ") + tag + _T("</b></cr>");		//강조: 녹색+bold
-		if (state == 1) return label + _T(" : <cr=210,150,60>") + value + _T("   ") + tag + _T("</cr>");			//약화: amber
-		return label + _T(" : ") + value + _T("   ") + tag;															//같음: normal
+		//20260706 by claude. 마커(tag, 예: "↑ 더 큼")는 화살표가 얇아 보여 <sz=10><b> 로 약간 크고 굵게. state 2 는 이미 <b> 안이라 <sz> 만.
+		//(값 라인 static 높이가 작아 13/11 은 잘림 → 10. 배너 → 는 static 이 커서 13 유지.) 크기 다른 마커는 set_line_align(-1,DT_VCENTER)로 세로중앙.
+		if (state == 3) return _T("<cr=150,156,164>") + label + _T(" : ") + value + _T("   <sz=10><b>") + tag + _T("</b></sz></cr>");	//완전동일: 전체 회색
+		if (state == 2) return label + _T(" : <cr=60,175,95><b>") + value + _T("   <sz=10>") + tag + _T("</sz></b></cr>");			//강조: 녹색+bold
+		if (state == 1) return label + _T(" : <cr=210,150,60>") + value + _T("   <sz=10><b>") + tag + _T("</b></sz></cr>");			//약화: amber
+		return label + _T(" : ") + value + _T("   <sz=10><b>") + tag + _T("</b></sz>");											//같음: normal
 	};
 
 	//제목의 크기 관계 표기.
@@ -227,18 +229,20 @@ BOOL CExistFileDlg::OnInitDialog()
 	}
 
 	CString v_tagged;
-	v_tagged.Format(_T("<cr=255,255,255>%s</cr>   <cr=150,160,170>›</cr>   <cr=%d,%d,%d><b>%s</b></cr>"),
+	v_tagged.Format(_T("<cr=255,255,255>%s</cr>   <cr=255,255,255><sz=13><b>→</b></sz></cr>   <cr=%d,%d,%d><b>%s</b></cr>"),
 		v_state.GetString(), v_rec_cr.GetR(), v_rec_cr.GetG(), v_rec_cr.GetB(), v_rec.GetString());
 
 	m_static_message.set_font_size(10);						//약간 더 크게(기본보다 +1~2, 필요 시 조정). 상태=흰색, 권장=의미색+bold.
 	m_static_message.set_font_weight(FW_NORMAL);			//상태글자는 normal, 권장문구만 <b> 로 bold
 	m_static_message.set_back_color(v_bg);					//솔리드 의미색 배경(컨트롤 전체 rect → 상하 여백 확보)
 	m_static_message.set_round(8, v_bd, m_theme.cr_back);	//round border(의미색). 코너는 다이얼로그 배경으로 블렌드
-	m_static_message.set_margin(10, 0, 0, 0);				//20260705 by claude. 라운드 좌측 여백(아이콘 시작 위치를 모서리에서 띄움). 필요 시 조정.
+	m_static_message.set_margin(4, 0, 0, 0);				//20260706 by claude. 아이콘 좌측 여백 — 상하 여백((배너높이-아이콘)/2≈5)과 균형 맞춰 10→4.
 	m_static_message.add_header_image(v_icon);				//상태별 좌측 아이콘(PNG 리소스). 텍스트와의 간격은 set_header_gap 으로 조정.
 	m_static_message.set_header_gap(8);						//아이콘-텍스트 간격(px). 필요 시 조정.
 	m_static_message.set_valign(DT_VCENTER);
 	m_static_message.set_tagged_text(v_tagged);
+	//20260706 by claude. 배너는 단일 라인 — 큰 화살표(<sz=13>)와 작은 상태/권장 텍스트를 라인 안에서 세로중앙 정렬(set_tagged_text 뒤 호출).
+	m_static_message.set_line_align(0, DT_VCENTER);
 
 	//파일명(완전 동일 시 회색). '&' 리터럴 표시 위해 plain + no_prefix 유지.
 	Gdiplus::Color cr_name = identical ? cr_same : m_theme.cr_text;
@@ -250,10 +254,11 @@ BOOL CExistFileDlg::OnInitDialog()
 	src_size_val.Format(_T("%s (%s)"), get_size_str(src_filesize.QuadPart, 1), get_size_str(src_filesize.QuadPart, 0));
 	dst_size_val.Format(_T("%s (%s)"), get_size_str(dst_filesize.QuadPart, 1), get_size_str(dst_filesize.QuadPart, 0));
 
-	m_static_src_filesize.set_valign(DT_VCENTER);  m_static_src_filesize.set_tagged_text(cmp_line(_S(IDS_FILE_SIZE), src_size_val, src_size_tag, src_size_state));
-	m_static_dst_filesize.set_valign(DT_VCENTER);  m_static_dst_filesize.set_tagged_text(cmp_line(_S(IDS_FILE_SIZE), dst_size_val, dst_size_tag, dst_size_state));
-	m_static_src_mtime.set_valign(DT_VCENTER);     m_static_src_mtime.set_tagged_text(cmp_line(_S(IDS_FILE_LAST_MODIFIED_TIME), get_file_time_str(m_src_file.ftLastWriteTime), src_time_tag, src_time_state));
-	m_static_dst_mtime.set_valign(DT_VCENTER);     m_static_dst_mtime.set_tagged_text(cmp_line(_S(IDS_FILE_LAST_MODIFIED_TIME), get_file_time_str(m_dst_file.ftLastWriteTime), dst_time_tag, dst_time_state));
+	//20260706 by claude. 마커(↑↓)를 <sz=13> 로 키웠으므로 값(작은 텍스트)과 크기가 달라진다 → 라인 안에서 세로중앙 정렬(set_line_align).
+	m_static_src_filesize.set_valign(DT_VCENTER);  m_static_src_filesize.set_tagged_text(cmp_line(_S(IDS_FILE_SIZE), src_size_val, src_size_tag, src_size_state));   m_static_src_filesize.set_line_align(-1, DT_VCENTER);
+	m_static_dst_filesize.set_valign(DT_VCENTER);  m_static_dst_filesize.set_tagged_text(cmp_line(_S(IDS_FILE_SIZE), dst_size_val, dst_size_tag, dst_size_state));   m_static_dst_filesize.set_line_align(-1, DT_VCENTER);
+	m_static_src_mtime.set_valign(DT_VCENTER);     m_static_src_mtime.set_tagged_text(cmp_line(_S(IDS_FILE_LAST_MODIFIED_TIME), get_file_time_str(m_src_file.ftLastWriteTime), src_time_tag, src_time_state));   m_static_src_mtime.set_line_align(-1, DT_VCENTER);
+	m_static_dst_mtime.set_valign(DT_VCENTER);     m_static_dst_mtime.set_tagged_text(cmp_line(_S(IDS_FILE_LAST_MODIFIED_TIME), get_file_time_str(m_dst_file.ftLastWriteTime), dst_time_tag, dst_time_state));   m_static_dst_mtime.set_line_align(-1, DT_VCENTER);
 
 	//20260706 by claude. [진단 임시·주석] 여백 비대칭 측정 — client 와 주요 컨트롤의 rect/각 변 여백(px). 재조사 시 해제. §2J
 	//{
