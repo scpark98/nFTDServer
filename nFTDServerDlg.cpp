@@ -2045,21 +2045,6 @@ void CnFTDServerDlg::set_color_theme(int theme)
 //20260705 by claude. 드래그 중 대상에 따라 드래그 이미지 하단에 표시할 문구를 계산한다. DroppedHandler 의 타깃 해석과 같은
 //기준(트리=HitTest 항목, 리스트=폴더 항목 위면 그 하위 폴더·아니면 현재 폴더)으로 src/dst 를 잡아, 실제 드롭 결과와 문구가
 //일치하도록 한다. cross-side(로컬↔리모트)=파일전송이라 문구 없음, 같은 side·같은 드라이브=이동(문구 없음), 다른 드라이브=복사.
-bool CnFTDServerDlg::drag_is_copy(const CString& from_path, const CString& to_path)
-{
-	//실시간 물리 키(GetAsyncKeyState) — SetCapture 드래그 중에도 안정적으로 Ctrl/Shift 눌림을 본다.
-	bool ctrl  = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-	bool shift = (GetAsyncKeyState(VK_SHIFT)   & 0x8000) != 0;
-	if (ctrl)
-		return true;	//Ctrl = 강제 복사(탐색기 동일)
-	if (shift)
-		return false;	//Shift = 강제 이동
-	//키 없음 → 드라이브 기준: 같은 드라이브 = 이동, 다른 드라이브 = 복사.
-	if (from_path.GetLength() < 2 || to_path.GetLength() < 2)
-		return false;
-	return (from_path.Left(2).CompareNoCase(to_path.Left(2)) != 0);
-}
-
 CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint pt_screen)
 {
 	if (pDragWnd == NULL || pDropWnd == NULL)
@@ -2123,7 +2108,7 @@ CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint
 	if (from.GetLength() < 2 || to.GetLength() < 2)
 		return _T("");
 
-	bool	is_copy = drag_is_copy(from, to);	//Ctrl=복사 / Shift=이동 / 없으면 드라이브 기준(같은 드라이브=이동, 다른=복사)
+	bool	is_copy = is_drag_copy(from, to);	//Ctrl=복사 / Shift=이동 / 없으면 드라이브 기준(같은 드라이브=이동, 다른=복사)
 
 	//같은 폴더(소스가 이미 들어있는 폴더)로의 '이동'은 무동작이라 문구를 표시하지 않는다(탐색기 동일). 단 복사는 같은 폴더에도
 	//'복사본' 생성이 유효하므로 표시. 소스 컨테이너: 리스트=현재 폴더(from), 트리=드래그한 폴더의 부모(자기 자신에 드롭도 무동작).
@@ -2163,10 +2148,10 @@ void CnFTDServerDlg::file_transfer()
 	m_transfer_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
 	m_transfer_to = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
 
-	//20260705 by claude. 드래그 이동/복사 판정(탐색기 기본, drag_is_copy): Ctrl=강제 복사, Shift=강제 이동, 키 없으면 드라이브
+	//20260705 by claude. 드래그 이동/복사 판정(탐색기 기본, is_drag_copy): Ctrl=강제 복사, Shift=강제 이동, 키 없으면 드라이브
 	//기준(같은 드라이브=이동, 다른 드라이브=복사). cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용. 같은 폴더에 같은
 	//이름으로 복사 시 이름충돌은 아래 SHFileOperation 에 FOF_RENAMEONCOLLISION 을 줘 탐색기처럼 "… - 복사본" 으로 자동 리네임.
-	m_drag_copy = drag_is_copy(m_transfer_from, m_transfer_to);
+	m_drag_copy = is_drag_copy(m_transfer_from, m_transfer_to);
 	logWrite(_T("DND file_transfer: m_drag_copy=%d (from_drive=%s to_drive=%s ctrl=%d shift=%d)"), (int)m_drag_copy,
 		m_transfer_from.Left(2), m_transfer_to.Left(2), (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0, (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0);
 
@@ -2315,7 +2300,7 @@ void CnFTDServerDlg::file_transfer()
 
 			SHFILEOPSTRUCT op = { 0 };
 			op.hwnd = GetSafeHwnd();
-			op.wFunc = m_drag_copy ? FO_COPY : FO_MOVE;	//Ctrl=복사 / Shift=이동 / 드라이브 기준(drag_is_copy)
+			op.wFunc = m_drag_copy ? FO_COPY : FO_MOVE;	//Ctrl=복사 / Shift=이동 / 드라이브 기준(is_drag_copy)
 			op.pFrom = from_buf.c_str();
 			op.pTo = to_buf.c_str();
 			//20260705 by claude. 복사 시 대상에 같은 이름이 있으면 FOF_RENAMEONCOLLISION 으로 탐색기처럼 "… - 복사본"/"… (2)" 자동 리네임.
@@ -2335,7 +2320,7 @@ void CnFTDServerDlg::file_transfer()
 			m_list_local.refresh_list(true, true);
 
 			if (!sel_names.empty())
-				reselect_list_by_names(&m_list_local, sel_names);
+				m_list_local.select_items_by_names(sel_names);
 			return;
 		}
 	}
@@ -2378,7 +2363,7 @@ void CnFTDServerDlg::file_transfer()
 			m_list_remote.refresh_list(true, true);
 
 			if (!sel_names.empty())
-				reselect_list_by_names(&m_list_remote, sel_names);
+				m_list_remote.select_items_by_names(sel_names);
 			return;
 		}
 	}
@@ -2439,61 +2424,10 @@ void CnFTDServerDlg::add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DAT
 }
 
 //전송 완료 후(리스트가 refresh_list 로 리로드된 뒤) 이번에 전송된 항목들을 다시 선택하고 마지막 항목으로 스크롤한다.
-//insert_item 은 선택을 하지 않고 refresh_list 가 그마저 리로드로 지우므로, 여기서 이름 매칭으로 선택을 복원한다.
+//insert_item 은 선택을 하지 않고 refresh_list 가 그마저 리로드로 지우므로, 이름 매칭 선택 복원은 컨트롤의 select_items_by_names 에 위임한다.
 void CnFTDServerDlg::select_transfered_items(CVtListCtrlEx* plist)
 {
-	if (m_transfered_names.empty())
-		return;
-
-	plist->select_item(-1, false);	//기존 선택 전체 해제 → 이번에 전송된 항목만 선택 상태로 남긴다.
-									//(select_item 은 SetItemState 호출 → nIndex=-1 은 "모든 항목". bSelect 기본값 true 로 부르면
-									// 전체 "선택"이 되므로 반드시 false 를 명시해 해제해야 한다.)
-
-	int last_sel = -1;
-	int count = plist->GetItemCount();
-	for (int i = 0; i < count; i++)
-	{
-		CString name = get_part(plist->get_path(i), fn_name);
-		for (const auto& tn : m_transfered_names)
-		{
-			if (name.CompareNoCase(tn) == 0)
-			{
-				plist->select_item(i, true, false, false);	//누적 선택(다른 전송 항목 유지), 스크롤은 아래에서 한 번만.
-				last_sel = i;
-				break;
-			}
-		}
-	}
-
-	if (last_sel >= 0)
-		plist->ensure_visible(last_sel, CVtListCtrlEx::visible_last);
-}
-
-void CnFTDServerDlg::reselect_list_by_names(CVtListCtrlEx* plist, const std::deque<CString>& names)
-{
-	if (names.empty())
-		return;
-
-	plist->select_item(-1, false);	//기존 선택 전체 해제 후 names 에 해당하는 항목만 다시 선택.
-
-	int last_sel = -1;
-	int count = plist->GetItemCount();
-	for (int i = 0; i < count; i++)
-	{
-		CString name = get_part(plist->get_path(i), fn_name);
-		for (const auto& n : names)
-		{
-			if (name.CompareNoCase(n) == 0)
-			{
-				plist->select_item(i, true, false, false);	//누적 선택, 스크롤은 아래에서 한 번만.
-				last_sel = i;
-				break;
-			}
-		}
-	}
-
-	if (last_sel >= 0)
-		plist->ensure_visible(last_sel, CVtListCtrlEx::visible_last);
+	plist->select_items_by_names(m_transfered_names);
 }
 
 //상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.

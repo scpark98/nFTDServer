@@ -135,17 +135,11 @@ public:
 	//20260705 by claude. 드래그 중 드래그 이미지 하단에 표시할 문구 계산(트리/리스트 provider 가 호출). 같은 side·같은 드라이브=이동
 	//(문구 없음), 같은 side·다른 드라이브=복사("+ 대상폴더(으)로 복사"), cross-side=파일전송(문구 없음). pt 는 screen 좌표.
 	CString				compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint pt_screen);
-	//20260705 by claude. 같은 side 드래그의 이동/복사 판정(탐색기 기본): Ctrl=강제 복사, Shift=강제 이동, 키 없으면 드라이브 기준
-	//(같은 드라이브=이동, 다른 드라이브=복사). GetAsyncKeyState 로 실시간 물리 키를 봐 드래그 중/드롭 순간 모두 일관 적용.
-	bool				drag_is_copy(const CString& from_path, const CString& to_path);
 	void				add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DATA);
 	//전송 중 대상 폴더 뷰에 실제로 들어간 파일/폴더 이름들. 전송 완료 후 refresh_list 로 폴더를 리로드하면 선택/스크롤이
 	//날아가므로, 이 목록으로 전송된 항목을 다시 선택하고 마지막 항목으로 ensure_visible 해 사용자가 결과를 바로 보게 한다.
 	std::deque<CString>	m_transfered_names;
 	void				select_transfered_items(CVtListCtrlEx* plist);
-	//20260705 by claude. refresh_list 로 리로드된 리스트에서 names(파일/폴더 leaf 이름)에 해당하는 항목을 다시 선택한다.
-	//드래그 복사 후 소스 항목이 그대로 남으므로 원래 선택을 유지(리로드로 사라지던 선택 복원).
-	void				reselect_list_by_names(CVtListCtrlEx* plist, const std::deque<CString>& names);
 
 	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
 	bool				is_transfer_enable_for_list(int srcSide);
