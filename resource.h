@@ -264,12 +264,14 @@
 #define IDS_REC_SKIP                    192
 #define IDS_REC_OVERWRITE               193
 #define IDS_REC_RESUME                  194
+#define IDS_ST_CONFLICT                 195
+#define IDS_REC_MANUAL                  196
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        195
+#define _APS_NEXT_RESOURCE_VALUE        197
 #define _APS_NEXT_COMMAND_VALUE         32803
 #define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101

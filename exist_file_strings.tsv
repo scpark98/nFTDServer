@@ -11,6 +11,8 @@ IDS_ST_TARGET_LARGER	대상이 더 큼 · 이어서 전송 불가	Target larger 
 IDS_ST_TARGET_SMALLER	대상이 더 작음 · 전송 중단 추정	Target smaller · Likely incomplete	対象が小さい · 中断の可能性
 IDS_ST_SRC_NEWER	크기 동일 · 원본이 더 최신	Same size · Source newer	サイズ同一 · 元が新しい
 IDS_ST_TGT_NEWER	크기 동일 · 대상이 더 최신	Same size · Target newer	サイズ同一 · 対象が新しい
+IDS_ST_CONFLICT	크기·날짜 엇갈림 · 판단 보류	Size & date disagree · Undecided	サイズと日付が相反 · 判断保留
 IDS_REC_SKIP	건너뛰기 권장	★ Skip	★ スキップ
 IDS_REC_OVERWRITE	덮어쓰기 권장	★ Overwrite	★ 上書き
 IDS_REC_RESUME	이어서 전송 권장	★ Resume	★ 再開
+IDS_REC_MANUAL	직접 선택하세요	Choose manually	手動で選択

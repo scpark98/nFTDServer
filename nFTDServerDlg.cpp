@@ -1568,7 +1568,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		long t0 = clock();
 
-		TRACE(_T("received msg = CSCTreeCtrl::message_request_folder_list\n"));
+		//TRACE(_T("received msg = CSCTreeCtrl::message_request_folder_list\n"));
 		int i;
 		CString path = *(CString*)lParam;
 
@@ -1605,7 +1605,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				{
 					m_progress_remote.SetPos(i + 1);
 
-					TRACE(_T("add folder %d = %s\n"), i, dq[i].cFileName);
+					//TRACE(_T("add folder %d = %s\n"), i, dq[i].cFileName);
 					bool has_child = false;
 
 					if (is_drive_root(dq[i].cFileName))
@@ -1635,7 +1635,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		}
 
 		LeaveCriticalSection(&g_cs);
-		TRACE(_T("tree expanding elapsed for %s = %ld\n"), path, clock() - t0);
+		//TRACE(_T("tree expanding elapsed for %s = %ld\n"), path, clock() - t0);
 
 		m_tree_remote.SetRedraw(TRUE);
 		EnableWindow(TRUE);
@@ -2730,12 +2730,12 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
 	if (nIDEvent == timer_init_remote_controls)
 	{
-		TRACE(_T("timer0. start\n"));
+		//TRACE(_T("timer0. start\n"));
 		if (m_ServerManager.is_connected() == false)
 			return;
 
 		KillTimer(timer_init_remote_controls);
-		TRACE(_T("killtimer0.\n"));
+		//TRACE(_T("killtimer0.\n"));
 
 		initialize();
 		Invalidate();
@@ -3422,7 +3422,7 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 
 	double free_ratio = (((double)ulFree.QuadPart / (double)ulTotal.QuadPart)) * 100.0;
 
-	TRACE(_T("%s drive free space ratio = %f\n"), drive, free_ratio);
+	//TRACE(_T("%s drive free space ratio = %f\n"), drive, free_ratio);
 
 	//progressbar에는 남은 용량만큼 채우는게 아니라 사용량만큼 채워서 보여준다.
 	if (free_ratio < 10.0f)
@@ -3904,19 +3904,19 @@ void CnFTDServerDlg::rewatch_local()
 		if (!p.IsEmpty() && PathIsDirectory(p))
 		{
 			m_dir_watcher.add(p, false);	//CSCDirWatcher::add 는 is_watching 으로 중복 skip
-			logWrite(_T("DIRWATCH watch(tree expanded): [%s]"), p);
+			//logWrite(_T("DIRWATCH watch(tree expanded): [%s]"), p);
 			count++;
 		}
 	}
 
-	logWrite(_T("DIRWATCH: 로컬 감시 폴더 %d개(비재귀) 설정 완료"), count);
+	//logWrite(_T("DIRWATCH: 로컬 감시 폴더 %d개(비재귀) 설정 완료"), count);
 }
 
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_NEW_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
-	logWrite(_T("DIRWATCH: action=%d path0=[%s] path1=[%s]"), msg->action, msg->path0, msg->path1);
+	//logWrite(_T("DIRWATCH: action=%d path0=[%s] path1=[%s]"), msg->action, msg->path0, msg->path1);
 
 	//변경된 항목의 '부모 폴더'(=내용이 바뀐 폴더)와 현재 리스트 폴더(둘 다 real path).
 	CString changed_parent = get_part(msg->path0, fn_folder);

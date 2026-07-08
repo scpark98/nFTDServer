@@ -145,7 +145,7 @@ BOOL CnFTDServerSocket::Connection()
 		//logWrite(_T("before m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY)"));
 		isCryptInit = m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY);
 		//logWrite(_T("after m_sock.CryptInit(BLASTSOCK_CRYPT_CREATEAESKEY)"));
-		TRACE(_T("isCryptInit = %d\n"), isCryptInit);
+		//TRACE(_T("isCryptInit = %d\n"), isCryptInit);
 #endif
 
 	}

@@ -209,21 +209,42 @@ BOOL CExistFileDlg::OnInitDialog()
 	//round border static + 솔리드 의미색 배경(컨트롤 전체 rect) + 상태글자=흰색 + 권장문구=의미색·bold(tagged text).
 	//이전엔 flat 배경색 + 단색 텍스트라 상하 타이트·저가독이었음. 의미색 — 파랑=이어서 전송 / 주황=덮어쓰기 / 초록=건너뛰기.
 	const Gdiplus::Color bg_resume(44, 71, 98), bd_resume(180, 121, 184, 255), rec_resume(121, 184, 255);
-	const Gdiplus::Color bg_over  (90, 71, 42), bd_over  (180, 250, 190, 119), rec_over  (250, 190, 119);
 	const Gdiplus::Color bg_skip  (44, 82, 65), bd_skip  (180, 127, 219, 170), rec_skip  (127, 219, 170);
+	//20260708 by claude. 크기·날짜가 상반될 때의 '판단 보류' 중립색(회색 계열). 초록/파랑 등 의미색을 피해 '추천 아님'을 시각적으로 구분.
+	const Gdiplus::Color bg_conflict(64, 68, 74), bd_conflict(180, 150, 156, 164), rec_conflict(200, 205, 212);
+
+	//20260708 by claude. 권장 로직 개편 — 크기와 날짜를 함께 본다(예전엔 크기가 다르면 날짜를 무시). 크기 방향과 날짜 방향이
+	//상반(size_cmp*time_cmp<0: 원본이 큰데 더 오래됨 / 원본이 작은데 더 최신)이면 어느 쪽이 최신·완전본인지 불분명 →
+	//아무 옵션도 권장하지 않는다(라디오 전체 해제 + 확인버튼 비활성, 사용자가 직접 선택). 상반이 아닐 때만 아래 규칙으로 권장:
+	//  · 원본이 더 큼 & (더 최신 or 동일날짜) → 이어서 전송(대상=중단된 과거 부분전송으로 간주)
+	//  · 그 외(완전 동일 · 크기 동일·날짜만 다름 · 대상이 더 크고 원본이 오래됨/동일) → 건너뛰기(기존 유지)
+	bool conflict = (size_cmp * time_cmp) < 0;
 
 	CString v_state, v_rec;
 	Gdiplus::Color v_bg, v_bd, v_rec_cr;
-	UINT v_icon;	//20260705 by claude. 상태별 좌측 아이콘(PNG 리소스, 타입 "PNG"). 파랑=이어서 / 주황=덮어쓰기 / 초록=건너뛰기.
-	if (identical)         { v_state = _S(IDS_ST_IDENTICAL);                    v_rec = _S(IDS_REC_SKIP);   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;      m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED); }
-	else if (size_cmp < 0) { v_state = _S(IDS_ST_TARGET_LARGER); v_rec = _S(IDS_REC_OVERWRITE);   v_bg = bg_over;   v_bd = bd_over;   v_rec_cr = rec_over;   v_icon = IDB_OVERWRITE24; m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_CHECKED);   m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else if (size_cmp > 0) { v_state = _S(IDS_ST_TARGET_SMALLER); v_rec = _S(IDS_REC_RESUME); v_bg = bg_resume; v_bd = bd_resume; v_rec_cr = rec_resume; v_icon = IDB_RESUME24;    m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED); }
-	else /* size_cmp == 0 · 크기 완전 동일하고 날짜만 다름 */
+	UINT v_icon = 0;		//상태별 좌측 아이콘(PNG 리소스). 0 = 아이콘 없음(판단 보류 시).
+	bool recommend = true;	//false = 권장 없음(판단 보류) → 라디오 자동선택 안 함 + 확인버튼 비활성.
+
+	if (conflict)
 	{
-		//20260706 by claude. 크기가 완전히 동일하면 같은 파일로 간주 → 날짜가 달라도 '건너뛰기 권장'.
-		//날짜 방향(원본/대상 누가 더 최신)은 v_state 및 하단 수정시각 라인에 '정보'로만 표시하고,
-		//이어서 전송/덮어쓰기 추천의 근거로는 쓰지 않는다(이전엔 원본이 더 최신이면 덮어쓰기를 권장했음).
-		v_state = (time_cmp > 0) ? _S(IDS_ST_SRC_NEWER) : _S(IDS_ST_TGT_NEWER);
+		//크기·날짜 상반 → 판단 보류. 상태문구는 크기 관계만 사실로 표시(날짜는 하단 수정시각 라인에 정보로 나옴).
+		v_state = (size_cmp > 0) ? _S(IDS_ST_TARGET_SMALLER) : _S(IDS_ST_TARGET_LARGER);
+		v_rec = _S(IDS_REC_MANUAL);   v_bg = bg_conflict; v_bd = bd_conflict; v_rec_cr = rec_conflict;
+		recommend = false;
+		m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED);
+	}
+	else if (size_cmp > 0)
+	{
+		//원본이 더 크고 날짜가 상반이 아님(더 최신 or 동일) → 대상은 중단된 과거 부분전송 → 이어서 전송 권장.
+		v_state = _S(IDS_ST_TARGET_SMALLER); v_rec = _S(IDS_REC_RESUME); v_bg = bg_resume; v_bd = bd_resume; v_rec_cr = rec_resume; v_icon = IDB_RESUME24;
+		m_radio_succeed.SetCheck(BST_CHECKED);   m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED);
+	}
+	else
+	{
+		//완전 동일 / 크기 동일·날짜만 다름 / 대상이 더 크고 원본이 오래됨(or 동일) → 기존 유지 = 건너뛰기 권장.
+		if (identical)          v_state = _S(IDS_ST_IDENTICAL);
+		else if (size_cmp == 0) v_state = (time_cmp > 0) ? _S(IDS_ST_SRC_NEWER) : _S(IDS_ST_TGT_NEWER);	//크기 동일 → 같은 파일 간주, 날짜는 정보로만
+		else                    v_state = _S(IDS_ST_TARGET_LARGER);										//대상이 더 큼(원본이 오래됨/동일)
 		v_rec = _S(IDS_REC_SKIP);   v_bg = bg_skip;   v_bd = bd_skip;   v_rec_cr = rec_skip;   v_icon = IDB_SKIP24;
 		m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_CHECKED);
 	}
@@ -237,12 +258,16 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_static_message.set_back_color(v_bg);					//솔리드 의미색 배경(컨트롤 전체 rect → 상하 여백 확보)
 	m_static_message.set_round(8, v_bd, m_theme.cr_back);	//round border(의미색). 코너는 다이얼로그 배경으로 블렌드
 	m_static_message.set_margin(4, 0, 0, 0);				//20260706 by claude. 아이콘 좌측 여백 — 상하 여백((배너높이-아이콘)/2≈5)과 균형 맞춰 10→4.
-	m_static_message.add_header_image(v_icon);				//상태별 좌측 아이콘(PNG 리소스). 텍스트와의 간격은 set_header_gap 으로 조정.
+	if (v_icon)  m_static_message.add_header_image(v_icon);	//상태별 좌측 아이콘(PNG 리소스). 판단 보류(v_icon==0)면 아이콘 없이 텍스트만.
 	m_static_message.set_header_gap(8);						//아이콘-텍스트 간격(px). 필요 시 조정.
 	m_static_message.set_valign(DT_VCENTER);
 	m_static_message.set_tagged_text(v_tagged);
 	//20260706 by claude. 배너는 단일 라인 — 큰 화살표(<sz=13>)와 작은 상태/권장 텍스트를 라인 안에서 세로중앙 정렬(set_tagged_text 뒤 호출).
 	m_static_message.set_line_align(0, DT_VCENTER);
+
+	//20260708 by claude. 판단 보류(크기·날짜 상반)면 권장 없음 → 확인버튼 비활성. 사용자가 라디오를 직접 클릭하면 활성(각 라디오 핸들러에서 EnableWindow(TRUE)).
+	if (!recommend)
+		m_button_ok.EnableWindow(FALSE);
 
 	//파일명(완전 동일 시 회색). '&' 리터럴 표시 위해 plain + no_prefix 유지.
 	Gdiplus::Color cr_name = identical ? cr_same : m_theme.cr_text;
@@ -294,7 +319,7 @@ void CExistFileDlg::OnBnClickedOk()
 	theApp.WriteProfileInt(_T("setting\\ExistFileDlg"), _T("exist file. overwrite"), m_radio_overwrite.GetCheck());
 	theApp.WriteProfileInt(_T("setting\\ExistFileDlg"), _T("exist file. skip"), m_radio_skip.GetCheck());
 
-	int Exist;
+	int Exist = -1;
 
 	if (m_radio_succeed.GetCheck())
 	{
@@ -308,6 +333,10 @@ void CExistFileDlg::OnBnClickedOk()
 	{
 		Exist = WRITE_IGNORE;
 	}
+
+	//판단 보류로 아무 라디오도 선택되지 않은 상태 → 창을 닫지 않는다(확인버튼이 비활성이라 정상 흐름엔 도달 안 하나 방어적).
+	if (Exist == -1)
+		return;
 
 	if (m_check_apply_all.GetCheck())
 	{
@@ -351,16 +380,19 @@ LRESULT CExistFileDlg::on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam)
 
 void CExistFileDlg::OnBnClickedRadioSucceed()
 {
+	m_button_ok.EnableWindow(TRUE);		//판단 보류(크기·날짜 상반)로 비활성됐던 경우, 사용자가 직접 선택하면 확인버튼 활성.
 }
 
 
 void CExistFileDlg::OnBnClickedRadioOverwrite()
 {
+	m_button_ok.EnableWindow(TRUE);
 }
 
 
 void CExistFileDlg::OnBnClickedRadioSkip()
 {
+	m_button_ok.EnableWindow(TRUE);
 }
 
 void CExistFileDlg::OnBnClickedCheckApplyAll()
