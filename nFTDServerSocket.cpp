@@ -1583,6 +1583,14 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			exist_file.nFileSizeHigh = exist_filesize.HighPart;
 			exist_file.nFileSizeLow = exist_filesize.LowPart;
 
+			//20260709 by claude. 대상 수정시각이 '동일'로 잘못 표시되던 버그 수정.
+			//to 는 호출부(nFTDFileTransferDialog)에서 원본 m_filelist[i] 를 통째로 memcpy 하고 경로명만 바꾼 값이라
+			//to.ftLastWriteTime == from.ftLastWriteTime 이다. 그대로 쓰면 동일이름 대화상자에서 원본/대상 수정시각이
+			//항상 같게 나온다. 실제 로컬 대상 파일의 시각을 읽어 넣는다.
+			//(송신 방향은 exist_file 을 네트워크로 수신하므로 실제 시각이라 이 문제가 없다.)
+			//hFile 은 GENERIC_WRITE(FILE_GENERIC_WRITE 매핑에 FILE_READ_ATTRIBUTES 포함)라 GetFileTime 가능.
+			GetFileTime(hFile, &exist_file.ftCreationTime, &exist_file.ftLastAccessTime, &exist_file.ftLastWriteTime);
+
 			DWORD dwWrite = m_dwWrite;
 
 			if (dwWrite == WRITE_UNKNOWN)

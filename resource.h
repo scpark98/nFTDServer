@@ -121,6 +121,9 @@
 #define IDB_SKIP24                      178
 #define IDB_PNG9                        179
 #define IDB_SKIP28                      179
+#define IDB_QUESTION20                  197
+#define IDB_QUESTION24                  198
+#define IDB_QUESTION28                  199
 #define IDC_TREE_LOCAL                  1000
 #define IDC_LIST_LOCAL                  1001
 #define IDC_TREE_REMOTE                 1002
@@ -271,7 +274,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        197
+#define _APS_NEXT_RESOURCE_VALUE        200
 #define _APS_NEXT_COMMAND_VALUE         32803
 #define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101

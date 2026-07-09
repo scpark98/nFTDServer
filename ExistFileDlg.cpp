@@ -222,14 +222,14 @@ BOOL CExistFileDlg::OnInitDialog()
 
 	CString v_state, v_rec;
 	Gdiplus::Color v_bg, v_bd, v_rec_cr;
-	UINT v_icon = 0;		//상태별 좌측 아이콘(PNG 리소스). 0 = 아이콘 없음(판단 보류 시).
+	UINT v_icon = 0;		//상태별 좌측 아이콘(PNG 리소스). 모든 분기에서 지정된다.
 	bool recommend = true;	//false = 권장 없음(판단 보류) → 라디오 자동선택 안 함 + 확인버튼 비활성.
 
 	if (conflict)
 	{
 		//크기·날짜 상반 → 판단 보류. 상태문구는 크기 관계만 사실로 표시(날짜는 하단 수정시각 라인에 정보로 나옴).
 		v_state = (size_cmp > 0) ? _S(IDS_ST_TARGET_SMALLER) : _S(IDS_ST_TARGET_LARGER);
-		v_rec = _S(IDS_REC_MANUAL);   v_bg = bg_conflict; v_bd = bd_conflict; v_rec_cr = rec_conflict;
+		v_rec = _S(IDS_REC_MANUAL);   v_bg = bg_conflict; v_bd = bd_conflict; v_rec_cr = rec_conflict; v_icon = IDB_QUESTION24;
 		recommend = false;
 		m_radio_succeed.SetCheck(BST_UNCHECKED); m_radio_overwrite.SetCheck(BST_UNCHECKED); m_radio_skip.SetCheck(BST_UNCHECKED);
 	}
@@ -258,7 +258,7 @@ BOOL CExistFileDlg::OnInitDialog()
 	m_static_message.set_back_color(v_bg);					//솔리드 의미색 배경(컨트롤 전체 rect → 상하 여백 확보)
 	m_static_message.set_round(8, v_bd, m_theme.cr_back);	//round border(의미색). 코너는 다이얼로그 배경으로 블렌드
 	m_static_message.set_margin(4, 0, 0, 0);				//20260706 by claude. 아이콘 좌측 여백 — 상하 여백((배너높이-아이콘)/2≈5)과 균형 맞춰 10→4.
-	if (v_icon)  m_static_message.add_header_image(v_icon);	//상태별 좌측 아이콘(PNG 리소스). 판단 보류(v_icon==0)면 아이콘 없이 텍스트만.
+	m_static_message.add_header_image(v_icon);	//상태별 좌측 아이콘(PNG 리소스). 판단 보류는 물음표(IDB_QUESTION24).
 	m_static_message.set_header_gap(8);						//아이콘-텍스트 간격(px). 필요 시 조정.
 	m_static_message.set_valign(DT_VCENTER);
 	m_static_message.set_tagged_text(v_tagged);
