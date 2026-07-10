@@ -183,6 +183,11 @@ typedef struct _ProgressData
 	DWORD nTransferedFile;
 	ULARGE_INTEGER ulTotalSize;
 	ULARGE_INTEGER ulReceivedSize;
+	//20260710 by claude. 표시용 평균 전송속도의 세션 기준(전송 시작~). session_bytes=실제 송수신 누적 바이트(스킵 등 인위 가산 제외),
+	//session_start_clock=세션 시작 clock()(0=미시작, 소켓 코드가 첫 청크에서 지연 초기화). 기존엔 파일마다 t0 를 리셋한 per-file
+	//순간속도라, 작은 파일 다수 전송 시 t_elapsed 가 1ms 로 클램프되며 속도 표시가 심하게 들쭉날쭉했다.
+	ULARGE_INTEGER session_bytes;
+	long           session_start_clock;
 	BOOL bBlocked;
 	FLOAT fSpeed;
 	ULARGE_INTEGER ulRemainTimeSecond;

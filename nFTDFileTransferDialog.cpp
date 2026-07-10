@@ -105,9 +105,10 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	m_static_copy.fit_to_back_image(false);
 
 	m_static_message.set_back_color(m_theme.cr_back);
+	m_static_message.set_no_prefix(true);	//파일명의 '&' 를 니모닉 접두로 먹지 않고 글자 그대로 표시(SS_NOPREFIX 미지정 컨트롤이라 강제 필요).
 
-	m_static_index_bytes.set_back_color(Gdiplus::Color::White);
-	m_static_remain_speed.set_back_color(Gdiplus::Color::White);
+	m_static_index_bytes.set_back_color(m_theme.cr_back);
+	m_static_remain_speed.set_back_color(m_theme.cr_back);
 
 	m_progress.set_style(CSCSliderCtrl::style_progress);
 	m_progress.set_text_style(CSCSliderCtrl::text_style_percentage);
@@ -401,6 +402,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//1개 이상 전송됐으면 취소해도 "완료 후 닫기" 체크박스를 따르고(결과 확인 위해 남길 수 있게), 0개면 볼 게 없으니 무조건 닫는다.
 	int transferred_count = 0;
 
+	//20260710 by claude. 표시용 평균 전송속도의 세션 기준점 초기화(목록 빌드 시간은 제외). 실제 시작 clock 은 소켓 코드가 첫 청크에서 잡는다(0=미시작).
+	m_ProgressData.session_bytes.QuadPart = 0;
+	m_ProgressData.session_start_clock = 0;
+
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
@@ -413,9 +418,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 			break;
 		}
 
+		//20260710 by claude. 파일 1000개 초과 전송이 첫 반복에서 즉시 break 되던 버그 제거.
+		//m_filelist.size() 는 루프 내내 상수라, 목록이 1000개를 넘으면 i=0 에서 바로 빠져나가 아무것도 전송 안 됐다
+		//(대량 폴더 전송 시 '목록만 만들고 시작 안 함' 증상의 원인). 취소 방어는 위의 m_thread_transfer_started 검사가 담당한다.
 		//현재 전송중인 파일명 표시
-		if (m_filelist.size() > 1000)	//간혹 전송 취소를 누르면 특정 변수값이 garbage로 채워지는 이상 현상이 발생하여 비정상적인 경우는 break하도록 함.
-			break;
 		m_static_message.set_textf(_T("%s"), get_part(m_filelist[i].cFileName, fn_name));
 
 		//진행 카운트(x/total)를 항목 종류(폴더/파일/스킵)와 무관하게 루프 최상단에서 올린다.
@@ -432,6 +438,26 @@ void CnFTDFileTransferDialog::thread_transfer()
 		else
 			temp.Replace(m_transfer_from, m_transfer_to);
 		temp.Replace(_T("\\\\"), _T("\\"));
+
+		//20260710 by claude. 원본/대상 fullpath 가 MAX_PATH(260) 를 넘으면 to.cFileName[MAX_PATH] 버퍼 오버플로 +
+		//수신측 CreateFile 실패로 소켓 교환이 무한 대기(hang)하던 문제 — 목록 특정 항목에서 전송이 멈추던 원인.
+		//진입 전에 길이를 검사해 상태 컬럼에 "length exceed" 를 빨강으로 표시하고 이 파일은 건너뛴다(다음 파일로).
+		if (temp.GetLength() >= MAX_PATH || _tcslen(m_filelist[i].cFileName) >= MAX_PATH)
+		{
+			m_list.set_text(i, col_status, _T("length exceed"));
+			m_list.set_text_color(i, col_status, Gdiplus::Color::Red);
+			m_auto_close = false;	//fail 과 동일하게, 사용자가 인지하도록 자동 닫기 방지.
+			logWriteE(_T("path length exceeds MAX_PATH, skip: %s"), m_filelist[i].cFileName);
+
+			ULARGE_INTEGER exceed_size;
+			exceed_size.LowPart = m_filelist[i].nFileSizeLow;
+			exceed_size.HighPart = m_filelist[i].nFileSizeHigh;
+			m_ProgressData.ulReceivedSize.QuadPart += exceed_size.QuadPart;	//전체 진행률이 100% 로 마무리되도록 크기 반영.
+			m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
+				get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+			continue;
+		}
+
 		_tcscpy(to.cFileName, temp);
 		
 		//하나의 파일/폴더가 전송되면 대상 리스트에도 바로 목록이 표시되는 것이 좋으나

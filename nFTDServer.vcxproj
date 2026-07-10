@@ -1955,6 +1955,9 @@
     <Image Include="res\icon_overwrite_20.png" />
     <Image Include="res\icon_overwrite_24.png" />
     <Image Include="res\icon_overwrite_28.png" />
+    <Image Include="res\icon_question_20.png" />
+    <Image Include="res\icon_question_24.png" />
+    <Image Include="res\icon_question_28.png" />
     <Image Include="res\icon_resume.png" />
     <Image Include="res\icon_resume_20.png" />
     <Image Include="res\icon_resume_24.png" />

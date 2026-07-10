@@ -425,6 +425,15 @@
     <Image Include="res\icon_skip_28.png">
       <Filter>리소스 파일</Filter>
     </Image>
+    <Image Include="res\icon_question_20.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_question_24.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
+    <Image Include="res\icon_question_28.png">
+      <Filter>리소스 파일</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <Text Include="readme.txt" />

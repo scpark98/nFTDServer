@@ -250,7 +250,7 @@ BOOL CExistFileDlg::OnInitDialog()
 	}
 
 	CString v_tagged;
-	v_tagged.Format(_T("<cr=255,255,255>%s</cr>   <cr=255,255,255><sz=13><b>→</b></sz></cr>   <cr=%d,%d,%d><b>%s</b></cr>"),
+	v_tagged.Format(_T("<cr=255,255,255>%s</cr> <cr=255,255,255><sz=13><b>→</b></sz></cr> <cr=%d,%d,%d><b>%s</b></cr>"),
 		v_state.GetString(), v_rec_cr.GetR(), v_rec_cr.GetG(), v_rec_cr.GetB(), v_rec.GetString());
 
 	m_static_message.set_font_size(10);						//약간 더 크게(기본보다 +1~2, 필요 시 조정). 상태=흰색, 권장=의미색+bold.

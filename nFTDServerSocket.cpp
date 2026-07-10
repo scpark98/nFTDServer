@@ -1313,7 +1313,10 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			}
 
 			CloseHandle(hFile);
-			Progress.ulTotalSize.QuadPart -= filesize.QuadPart;
+			//20260710 by claude. 건너뛰기도 '처리 완료'로 received 에 계상(total 은 그대로). 기존엔 total 에서 빼기만 하고
+			//received 엔 더하지 않아, skip-all 전송 시 받은 양이 0KB 로 표시되고 전체 용량이 계속 줄어드는 불일치가 있었다.
+			//(같은PC 스킵/이어받기/length-exceed 등 다른 '처리분' 경로는 모두 received += 크기 로 계상한다 — 이와 통일.)
+			Progress.ulReceivedSize.QuadPart += filesize.QuadPart;
 			parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 				get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
@@ -1350,6 +1353,8 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			Wait(1000);
 			//일시정지 할 경우는 t0 시간을 보정해줘야 한다.
 			t0 += 1000;
+			if (Progress.session_start_clock != 0)	//20260710 by claude. 세션 평균속도의 경과시간에서 일시정지 구간 제외.
+				Progress.session_start_clock += 1000;
 		}
 
 		if (m_transfer_stop)
@@ -1407,6 +1412,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 
 		Progress.ulReceivedSize.QuadPart += dwBytesRead;
+		Progress.session_bytes.QuadPart += dwBytesRead;	//20260710 by claude. 세션 평균속도용 실전송 누적.
 		sent_size += dwBytesRead;
 
 		loop++;
@@ -1440,9 +1446,14 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 					//Sleep(max(sent_size * 1000.0 / (double)nCompareSpeed - (t_elapsed), 0));
 				}
 
-				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / real_speed;
-				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(real_speed / 1024.0, true, 0));
+				//20260710 by claude. 표시 속도는 세션 누적 평균으로(작은 파일 다수 전송 시 per-file real_speed 가 심하게 튀는 문제 해소).
+				//속도제한(nCompareSpeed) 스로틀은 위처럼 per-file real_speed 로 유지 — '순간' 전송률을 제한해야 하므로 세션 평균으로 바꾸면 안 됨.
+				if (Progress.session_start_clock == 0)
+					Progress.session_start_clock = clock();
+				long   session_elapsed = max((long)(clock() - Progress.session_start_clock), 1L);
+				double avg_speed = (double)Progress.session_bytes.QuadPart / (double)session_elapsed * 1000.0;
+				double remain_sec = (avg_speed > 1.0) ? (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / avg_speed : 0.0;
+				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(avg_speed / 1024.0, true, 0));
 			}
 		}
 
@@ -1692,7 +1703,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				}
 
 				CloseHandle(hFile);
-				Progress.ulTotalSize.QuadPart -= src_filesize.QuadPart;
+				//20260710 by claude. 건너뛰기도 '처리 완료'로 received 에 계상(total 은 그대로). 위 send_file 과 동일 취지.
+				Progress.ulReceivedSize.QuadPart += src_filesize.QuadPart;
 				parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 					get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
 
@@ -1730,6 +1742,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			Wait(1000);
 			//일시정지 할 경우는 t0 시간을 보정해줘야 한다.
 			t0 += 1000;
+			if (Progress.session_start_clock != 0)	//20260710 by claude. 세션 평균속도의 경과시간에서 일시정지 구간 제외.
+				Progress.session_start_clock += 1000;
 		}
 
 		if (m_transfer_stop)
@@ -1787,6 +1801,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		}
 
 		Progress.ulReceivedSize.QuadPart += dwBytesRead;
+		Progress.session_bytes.QuadPart += dwBytesRead;	//20260710 by claude. 세션 평균속도용 실전송 누적.
 		received_size += dwBytesRead;
 
 		loop++;
@@ -1795,15 +1810,17 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		{
 			t1 = clock();
 
-			double Bps = 1.0;
+			//20260710 by claude. 표시 속도를 세션 누적 평균으로(작은 파일 다수 수신 시 per-file 속도가 튀던 문제 해소).
+			//수신측은 속도제한(스로틀)이 없어 표시만 교체한다(제한은 송신측 send_file 의 nCompareSpeed 담당).
+			if (Progress.session_start_clock == 0)
+				Progress.session_start_clock = clock();
+			long   session_elapsed = max((long)(clock() - Progress.session_start_clock), 1L);
+			double avg_speed = (double)Progress.session_bytes.QuadPart / (double)session_elapsed * 1000.0;
 
-			if (t1 - t0 > 100)
+			if (avg_speed > 1.0)
 			{
-				Bps = double(received_size - exist_filesize.QuadPart) / double(t1 - t0) * 1000.0;
-
-				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / Bps;
-				//TRACE(_T("remain = %.0f sec, Bps = %s KB/s\n"), remain_sec, d2S(Bps / 1024.0, true, 0));
-				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(Bps / 1024.0, true, 0));
+				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / avg_speed;
+				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(avg_speed / 1024.0, true, 0));
 			}
 		}
 
