@@ -263,23 +263,19 @@ void CnFTDFileTransferDialog::thread_transfer()
 	{
 		if (m_filelist[i].dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
 		{
-			logWriteD(_T("Analyze %s folder for the prepare transfering..."), m_filelist[i].cFileName);
 
 			std::deque<WIN32_FIND_DATA> dq;
 
 			//로컬인 경우는 직접 찾지만 remote인 경우는 요청해서 채워야 한다.
 			if (m_srcSide == SERVER_SIDE)
 			{
-				logWriteD(_T("find_all_files for local"));
 				find_all_files(m_filelist[i].cFileName, &dq, _T(""), true, true);
 			}
 			else
 			{
-				logWriteD(_T("get_filelist for remote"));
 				m_pServerManager->get_filelist(m_filelist[i].cFileName, &dq, true);
 			}
 
-			logWriteD(_T("insert dq. total = %d"), dq.size());
 			if (dq.size() > 0)
 			{
 				m_filelist.insert(m_filelist.begin() + i + 1, dq.begin(), dq.end());

@@ -1166,7 +1166,6 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 			std::deque<CString>* folder_list = (std::deque<CString>*)lParam;
 			folder_list->clear();
 
-			logWriteD(_T("CPathCtrl::message_pathctrl_request_remote_subfolders. cur_path = %s"), pMsg->cur_path);
 			if (pMsg->cur_path.IsEmpty())
 			{
 				folder_list->push_back(theApp.m_shell_imagelist.m_volume[CLIENT_SIDE].get_label(CSIDL_DRIVES));
@@ -1180,7 +1179,6 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 
 				for (int i = 0; i < dq.size(); i++)
 				{
-					logWriteD(_T("CPathCtrl::message_pathctrl_request_remote_subfolders. %d = %s"), i, dq[i].cFileName);
 					folder_list->push_back(dq[i].cFileName);
 				}
 			}
@@ -1439,10 +1437,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		m_transfer_from = pDragTreeCtrl->get_path(pDragTreeCtrl->m_DragItem);
 		TRACE(_T("drag item = %s. m_transfer_from = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
-		logWrite(_T("DND tree 진입: pThis=%s target=%s srcSide=%d DragItem=%s from=%s"),
-			(msg->pThis == &m_tree_local) ? _T("tree_local") : (msg->pThis == &m_tree_remote ? _T("tree_remote") : _T("?")),
-			msg->pTarget->IsKindOf(RUNTIME_CLASS(CTreeCtrl)) ? _T("Tree") : (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)) ? _T("List") : _T("etc")),
-			m_srcSide, pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem), m_transfer_from);
 
 		CSCTreeCtrl* pDstTree = NULL;		//대상이 트리일 때만 세팅(서피컬 노드 추가용).
 		HTREEITEM   hDstTreeItem = NULL;
@@ -1480,7 +1474,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			m_transfer_to = pDropTreeCtrl->get_path(pDragTreeCtrl->m_DropItem);
 			//TRACE(_T("drag item = %s\n"), pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem));
 			TRACE(_T("dropped on = %s. m_transfer_to = %s\n"), pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
-			logWrite(_T("DND tree→tree: dstSide=%d DropItem=%s to=%s"), m_dstSide, pDropTreeCtrl->GetItemText(pDragTreeCtrl->m_DropItem), m_transfer_to);
 
 			pDstTree = pDropTreeCtrl;			//서피컬 대상(트리) 저장.
 			hDstTreeItem = pDragTreeCtrl->m_DropItem;
@@ -1490,7 +1483,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			pDropTreeCtrl->SelectDropTarget(NULL);
 		}
 
-		logWrite(_T("DND tree: file_transfer 호출 직전 srcSide=%d dstSide=%d from=[%s] to=[%s]"), m_srcSide, m_dstSide, m_transfer_from, m_transfer_to);
 		file_transfer();
 
 		//[로컬 이동] refresh 대신 서피컬로 갱신: 소스 노드는 트리에서 제거, 대상 노드 아래에 이동된 폴더 노드를 추가.
@@ -1535,9 +1527,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
 				pDstTree->SetRedraw(TRUE);		//OnTvnItemexpanding 의 SetRedraw(FALSE) 가 짝(expanded)을 못 만나 남는 경우 방어적 복구.
 				pDstTree->Invalidate(FALSE);
-				logWrite(_T("DND tree: dst 갱신 후 expanded=%d child_exists=%d"),
-					(pDstTree->GetItemState(hDstTreeItem, TVIS_EXPANDED) & TVIS_EXPANDED) ? 1 : 0,
-					pDstTree->GetChildItem(hDstTreeItem) != NULL ? 1 : 0);
 			}
 
 			//소스 노드 제거. 부모에 남은 자식이 없으면 [+] 도 제거.
@@ -1548,7 +1537,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hSrcParent;   tv.cChildren = 0;
 				pDragTreeCtrl->SetItem(&tv);
 			}
-			logWrite(_T("DND tree: 서피컬 갱신(소스 노드 제거 + 대상 노드 추가) 완료"));
 		}
 		//20260704 by claude. 같은 쪽 복사(로컬 FO_COPY) / 리모트 이동·복사(file_command)는 file_transfer 가 파일 작업만 하고
 		//트리는 미갱신 → 소스·대상 트리를 refresh 로 반영(복사는 소스 유지, 이동은 소스에서 사라짐도 반영). cross-side 전송은 file_transfer 가 이미 트리 refresh.
@@ -2152,11 +2140,7 @@ void CnFTDServerDlg::file_transfer()
 	//기준(같은 드라이브=이동, 다른 드라이브=복사). cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용. 같은 폴더에 같은
 	//이름으로 복사 시 이름충돌은 아래 SHFileOperation 에 FOF_RENAMEONCOLLISION 을 줘 탐색기처럼 "… - 복사본" 으로 자동 리네임.
 	m_drag_copy = is_drag_copy(m_transfer_from, m_transfer_to);
-	logWrite(_T("DND file_transfer: m_drag_copy=%d (from_drive=%s to_drive=%s ctrl=%d shift=%d)"), (int)m_drag_copy,
-		m_transfer_from.Left(2), m_transfer_to.Left(2), (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0, (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0);
 
-	logWrite(_T("DND file_transfer 진입: srcSide=%d dstSide=%d from=[%s] to=[%s] list=%d"),
-		m_srcSide, m_dstSide, m_transfer_from, m_transfer_to, (int)m_transfer_list.size());
 
 	//목록이 없다면 m_transfer_from 이라는 1개의 폴더인 경우임.
 	if (m_transfer_list.size() == 0)
@@ -2167,7 +2151,6 @@ void CnFTDServerDlg::file_transfer()
 		//cFileName(TCHAR[MAX_PATH])에 fullpath 를 넣되, 경로가 MAX_PATH 를 넘겨도 스택을 깨지 않도록 bounded 복사(초과 시 잘림).
 		_sntprintf_s(data.cFileName, _countof(data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)m_transfer_from);
 		m_transfer_list.push_back(data);
-		logWrite(_T("DND: list 비어있어 from 폴더 1개로 채움. cFileName=[%s]"), data.cFileName);
 	}
 
 	//실행부 강제(방어선 이원화): 버튼/메뉴 UI 게이트는 드래그앤드롭·조작된 요청을 못 막으므로, 실제 전송 시작 지점에서
@@ -2184,12 +2167,10 @@ void CnFTDServerDlg::file_transfer()
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
 	if (theApp.m_shell_imagelist.is_protected(m_dstSide, m_transfer_to, true))
 	{
-		logWrite(_T("DND: 대상 보호폴더라 거부. to=[%s]"), m_transfer_to);
 		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
 		m_transfer_list.clear();
 		return;
 	}
-	logWrite(_T("DND: 보호검사 통과. list=%d from=[%s] to=[%s]"), (int)m_transfer_list.size(), m_transfer_from, m_transfer_to);
 
 	//m_transfer_from, m_transfer_to의 끝에 '\\'가 있을 경우의 보정.
 	if (m_transfer_from.GetLength() > 3 && m_transfer_from.Right(1) == '\\')
@@ -2262,7 +2243,6 @@ void CnFTDServerDlg::file_transfer()
 			//20260704 by claude. 기존엔 copy 여부와 무관하게 skip 해서 '같은 폴더 안 드롭' 시 복사가 아예 실행 안 됐음.
 			if (!m_drag_copy && m_transfer_from == m_transfer_to)
 			{
-				logWrite(_T("DND move: from==to (같은 폴더) → skip. from=[%s]"), m_transfer_from);
 				TRACE(_T("same folder. skip\n"));
 				return;
 			}
@@ -2272,7 +2252,6 @@ void CnFTDServerDlg::file_transfer()
 			//20260704 by claude. 복사(Ctrl)는 같은 부모로도 '복사본' 생성이 유효하므로 통과시킨다.
 			if (!m_drag_copy && get_parent_dir(m_transfer_from) == m_transfer_to)
 			{
-				logWrite(_T("DND move: 이미 부모 폴더에 있음(자기 위치로 드롭) → 무동작. from=[%s] to=[%s]"), m_transfer_from, m_transfer_to);
 				return;
 			}
 
@@ -2290,7 +2269,6 @@ void CnFTDServerDlg::file_transfer()
 					src = concat_path(m_transfer_from, src);
 				from_buf.append((LPCTSTR)src);
 				from_buf.push_back(_T('\0'));
-				logWrite(_T("DND move: src=[%s]"), src);
 			}
 			from_buf.push_back(_T('\0'));
 
@@ -2306,8 +2284,6 @@ void CnFTDServerDlg::file_transfer()
 			//20260705 by claude. 복사 시 대상에 같은 이름이 있으면 FOF_RENAMEONCOLLISION 으로 탐색기처럼 "… - 복사본"/"… (2)" 자동 리네임.
 			op.fFlags = FOF_ALLOWUNDO | (m_drag_copy ? FOF_RENAMEONCOLLISION : 0);
 			int move_rc = SHFileOperation(&op);
-			logWrite(_T("DND %s: SHFileOperation %s 실행 to=[%s] rc=%d(0=성공) aborted=%d"),
-				m_drag_copy ? _T("copy") : _T("move"), m_drag_copy ? _T("FO_COPY") : _T("FO_MOVE"), m_transfer_to, move_rc, (int)op.fAnyOperationsAborted);
 
 			//20260705 by claude. 복사는 소스 항목이 그대로 남으므로 refresh 로 사라진 선택을 원래 소스 항목으로 복원(사용자 기대: 복사
 			//후에도 원본이 선택 유지). 이동은 소스가 사라져 복원 대상 없음.
@@ -2357,7 +2333,6 @@ void CnFTDServerDlg::file_transfer()
 					sel_names.push_back(get_part(fd.cFileName, fn_name));
 			}
 			m_ServerManager.m_socket.file_command(cmd, NULL, m_transfer_to, &srcs);	//배치: N개 소스 + 대상 폴더
-			logWrite(_T("DND remote %s: to=[%s] count=%d 배치 전송"), m_drag_copy ? _T("copy") : _T("move"), m_transfer_to, (int)srcs.size());
 
 			//대상/소스가 보이는 원격 리스트 갱신. 트리는 호출부(트리 핸들러)가 갱신.
 			m_list_remote.refresh_list(true, true);
@@ -2971,7 +2946,6 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				m_list_local.get_selected_items(&dq_fullpath, true);
 				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
 				for (auto item : dq_fullpath)
-					logWriteD(_T("%s"), item);
 				res = show_property_window(dq_fullpath);
 			}
 			break;
@@ -3088,7 +3062,6 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 
 				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
 				for (auto item : dq_fullpath)
-					logWriteD(_T("%s"), item);
 
 				if (dq_fullpath.size())
 					res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
@@ -3240,7 +3213,6 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 
 				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
 				for (auto item : dq_fullpath)
-					logWriteD(_T("%s"), item);
 
 				if (dq_fullpath.size())
 					res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
@@ -3892,7 +3864,6 @@ void CnFTDServerDlg::rewatch_local()
 	if (!cur.IsEmpty() && PathIsDirectory(cur))
 	{
 		m_dir_watcher.add(cur, false);
-		logWrite(_T("DIRWATCH watch(list): [%s]"), cur);
 		count++;
 	}
 
@@ -3904,19 +3875,16 @@ void CnFTDServerDlg::rewatch_local()
 		if (!p.IsEmpty() && PathIsDirectory(p))
 		{
 			m_dir_watcher.add(p, false);	//CSCDirWatcher::add 는 is_watching 으로 중복 skip
-			//logWrite(_T("DIRWATCH watch(tree expanded): [%s]"), p);
 			count++;
 		}
 	}
 
-	//logWrite(_T("DIRWATCH: 로컬 감시 폴더 %d개(비재귀) 설정 완료"), count);
 }
 
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_NEW_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
-	//logWrite(_T("DIRWATCH: action=%d path0=[%s] path1=[%s]"), msg->action, msg->path0, msg->path1);
 
 	//변경된 항목의 '부모 폴더'(=내용이 바뀐 폴더)와 현재 리스트 폴더(둘 다 real path).
 	CString changed_parent = get_part(msg->path0, fn_folder);
