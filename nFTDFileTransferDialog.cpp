@@ -237,7 +237,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_column_text_align(col_filesize, HDF_RIGHT);
 	m_list.set_column_text_align(col_status, HDF_CENTER);
 
-	m_list.set_column_data_type(col_status, CVtListCtrlEx::column_data_type_progress);
+	m_list.set_column_data_type(col_status, CSCListCtrl::column_data_type_progress);
 	m_list.show_progress_text();
 	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
 
@@ -245,7 +245,7 @@ void CnFTDFileTransferDialog::init_list()
 
 	m_list.allow_edit(false);
 	m_list.allow_sort(false);
-	//전송창 리스트는 우클릭 메뉴가 없다. CVtListCtrlEx 기본(자체 메뉴 true)을 끄고 parent 로 위임(핸들러 없어 표시 안 됨) — 기존 동작 유지.
+	//전송창 리스트는 우클릭 메뉴가 없다. CSCListCtrl 기본(자체 메뉴 true)을 끄고 parent 로 위임(핸들러 없어 표시 안 됨) — 기존 동작 유지.
 	m_list.set_use_own_context_menu(false);
 	m_list.use_indent_from_prefix_space(true);
 }
@@ -464,9 +464,9 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 		//현재 전송중인 항목을 선택표시하면 왠지 산만하다. 그냥 스크롤만 처리하자.
 		//m_list.select_item(i, true, true, true);
-		//네이티브 EnsureVisible 는 CVtListCtrlEx 의 하단 여백(m_bottom_reserve) 모델을 무시해 마지막 행이 잘린 채 남는다.
+		//네이티브 EnsureVisible 는 CSCListCtrl 의 하단 여백(m_bottom_reserve) 모델을 무시해 마지막 행이 잘린 채 남는다.
 		//커스텀 ensure_visible(visible_last)로 라우팅해야 정본 스크롤 모델(마지막 행 완전 표시)을 그대로 탄다.
-		m_list.ensure_visible(i, CVtListCtrlEx::visible_last);
+		m_list.ensure_visible(i, CSCListCtrl::visible_last);
 
 		ULARGE_INTEGER	filesize;
 		filesize.LowPart = 0;

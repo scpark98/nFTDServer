@@ -25,6 +25,9 @@
     <Filter Include="Common\SCDirWatcher">
       <UniqueIdentifier>{5eb59eb5-528a-4893-889b-fd67e9661996}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Common\CSCListCtrl">
+      <UniqueIdentifier>{08db5b86-889c-451f-8fcc-33b6865eb9b5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="nFTDServer.h">
@@ -183,6 +186,15 @@
     <ClInclude Include="..\..\Common\CScrollbar\SCScrollbar\SCScrollbar.h">
       <Filter>Common</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CSCListCtrl\list_data.h">
+      <Filter>Common\CSCListCtrl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CSCListCtrl\SCHeaderCtrl.h">
+      <Filter>Common\CSCListCtrl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\CListCtrl\CSCListCtrl\SCListCtrl.h">
+      <Filter>Common\CSCListCtrl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="nFTDServer.cpp">
@@ -319,6 +331,15 @@
     </ClCompile>
     <ClCompile Include="..\..\Common\CScrollbar\SCScrollbar\SCScrollbar.cpp">
       <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CSCListCtrl\list_data.cpp">
+      <Filter>Common\CSCListCtrl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CSCListCtrl\SCHeaderCtrl.cpp">
+      <Filter>Common\CSCListCtrl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\CListCtrl\CSCListCtrl\SCListCtrl.cpp">
+      <Filter>Common\CSCListCtrl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

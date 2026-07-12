@@ -4,7 +4,7 @@
 
 #include "Common/colors.h"
 #include "Common/CStatic/SCStatic/SCStatic.h"
-#include "Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+#include "Common/CListCtrl/CSCListCtrl/SCListCtrl.h"
 #include "Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 #include "Common/ResizeCtrl.h"
 #include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
@@ -79,7 +79,7 @@ public:
 	afx_msg void OnBnClickedCancel();
 	CSCStatic m_static_message;
 	CSCSliderCtrl m_progress;
-	CVtListCtrlEx m_list;
+	CSCListCtrl m_list;
 	virtual BOOL OnInitDialog();
 	//타이틀바/테두리 처리는 base CSCThemeDlg(borderless dialog.md 정석 패턴)에 위임한다.
 	//OnWindowPosChanged 만 윈도우 위치 저장을 위해 남긴다.

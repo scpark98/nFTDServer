@@ -112,7 +112,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
 	ON_REGISTERED_MESSAGE(Message_CPathCtrl, &CnFTDServerDlg::on_message_CPathCtrl)
-	ON_REGISTERED_MESSAGE(Message_CVtListCtrlEx, &CnFTDServerDlg::on_message_CVtListCtrlEx)
+	ON_REGISTERED_MESSAGE(Message_CSCListCtrl, &CnFTDServerDlg::on_message_CSCListCtrl)
 	ON_REGISTERED_MESSAGE(Message_CSCTreeCtrl, &CnFTDServerDlg::on_message_CSCTreeCtrl)
 	ON_REGISTERED_MESSAGE(Message_CControlSplitter, &CnFTDServerDlg::on_message_CControlSplitter)
 	ON_REGISTERED_MESSAGE(Message_CSCSystemButtons, &CnFTDServerDlg::on_message_CSCSystemButtons)
@@ -629,7 +629,7 @@ void CnFTDServerDlg::save_favorite(int dwSide)
 
 	int i;
 	CString str;
-	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local_favorite : &m_list_remote_favorite);
+	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local_favorite : &m_list_remote_favorite);
 
 	//local
 	for (i = 0; i < plist->size(); i++)
@@ -1188,11 +1188,11 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
+LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 {
-	CVtListCtrlExMessage* msg = (CVtListCtrlExMessage*)wParam;
+	CSCListCtrlMessage* msg = (CSCListCtrlMessage*)wParam;
 
-	if (msg->message == CVtListCtrlEx::message_path_changed)
+	if (msg->message == CSCListCtrl::message_path_changed)
 	{
 		CString path = *(CString*)lParam;
 
@@ -1212,7 +1212,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			change_directory(path, CLIENT_SIDE);
 		}
 	}
-	else if (msg->message == CVtListCtrlEx::message_drag_and_drop)
+	else if (msg->message == CSCListCtrl::message_drag_and_drop)
 	{
 		m_transfer_list.clear();
 
@@ -1229,19 +1229,19 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 
 		CString dropped_path;
 		CString droppedItemText;
-		CVtListCtrlEx* pDragListCtrl = (CVtListCtrlEx*)msg->pThis;
+		CSCListCtrl* pDragListCtrl = (CSCListCtrl*)msg->pThis;
 		
 		m_srcSide = (pDragListCtrl == &m_list_remote);
 
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
 		{
-			CVtListCtrlEx* pDropListCtrl = (CVtListCtrlEx*)msg->pTarget;
+			CSCListCtrl* pDropListCtrl = (CSCListCtrl*)msg->pTarget;
 			m_dstSide = (pDropListCtrl == &m_list_remote);
 
 			int droppedIndex = pDragListCtrl->get_drop_index();
 
 			if (droppedIndex >= 0)
-				droppedItemText = pDropListCtrl->get_text(droppedIndex, CVtListCtrlEx::col_filename);
+				droppedItemText = pDropListCtrl->get_text(droppedIndex, CSCListCtrl::col_filename);
 
 			if (droppedItemText.IsEmpty())
 			{
@@ -1269,7 +1269,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 				}
 
 				//만약 dropped_path가 폴더가 아닌 파일이라면 dropped_path는 폴더명까지만 취한다.
-				if (pDropListCtrl->get_text(droppedIndex, CVtListCtrlEx::col_filesize).IsEmpty() == false)
+				if (pDropListCtrl->get_text(droppedIndex, CSCListCtrl::col_filesize).IsEmpty() == false)
 				{
 					dropped_path = get_parent_dir(dropped_path);
 				}
@@ -1338,32 +1338,32 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			{
 				m_transfer_list.push_back(pDragListCtrl->get_win32_find_data(dq[i]));
 			}
-			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CVtListCtrlEx::col_filename), m_transfer_list.back().cFileName);
+			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CSCListCtrl::col_filename), m_transfer_list.back().cFileName);
 		}
 
 		file_transfer();
 	}
-	else if (msg->message == CVtListCtrlEx::message_get_remote_free_space)
+	else if (msg->message == CSCListCtrl::message_get_remote_free_space)
 	{
 		ULARGE_INTEGER* ul_free_space = (ULARGE_INTEGER*)lParam;
 		m_ServerManager.m_socket.RemainSpace(ul_free_space, msg->param0[0]);
 	}
-	else if (msg->message == CVtListCtrlEx::message_get_remote_total_space)
+	else if (msg->message == CSCListCtrl::message_get_remote_total_space)
 	{
 		ULARGE_INTEGER* ul_total_space = (ULARGE_INTEGER*)lParam;
 		m_ServerManager.m_socket.TotalSpace(ul_total_space, msg->param0[0]);
 	}
-	else if (msg->message == CVtListCtrlEx::message_request_new_folder)
+	else if (msg->message == CSCListCtrl::message_request_new_folder)
 	{
 		bool* res = (bool*)lParam;
 		*res = m_ServerManager.m_socket.create_directory(msg->param0);
 	}
-	else if (msg->message == CVtListCtrlEx::message_request_new_folder_index)
+	else if (msg->message == CSCListCtrl::message_request_new_folder_index)
 	{
 		int* index = (int*)lParam;
 		bool res = m_ServerManager.m_socket.get_new_folder_index(msg->param0, msg->param1, index);
 	}
-	else if (msg->message == CVtListCtrlEx::message_request_rename)
+	else if (msg->message == CSCListCtrl::message_request_rename)
 	{
 		bool* res = (bool*)lParam;
 		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1);
@@ -1377,7 +1377,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 			m_messagebox.DoModal(msg, MB_OK);
 		}
 	}
-	else if (msg->message == CVtListCtrlEx::message_rename_duplicated)
+	else if (msg->message == CSCListCtrl::message_rename_duplicated)
 	{
 		CString folder = get_part(msg->param1, fn_folder);
 		CString name = get_part(msg->param1, fn_name);
@@ -1386,7 +1386,7 @@ LRESULT	CnFTDServerDlg::on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam)
 		msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_ITEM), folder, name);
 		m_messagebox.DoModal(msg, MB_OK);
 	}
-	else if (msg->message == CVtListCtrlEx::message_list_processing)
+	else if (msg->message == CSCListCtrl::message_list_processing)
 	{
 		CSCSliderCtrl* slider = (msg->pThis == &m_list_local ? &m_progress_local : &m_progress_remote);
 		if ((int)lParam < 0)
@@ -1443,7 +1443,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
 		{
-			CVtListCtrlEx* pDropListCtrl = (CVtListCtrlEx*)msg->pTarget;
+			CSCListCtrl* pDropListCtrl = (CSCListCtrl*)msg->pTarget;
 			m_dstSide = (pDropListCtrl == &m_list_remote) ? CLIENT_SIDE : SERVER_SIDE;
 
 			if (pDragTreeCtrl->m_nDropIndex >= 0)
@@ -1813,7 +1813,7 @@ void CnFTDServerDlg::OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 
 	if (path == get_system_label(CSIDL_DRIVES))
 	{
-		//new_path = convert_special_folder_to_real_path(m_list_local.get_text(index, CVtListCtrlEx::col_filename));// , theApp.m_shell_imagelist.m_volume[SERVER_SIDE].get_label_map());
+		//new_path = convert_special_folder_to_real_path(m_list_local.get_text(index, CSCListCtrl::col_filename));// , theApp.m_shell_imagelist.m_volume[SERVER_SIDE].get_label_map());
 		//m_list_local.set_path(new_path);
 		//m_path_local.set_path(new_path);
 		//m_tree_local.set_path(new_path);
@@ -1828,7 +1828,7 @@ void CnFTDServerDlg::OnNMDblclkListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 		}
 		else
 		{
-			new_path = concat_path(path, m_list_local.get_text(index, CVtListCtrlEx::col_filename));
+			new_path = concat_path(path, m_list_local.get_text(index, CSCListCtrl::col_filename));
 
 			if (PathIsDirectory(new_path))
 			{
@@ -1864,11 +1864,11 @@ void CnFTDServerDlg::OnNMDblclkListRemote(NMHDR* pNMHDR, LRESULT* pResult)
 		//is a file? just return? transfer?
 		//내 PC가 선택된 상태도 아니고 파일크기 컬럼이 비어있지 않다면 파일인 경우임.
 		if (m_list_remote.get_path() != theApp.m_shell_imagelist.m_volume[1].get_label(CSIDL_DRIVES) &&
-			m_list_remote.get_text(index, CVtListCtrlEx::col_filesize).IsEmpty() == false)
+			m_list_remote.get_text(index, CSCListCtrl::col_filesize).IsEmpty() == false)
 			return;
 
 		//내 PC가 선택된 상태에서 디스크 드라이브를 더블클릭하거나 파일을 더블클릭 한 경우 외에는 폴더이므로 폴더 이동시킨다.
-		change_directory(concat_path(m_remoteCurrentPath, m_list_remote.get_text(index, CVtListCtrlEx::col_filename)), CLIENT_SIDE);
+		change_directory(concat_path(m_remoteCurrentPath, m_list_remote.get_text(index, CSCListCtrl::col_filename)), CLIENT_SIDE);
 	}
 
 	*pResult = 0;
@@ -2068,17 +2068,17 @@ CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint
 	}
 	else if (pDropWnd == &m_list_local || pDropWnd == &m_list_remote)
 	{
-		CVtListCtrlEx* pl = (CVtListCtrlEx*)pDropWnd;
+		CSCListCtrl* pl = (CSCListCtrl*)pDropWnd;
 		dst_side = (pDropWnd == &m_list_remote) ? CLIENT_SIDE : SERVER_SIDE;
 		CString base_path = (pDropWnd == &m_list_remote) ? m_remoteCurrentPath : pl->get_path();
 		pl->ScreenToClient(&cli);
 		UINT flags = 0;
 		int idx = pl->HitTest(cli, &flags);
 		//폴더 항목(크기 컬럼 empty) 위면 그 하위 폴더로, 아니면 현재 폴더로 드롭.
-		if (idx >= 0 && pl->get_text(idx, CVtListCtrlEx::col_filesize).IsEmpty())
+		if (idx >= 0 && pl->get_text(idx, CSCListCtrl::col_filesize).IsEmpty())
 		{
-			dst_path = concat_path(base_path, pl->get_text(idx, CVtListCtrlEx::col_filename));
-			dst_name = pl->get_text(idx, CVtListCtrlEx::col_filename);
+			dst_path = concat_path(base_path, pl->get_text(idx, CSCListCtrl::col_filename));
+			dst_name = pl->get_text(idx, CSCListCtrl::col_filename);
 		}
 		else
 			dst_path = base_path;
@@ -2228,7 +2228,7 @@ void CnFTDServerDlg::file_transfer()
 
 	CnFTDFileTransferDialog m_FileTransferDlg(this);
 
-	CVtListCtrlEx* pListFile;
+	CSCListCtrl* pListFile;
 	ULARGE_INTEGER* pulDiskSpace;
 
 	if (m_srcSide == SERVER_SIDE)
@@ -2391,7 +2391,7 @@ void CnFTDServerDlg::file_transfer()
 
 void CnFTDServerDlg::add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DATA data)
 {
-	CVtListCtrlEx* plist = (dstSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* plist = (dstSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 	plist->insert_item(-1, data, true, true);
 
 	//전송 완료 후 refresh_list 로 리로드되면 이 삽입/선택이 지워지므로, 이름을 기록해뒀다가 refresh 뒤에 다시 선택한다.
@@ -2400,7 +2400,7 @@ void CnFTDServerDlg::add_transfered_file_to_dst_list(int dstSide, WIN32_FIND_DAT
 
 //전송 완료 후(리스트가 refresh_list 로 리로드된 뒤) 이번에 전송된 항목들을 다시 선택하고 마지막 항목으로 스크롤한다.
 //insert_item 은 선택을 하지 않고 refresh_list 가 그마저 리로드로 지우므로, 이름 매칭 선택 복원은 컨트롤의 select_items_by_names 에 위임한다.
-void CnFTDServerDlg::select_transfered_items(CVtListCtrlEx* plist)
+void CnFTDServerDlg::select_transfered_items(CSCListCtrl* plist)
 {
 	plist->select_items_by_names(m_transfered_names);
 }
@@ -2408,7 +2408,7 @@ void CnFTDServerDlg::select_transfered_items(CVtListCtrlEx* plist)
 //상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
 bool CnFTDServerDlg::is_transfer_enable_for_list(int dwSide)
 {
-	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 
 	//선택된 항목이 없다면 불가.
 	std::deque<int> dq;
@@ -2445,7 +2445,7 @@ bool CnFTDServerDlg::is_transfer_enable_for_list(int dwSide)
 bool CnFTDServerDlg::is_transfer_enable_for_tree(int dwSide)
 {
 	CSCTreeCtrl* ptree = (dwSide == SERVER_SIDE ? &m_tree_local : &m_tree_remote);
-	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 
 	//선택된 항목이 없다면 불가.
 	CString path = ptree->get_path();
@@ -2477,7 +2477,7 @@ bool CnFTDServerDlg::is_transfer_enable_for_tree(int dwSide)
 //리스트에 선택이 있으면 그 항목들을, 없으면 트리의 현재 폴더를 기준으로 전송 가능 여부를 판정한다.
 bool CnFTDServerDlg::is_transfer_enable(int dwSide)
 {
-	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 
 	if (plist->GetSelectedCount() > 0)
 		return is_transfer_enable_for_list(dwSide);
@@ -2489,7 +2489,7 @@ bool CnFTDServerDlg::is_transfer_enable(int dwSide)
 //(우클릭한 단일 항목만 검사하면 정상+보호 항목을 함께 선택 후 정상 항목을 우클릭해 보호 항목까지 삭제되는 구멍이 있다.)
 bool CnFTDServerDlg::any_selected_item_protected(int dwSide)
 {
-	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
@@ -2563,7 +2563,7 @@ void CnFTDServerDlg::show_tree_context_menu(int side, CPoint point)
 //리스트 우클릭 메뉴(로컬/원격 공통). WM_CONTEXTMENU 로 위임받아 호출된다. side: SERVER_SIDE/CLIENT_SIDE, point: 화면좌표.
 void CnFTDServerDlg::show_list_context_menu(int side, CPoint point)
 {
-	CVtListCtrlEx& list = (side == SERVER_SIDE) ? m_list_local : m_list_remote;
+	CSCListCtrl& list = (side == SERVER_SIDE) ? m_list_local : m_list_remote;
 
 	//우클릭 위치의 항목(-1 = 빈 영역). 기존 NM_RCLICK 의 iItem 을 HitTest 로 대체.
 	CPoint pt = point;
@@ -2695,7 +2695,7 @@ void CnFTDServerDlg::OnListContextMenuRefresh()
 
 void CnFTDServerDlg::OnListContextMenuSelectAll()
 {
-	CVtListCtrlEx* plist = ((GetFocus() == &m_list_local ? &m_list_local : &m_list_remote));
+	CSCListCtrl* plist = ((GetFocus() == &m_list_local ? &m_list_local : &m_list_remote));
 	plist->select_item(-1);
 }
 
@@ -2792,7 +2792,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 {
 	bool res = false;
 	int dwSide = SERVER_SIDE;
-	CVtListCtrlEx* plist;
+	CSCListCtrl* plist;
 	CSCTreeCtrl* ptree;
 	
 	if (GetFocus() == &m_list_local || GetFocus() == &m_tree_local)
@@ -2821,7 +2821,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 		if (dq.size() == 0)
 			param0 = plist->get_path();
 		else
-			param0.Format(_T("%s\\%s"), plist->get_path(), plist->get_text(dq[0], CVtListCtrlEx::col_filename));
+			param0.Format(_T("%s\\%s"), plist->get_path(), plist->get_text(dq[0], CSCListCtrl::col_filename));
 	}
 
 	param0 = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, param0);
@@ -2896,7 +2896,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				break;
 			case file_cmd_rename :
 				m_dir_watcher.stop();
-				m_list_local.edit_item(dq[0], CVtListCtrlEx::col_filename);
+				m_list_local.edit_item(dq[0], CSCListCtrl::col_filename);
 				//여기서는 편집모드로만 들어가고 다시 watching은 편집이 종료된 시점에 재개해야 한다.
 				res = true;
 				break;
@@ -2969,7 +2969,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 		{
 			case file_cmd_open:
 				//폴더인 경우
-				if (m_list_remote.get_text(dq[0], CVtListCtrlEx::col_filesize).IsEmpty())
+				if (m_list_remote.get_text(dq[0], CSCListCtrl::col_filesize).IsEmpty())
 				{
 					res = change_directory(param0, CLIENT_SIDE);
 				}
@@ -3017,7 +3017,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 			}
 			break;
 			case file_cmd_rename:
-				m_list_remote.edit_item(dq[0], CVtListCtrlEx::col_filename);
+				m_list_remote.edit_item(dq[0], CSCListCtrl::col_filename);
 				res = true;
 				break;
 			case file_cmd_delete:
@@ -3097,7 +3097,7 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 	bool res = false;
 	int dwSide = SERVER_SIDE;
 	CSCTreeCtrl* ptree;
-	CVtListCtrlEx* plist;
+	CSCListCtrl* plist;
 	HTREEITEM hItem = NULL;
 
 	if (GetFocus() == &m_tree_local)
@@ -3253,7 +3253,7 @@ void CnFTDServerDlg::refresh_selection_status(bool local)
 }
 
 //목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
-void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
+void CnFTDServerDlg::refresh_selection_status(CSCListCtrl* plist)
 {
 	CString str;
 
@@ -3320,7 +3320,7 @@ void CnFTDServerDlg::refresh_selection_status(CVtListCtrlEx* plist)
 //선택 없이 폴더에 머무는 것만으로 오해를 주는 보호 툴팁을 띄우지 않기 위함.)
 CString CnFTDServerDlg::get_transfer_block_reason(int dwSide)
 {
-	CVtListCtrlEx* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
 
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
@@ -3344,7 +3344,7 @@ void CnFTDServerDlg::refresh_disk_usage(bool is_remote_side)
 	static TCHAR last_local_drive = 0;
 	static TCHAR last_remote_drive = 0;
 
-	CVtListCtrlEx* plist = (is_remote_side ? &m_list_remote : &m_list_local);
+	CSCListCtrl* plist = (is_remote_side ? &m_list_remote : &m_list_local);
 	CSCSliderCtrl* pslider = (is_remote_side ? &m_slider_remote_disk_space : &m_slider_local_disk_space);
 	CSCStatic* pstatic = (is_remote_side ? &m_static_remote_disk_space : &m_static_local_disk_space);
 
@@ -3426,7 +3426,7 @@ void CnFTDServerDlg::OnListContextMenuProperty()
 }
 
 
-//우클릭 컨텍스트 메뉴는 WM_CONTEXTMENU 단일 경로로 처리한다(정석). 공유 컨트롤(CSCTreeCtrl/CVtListCtrlEx)이
+//우클릭 컨텍스트 메뉴는 WM_CONTEXTMENU 단일 경로로 처리한다(정석). 공유 컨트롤(CSCTreeCtrl/CSCListCtrl)이
 //set_use_own_context_menu(false) 상태에서 우클릭 시 WM_CONTEXTMENU 를 부모로 forward 하며, wParam(=소스 hwnd)로
 //어느 컨트롤인지 구분한다. point 는 화면 좌표(키보드 메뉴키의 (-1,-1)은 컨트롤 쪽에서 이미 정규화됨).
 void CnFTDServerDlg::OnContextMenu(CWnd* pWnd, CPoint point)
@@ -3566,8 +3566,8 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 {
 	int i;
 	int index;
-	CVtListCtrlEx* plist = (side == SERVER_SIDE ? &m_list_local : &m_list_remote);
-	CVtListCtrlEx* pfavoritelist = (side == SERVER_SIDE ? &m_list_local_favorite : &m_list_remote_favorite);
+	CSCListCtrl* plist = (side == SERVER_SIDE ? &m_list_local : &m_list_remote);
+	CSCListCtrl* pfavoritelist = (side == SERVER_SIDE ? &m_list_local_favorite : &m_list_remote_favorite);
 
 	if (cmd == favorite_add)
 	{
@@ -3654,7 +3654,7 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 void CnFTDServerDlg::OnListContextMenuFavorite()
 {
 	int side;
-	CVtListCtrlEx* plist;
+	CSCListCtrl* plist;
 	
 	if (GetFocus() == &m_list_local)
 	{
@@ -3698,7 +3698,7 @@ void CnFTDServerDlg::OnFavoriteContextMenuDelete()
 
 
 //즐겨찾기 리스트 우클릭 메뉴(로컬/원격 공통). WM_CONTEXTMENU 로 위임받아 호출된다. point: 화면좌표.
-void CnFTDServerDlg::show_favorite_context_menu(CVtListCtrlEx* plist, CPoint point)
+void CnFTDServerDlg::show_favorite_context_menu(CSCListCtrl* plist, CPoint point)
 {
 	CPoint pt = point;
 	plist->ScreenToClient(&pt);
@@ -3738,7 +3738,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 
 
 	//만약 리스트에서 폴더의 이름을 변경했다면 트리에서도 동일하게 변경해줘야 한다.
-	if (m_list_local.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
+	if (m_list_local.get_text(item, CSCListCtrl::col_filesize).GetLength() == 0)
 	{
 		m_tree_local.rename_child_item(m_tree_local.GetSelectedItem(), m_list_local.get_edit_old_text(), m_list_local.get_edit_new_text());
 	}
@@ -3770,7 +3770,7 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 		return;
 
 	//만약 리스트에서 폴더의 이름을 변경했다면 트리에서도 동일하게 변경해줘야 한다.
-	if (m_list_remote.get_text(item, CVtListCtrlEx::col_filesize).GetLength() == 0)
+	if (m_list_remote.get_text(item, CSCListCtrl::col_filesize).GetLength() == 0)
 	{
 		m_tree_remote.rename_child_item(m_tree_remote.GetSelectedItem(), m_list_remote.get_edit_old_text(), m_list_remote.get_edit_new_text());
 	}
@@ -3985,7 +3985,7 @@ void CnFTDServerDlg::OnTreeContextMenuDelete()
 	}
 
 	//해당 쪽 리스트(삭제된 폴더/그 부모를 보고 있으면)와 디스크 사용량 갱신.
-	CVtListCtrlEx* plist = (side == SERVER_SIDE) ? &m_list_local : &m_list_remote;
+	CSCListCtrl* plist = (side == SERVER_SIDE) ? &m_list_local : &m_list_remote;
 	plist->refresh_list(true, true);
 	refresh_disk_usage(side == CLIENT_SIDE);
 }
@@ -4013,7 +4013,7 @@ void CnFTDServerDlg::OnTreeContextMenuPathToClipboard()
 
 void CnFTDServerDlg::OnListContextMenuPathToClipboard()
 {
-	CVtListCtrlEx* plist = (GetFocus() == &m_list_remote) ? &m_list_remote : &m_list_local;
+	CSCListCtrl* plist = (GetFocus() == &m_list_remote) ? &m_list_remote : &m_list_local;
 
 	//20260704 by claude. 선택 항목이 있으면 그 항목(파일/폴더)의 fullpath, 없으면 현재 폴더 경로. get_path(index) 는 내부에서 실경로로 변환됨.
 	std::deque<int> dq;

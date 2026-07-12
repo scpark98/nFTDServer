@@ -9,7 +9,7 @@
 #include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
 #include "Common/CDialog/SCProgressDlg/SCProgressDlg.h"
 #include "Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
-#include "Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+#include "Common/CListCtrl/CSCListCtrl/SCListCtrl.h"
 #include "Common/CStatic/PathCtrl/PathCtrl.h"
 #include "Common/ControlSplitter.h"
 #include "Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
@@ -64,7 +64,7 @@ public:
 	void				init_favorite();
 	void				save_favorite(int dwSide);
 
-	LRESULT				on_message_CVtListCtrlEx(WPARAM wParam, LPARAM lParam);
+	LRESULT				on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CPathCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam);
 	LRESULT				on_message_CControlSplitter(WPARAM wParam, LPARAM lParam);
@@ -75,7 +75,7 @@ public:
 
 	LRESULT				on_message(WPARAM wParam, LPARAM lParam);
 
-	CVtListCtrlEx*		m_pDropListCtrl;
+	CSCListCtrl*		m_pDropListCtrl;
 
 	CnFTDServerManager	m_ServerManager;
 
@@ -113,7 +113,7 @@ public:
 	//bool				file_command_on_favorite_list()
 
 	//목록, 선택 정보가 변경되면 상태표시줄을 갱신한다.
-	void				refresh_selection_status(CVtListCtrlEx* plist);
+	void				refresh_selection_status(CSCListCtrl* plist);
 	void				refresh_selection_status(bool local);
 	void				refresh_disk_usage(bool is_remote_side);
 
@@ -139,7 +139,7 @@ public:
 	//전송 중 대상 폴더 뷰에 실제로 들어간 파일/폴더 이름들. 전송 완료 후 refresh_list 로 폴더를 리로드하면 선택/스크롤이
 	//날아가므로, 이 목록으로 전송된 항목을 다시 선택하고 마지막 항목으로 ensure_visible 해 사용자가 결과를 바로 보게 한다.
 	std::deque<CString>	m_transfered_names;
-	void				select_transfered_items(CVtListCtrlEx* plist);
+	void				select_transfered_items(CSCListCtrl* plist);
 
 	//상황에 따라 송신, 수신이 불가능 할 경우의 처리를 위해.
 	bool				is_transfer_enable_for_list(int srcSide);
@@ -153,7 +153,7 @@ public:
 	//타이머가 발화할 때 어느 리스트를 갱신할지를 GetFocus()로 추측하면 첫 실행 직후처럼 포커스가 아직 리스트에
 	//있지 않은 순간(연결 진행 다이얼로그 등)에 갱신이 통째로 스킵되어 전송버튼이 enable되지 않는다.
 	//→ 변경을 발생시킨 리스트를 여기에 기록해두고 타이머는 그 리스트를 갱신한다(포커스 비의존).
-	CVtListCtrlEx*		m_selection_status_target = NULL;
+	CSCListCtrl*		m_selection_status_target = NULL;
 
 	//전송버튼이 "보호 폴더 선택"으로 disable 됐을 때 그 사유를 hover 툴팁으로 표시한다.
 	//WS_DISABLED 윈도우는 마우스 메시지를 못 받아 컨트롤 자체로는 툴팁을 못 띄우므로(모든 MFC 컨트롤 공통 제약),
@@ -192,9 +192,9 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	CSCTreeCtrl m_tree_local;
-	CVtListCtrlEx m_list_local;
+	CSCListCtrl m_list_local;
 	CSCTreeCtrl m_tree_remote;
-	CVtListCtrlEx m_list_remote;
+	CSCListCtrl m_list_remote;
 	CPathCtrl m_path_local;
 	CPathCtrl m_path_remote;
 	afx_msg void OnTvnSelchangedTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
@@ -212,7 +212,7 @@ public:
 	//우클릭 컨텍스트 메뉴는 WM_CONTEXTMENU(OnContextMenu)에서 컨트롤별로 분기 호출한다. side: SERVER_SIDE/CLIENT_SIDE.
 	void show_tree_context_menu(int side, CPoint point);
 	void show_list_context_menu(int side, CPoint point);
-	void show_favorite_context_menu(CVtListCtrlEx* plist, CPoint point);
+	void show_favorite_context_menu(CSCListCtrl* plist, CPoint point);
 	afx_msg void OnListContextMenuSend();
 	afx_msg void OnListContextMenuNewFolder();
 	afx_msg void OnListContextMenuRename();
@@ -234,8 +234,8 @@ public:
 	CGdiButton m_button_remote_to_local;
 	afx_msg void OnBnClickedButtonLocalToRemote();
 	afx_msg void OnBnClickedButtonRemoteToLocal();
-	CVtListCtrlEx m_list_local_favorite;
-	CVtListCtrlEx m_list_remote_favorite;
+	CSCListCtrl m_list_local_favorite;
+	CSCListCtrl m_list_remote_favorite;
 	afx_msg void OnNMDblclkListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnListContextMenuFavorite();

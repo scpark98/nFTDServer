@@ -5,7 +5,7 @@
 #include "Common/system/ShellImageList/ShellImageList.h"
 
 //#include "../../Common/CStatic/SCStatic/SCStatic.h"
-//#include "../../Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+//#include "../../Common/CListCtrl/CSCListCtrl/SCListCtrl.h"
 //#include "../../Common/CProgressCtrl/MacProgressCtrl/MacProgressCtrl.h"
 //#include "../../Common/CSliderCtrl/SCSliderCtrl/SCSliderCtrl.h"
 
@@ -87,8 +87,8 @@ public:
 	BOOL DriveList(PUINT pDriveType, LPTSTR lpDriveName);
 	BOOL NextDriveList(PUINT pDriveType, LPTSTR lpDriveName);
 
-	//BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
-	//BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CVtListCtrlEx& XList, INT iIndex, INT osType);
+	//BOOL SendFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CSCListCtrl& XList, INT iIndex, INT osType);
+	//BOOL RecvFile(LPCTSTR lpFromPathName, LPCTSTR lpToPathName, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, CSCListCtrl& XList, INT iIndex, INT osType);
 
 	int send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress);
 	int recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA from, WIN32_FIND_DATA to, ProgressData& Progress);

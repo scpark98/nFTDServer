@@ -4,7 +4,7 @@
 #include "nFTDServerSocket.h"
 //#include "nFTDFileManager.h"
 
-#include "Common/CListCtrl/CVtListCtrlEx/VtListCtrlEx.h"
+#include "Common/CListCtrl/CSCListCtrl/SCListCtrl.h"
 #include "Common/CTreeCtrl/SCTreeCtrl/SCTreeCtrl.h"
 
 class CnFTDServerManager
@@ -44,7 +44,7 @@ public:
 	bool	create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDataSocket = false);
 	//void	ChangeDrvComboBox(CDrvComboBox* pDrvComboBox, DWORD dwSide);
 	bool	Rename(LPCTSTR lpOldName, LPCTSTR lpNewName, DWORD dwSide);
-	bool	Delete(CVtListCtrlEx* pShellListCtrl, DWORD dwSide);
+	bool	Delete(CSCListCtrl* pShellListCtrl, DWORD dwSide);
 	bool	CurrentPath(DWORD dwPathLength, LPTSTR lpPath, DWORD dwSide);
 
 	bool	get_remote_system_label(std::map<int, CString> *map);
@@ -54,8 +54,8 @@ public:
 	CString GetRemoteDesktopPath();
 	CString GetRemoteDocumentPath();
 
-	//BOOL	FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath);
-	BOOL	FileTransfer(HWND hWnd, CVtListCtrlEx& XList, INT iIndex, LPCTSTR lpFrom, LPCTSTR lpTo, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, DWORD dwSide);
+	//BOOL	FileTransferInitalize(CSCListCtrl* pShellListCtrl, CSCListCtrl* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath);
+	BOOL	FileTransfer(HWND hWnd, CSCListCtrl& XList, INT iIndex, LPCTSTR lpFrom, LPCTSTR lpTo, ULARGE_INTEGER& ulFileSize, ProgressData& Progress, DWORD dwSide);
 
 	bool	request_file_transfer_history(CString filename, CString filesize, int is_SERVER_SIDE, CString start_time, CString end_time);
 

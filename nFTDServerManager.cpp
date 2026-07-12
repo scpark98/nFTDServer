@@ -712,7 +712,7 @@ bool CnFTDServerManager::create_directory(LPCTSTR lpPath, DWORD dwSide, bool bDa
 #if 0
 // 실질적인 화일전송부분. recursive 하게 구현되었다
 // depth : recursive 의 깊이. 하위폴더인지판별하기위해사용
-BOOL CnFTDServerManager::FileTransferInitalize(CVtListCtrlEx* pShellListCtrl, CVtListCtrlEx* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath)
+BOOL CnFTDServerManager::FileTransferInitalize(CSCListCtrl* pShellListCtrl, CSCListCtrl* pXList, CListCtrl* pDepthList, ULARGE_INTEGER& ulTotalSize, DWORD dwSide, CString& strStartPath)
 {
 	INT CurrentDepth = 0, iIndex;
 	WIN32_FIND_DATA FindFileData;
