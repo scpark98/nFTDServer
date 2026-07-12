@@ -112,7 +112,8 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 	m_progress.set_style(CSCSliderCtrl::style_progress);
 	m_progress.set_text_style(CSCSliderCtrl::text_style_percentage);
-	m_progress.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
+	//m_progress.set_track_color(gRGB(36, 160, 212), gRGB(230, 230, 230));
+	m_progress.set_track_color(Gdiplus::Color::RoyalBlue, gRGB(230, 230, 230));
 	//m_progress.set_inactive_color(white);
 
 	//borderless 윈도우 스타일 정규화(WS_THICKFRAME/WS_SYSMENU/... 부여 + SWP_FRAMECHANGED)는
@@ -239,12 +240,12 @@ void CnFTDFileTransferDialog::init_list()
 
 	m_list.set_column_data_type(col_status, CSCListCtrl::column_data_type_progress);
 	m_list.show_progress_text();
-	m_list.set_progress_color(Gdiplus::Color(79, 187, 255));
 
 	m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
 
 	m_list.allow_edit(false);
 	m_list.allow_sort(false);
+
 	//전송창 리스트는 우클릭 메뉴가 없다. CSCListCtrl 기본(자체 메뉴 true)을 끄고 parent 로 위임(핸들러 없어 표시 안 됨) — 기존 동작 유지.
 	m_list.set_use_own_context_menu(false);
 	m_list.use_indent_from_prefix_space(true);
