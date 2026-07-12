@@ -454,12 +454,12 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//20260712 by claude. 이 앱은 컨트롤이 많아 리사이즈 드래그가 느리므로(리스트당 sync_scrollbar 5~10ms) '바 숨김' 최적화를
 	//opt-in 한다. 리사이즈 드래그 중엔 오버레이 스크롤바를 숨겨 window 조작 비용을 없애고, 놓으면 정확히 복원한다.
 	//(CSCListCtrl/CSCTreeCtrl 기본값은 false — 바 유지. 여기서만 켠다.) 원격 컨트롤은 아직 생성 전이라도 멤버 bool 설정은 무해.
-	m_list_local.set_hide_scroll_when_resize(true);
-	m_list_remote.set_hide_scroll_when_resize(true);
-	m_list_local_favorite.set_hide_scroll_when_resize(true);
-	m_list_remote_favorite.set_hide_scroll_when_resize(true);
-	m_tree_local.set_hide_scroll_when_resize(true);
-	m_tree_remote.set_hide_scroll_when_resize(true);
+	//m_list_local.set_hide_scroll_when_resize(true);
+	//m_list_remote.set_hide_scroll_when_resize(true);
+	//m_list_local_favorite.set_hide_scroll_when_resize(true);
+	//m_list_remote_favorite.set_hide_scroll_when_resize(true);
+	//m_tree_local.set_hide_scroll_when_resize(true);
+	//m_tree_remote.set_hide_scroll_when_resize(true);
 
 	//로컬 경로를 복원시킨다. 이 작업은 연결 여부와 관계없이 먼저 진행시킨다.
 	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
@@ -1959,7 +1959,8 @@ BOOL CnFTDServerDlg::change_directory(CString path, DWORD dwSide)
 			std::deque<WIN32_FIND_DATA> dq;
 
 			//리스트 파일목록 갱신
-			m_list_remote.delete_all_items();
+			//20260712 by claude. sync=false — clear 시점 total=0 sync 생략(폴더 전환 flicker 방지). 아래 add_file+display_filelist 가 최종 sync.
+			m_list_remote.delete_all_items(true, false);
 			//m_ServerManager.refresh_list(&dq, false);
 			m_ServerManager.get_filelist(path, &dq, false);
 
@@ -3183,8 +3184,13 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				ShellExecute(NULL, _T("open"), _T("explorer"), param0, 0, SW_SHOWNORMAL);
 				break;
 			case file_cmd_new_folder :
+				//20260712 by claude. 새 폴더 생성 중 워처 정지 — add_new_item 이 노드를 직접 넣는데, 내부 CreateDirectory 가 워처
+				//ADDED 를 유발해 여기서 또 삽입되면 "새 폴더 (2)"가 중복됐다(워처 live ADD 도입 6e5df8fc 2026-07-03 이후 회귀).
+				//삭제 경로와 동일 패턴(stop → 작업 → rewatch). stop 은 감시 핸들을 닫아 CreateDirectory 의 ADD 가 캡처조차 안 돼 확실.
+				m_dir_watcher.stop();
 				hItem = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
 				plist->insert_folder(-1, ptree->GetItemText(hItem), false);
+				rewatch_local();
 				break;
 			case file_cmd_refresh :
 				{
@@ -3229,8 +3235,11 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_new_folder:
+				logWrite(_T("[newfolder] REMOTE start -> add_new_item"));	//20260712 by claude. [diag temp] 테스트 중 유지 — 최종 push 시 제거.
 				hItem = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
+				logWrite(_T("[newfolder] REMOTE add_new_item DONE -> insert_folder"));
 				plist->insert_folder(-1, ptree->GetItemText(hItem), true);
+				logWrite(_T("[newfolder] REMOTE insert_folder DONE"));
 				break;
 			case file_cmd_refresh:
 				ptree->refresh(ptree->GetSelectedItem());
@@ -3929,6 +3938,7 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_NEW_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
+	logWrite(_T("[watcher] action=%d path0='%s'"), msg->action, msg->path0);	//20260712 by claude. [diag temp] 테스트 중 유지 — 최종 push 시 제거.
 
 	//변경된 항목의 '부모 폴더'(=내용이 바뀐 폴더)와 현재 리스트 폴더(둘 다 real path).
 	CString changed_parent = get_part(msg->path0, fn_folder);
@@ -3956,6 +3966,16 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 			{
 				HTREEITEM hChild = m_tree_local.find_children_item(get_part(msg->path0, fn_name), hParentNode);
 				if (hChild) m_tree_local.DeleteItem(hChild);	//폴더였으면 자식 노드 존재 → 제거. 파일이면 매칭 노드 없어 no-op.
+					//20260712 by claude. 자식 폴더 삭제 후 부모의 실제 하위폴더가 0 이면 확장버튼(cChildren) 제거 → chevron 잔존 방지.
+					//디스크(has_sub_folders) 기준 — 부모가 collapsed 라 자식 노드가 로드 안 됐어도 정확(로드된 노드 유무만 보면 collapsed 시 오판).
+					if (!has_sub_folders(changed_parent))
+					{
+						TVITEM tv = { 0 };
+						tv.mask = TVIF_HANDLE | TVIF_CHILDREN;
+						tv.hItem = hParentNode;
+						tv.cChildren = 0;
+						m_tree_local.SetItem(&tv);
+					}
 			}
 			else if (msg->action == FILE_ACTION_RENAMED_NEW_NAME)
 			{
