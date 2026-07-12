@@ -1460,7 +1460,9 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//현재는 개발 단계이므로 UI 갱신을 바로 하지만 추후에는 10회 간격으로 수정 필요!!
 		//현재 파일 진행 상태 표시
 		double percent = (double)sent_size * 100.0 / (double)filesize.QuadPart;
-		parent->m_list.set_text(index, 2, d2S(percent, false, 0));
+		//20260712 by claude. 전체 진행률(슬라이더 (int)percent=버림)과 일치시키려 파일별 셀도 버림으로.
+		//d2S(percent, false, 0) 는 printf %0.0f 라 반올림(68.79%→69)이라 전체(68)와 1% 어긋났음.
+		parent->m_list.set_text(index, 2, i2S((int)percent));
 		//TRACE(_T("dwBytesRead = %d, sent_size = %u, %d%%\n"), dwBytesRead, sent_size, (int)percent);
 
 		//전체 파일 진행 상태 표시
@@ -1826,7 +1828,9 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		//현재 파일 진행 상태 표시
 		double percent = (double)(received_size) * 100.0 / (double)src_filesize.QuadPart;
-		parent->m_list.set_text(index, 2, d2S(percent, false, 0));
+		//20260712 by claude. 전체 진행률(슬라이더 (int)percent=버림)과 일치시키려 파일별 셀도 버림으로.
+		//d2S(percent, false, 0) 는 printf %0.0f 라 반올림(68.79%→69)이라 전체(68)와 1% 어긋났음.
+		parent->m_list.set_text(index, 2, i2S((int)percent));
 		//TRACE(_T("dwBytesRead = %d, received_size = %u, %.2f%%\n"), dwBytesRead, received_size, percent);
 
 		//전체 파일 진행 상태 표시
