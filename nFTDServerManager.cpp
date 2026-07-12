@@ -951,6 +951,15 @@ bool CnFTDServerManager::get_filelist(LPCTSTR path, std::deque<WIN32_FIND_DATA> 
 
 bool CnFTDServerManager::get_folderlist(LPCTSTR path, std::deque<WIN32_FIND_DATA>* dq, bool fullpath)
 {
+	//20260712 by claude. 빈 path 로 요청이 오면 아래 length=_tcslen(path)*2 = 0 → SendExact(0바이트) → AESEncryptString(0) →
+	//CryptoPP xorbuf 의 CRYPTOPP_ASSERT(count>0) 에서 debug 크래시(__debugbreak). 빈 path 는 유효한 폴더리스트 요청이 아니므로
+	//여기서 차단한다. 어떤 caller 가 빈 path 를 넘기는지 추적하려 로그 남김.
+	if (path == NULL || _tcslen(path) == 0)
+	{
+		logWriteE(_T("[folderlist] empty path — request skipped (caller bug?)"));
+		return false;
+	}
+
 	msg ret;
 	memset(&ret, 0, sizeof(ret));
 

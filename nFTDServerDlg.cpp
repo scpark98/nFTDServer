@@ -495,6 +495,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 void CnFTDServerDlg::init_treectrl()
 {
 	m_tree_local.set_use_drag_and_drop(true);
+	m_tree_local.set_select_on_button_up(true);	//20260712 by claude. 탐색기식 — 드래그하려고 클릭한 폴더가 브라우징되지 않고 기존 선택 유지(UP 에서 선택).
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);	//shell 트리는 내부에서 라인 간격 30px 로 설정.
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//20260705 by claude. 드래그 중 대상에 따른 문구("+ …로 복사")를 계산해 드래그 이미지에 표시. 소스=로컬 트리.
@@ -925,6 +926,7 @@ void CnFTDServerDlg::initialize()
 	m_tree_remote.set_use_own_context_menu(false);
 	m_list_remote.set_use_own_context_menu(false);
 	m_tree_remote.set_use_drag_and_drop(true);
+	m_tree_remote.set_select_on_button_up(true);	//20260712 by claude. 탐색기식 — 드래그하려고 클릭한 폴더가 브라우징되지 않고 기존 선택 유지(UP 에서 선택).
 	m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//20260705 by claude. 소스=리모트 트리. 리모트→리모트 같은 드라이브=이동(문구 없음), 다른 드라이브=복사, 로컬↔리모트=전송(문구 없음).
 	m_tree_remote.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_tree_remote, pDropWnd, pt); });
@@ -2177,6 +2179,7 @@ void CnFTDServerDlg::file_transfer()
 	//기준(같은 드라이브=이동, 다른 드라이브=복사). cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용. 같은 폴더에 같은
 	//이름으로 복사 시 이름충돌은 아래 SHFileOperation 에 FOF_RENAMEONCOLLISION 을 줘 탐색기처럼 "… - 복사본" 으로 자동 리네임.
 	m_drag_copy = is_drag_copy(m_transfer_from, m_transfer_to);
+	logWrite(_T("[dnd] file_transfer src=%d dst=%d from=[%s] to=[%s] list=%d copy=%d srcExists=%d"), (int)m_srcSide, (int)m_dstSide, (LPCTSTR)m_transfer_from, (LPCTSTR)m_transfer_to, (int)m_transfer_list.size(), (int)m_drag_copy, (int)PathFileExists(m_transfer_from));	//20260712 by claude. [diag temp]
 
 
 	//목록이 없다면 m_transfer_from 이라는 1개의 폴더인 경우임.
@@ -2208,7 +2211,9 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
-	if (!theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to))
+	bool dst_writable = theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to);	//20260712 by claude. [diag temp]
+	logWrite(_T("[dnd] dst_writable(side=%d to=[%s]) = %d"), (int)m_dstSide, (LPCTSTR)m_transfer_to, (int)dst_writable);	//20260712 by claude. [diag temp]
+	if (!dst_writable)
 	{
 		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
 		m_transfer_list.clear();
@@ -2326,7 +2331,11 @@ void CnFTDServerDlg::file_transfer()
 			op.pTo = to_buf.c_str();
 			//20260705 by claude. 복사 시 대상에 같은 이름이 있으면 FOF_RENAMEONCOLLISION 으로 탐색기처럼 "… - 복사본"/"… (2)" 자동 리네임.
 			op.fFlags = FOF_ALLOWUNDO | (m_drag_copy ? FOF_RENAMEONCOLLISION : 0);
+			//20260712 by claude. 이동/복사 중 워처 정지 — 소스 폴더가 현재 리스트/확장 트리 폴더로 감시 중이면 dir watcher 의
+			//디렉터리 핸들이 SHFileOperation FO_MOVE(폴더 이동/이름변경)를 "다른 프로그램이 사용 중(잠김)"으로 막는다. 삭제 경로(2951)와 동일 패턴.
+			m_dir_watcher.stop();
 			int move_rc = SHFileOperation(&op);
+			rewatch_local();
 
 
 			//20260705 by claude. 복사는 소스 항목이 그대로 남으므로 refresh 로 사라진 선택을 원래 소스 항목으로 복원(사용자 기대: 복사
@@ -2355,10 +2364,26 @@ void CnFTDServerDlg::file_transfer()
 		{
 			//from 이 to 와 같으면 이동은 무동작. 복사(Ctrl)는 같은 폴더 '복사본' 이 유효하므로 통과.
 			//20260704 by claude. 로컬과 동일 — copy 는 same-folder 도 허용.
-			if (!m_drag_copy && m_transfer_from == m_transfer_to)
+			//20260712 by claude. m_transfer_from 은 위(else 진입부 2360)에서 원격 리스트 현재 폴더(m_remoteCurrentPath)로 덮어써지므로,
+			//트리 드래그(소스=특정 노드 fullpath)의 same-folder 판정에 부정확했다 — 리스트가 대상 폴더를 보고 있으면 from==to 로 오판해
+			//스킵됐고(D:\ 로 이동이 "될때/안될때" 갈리던 원인), 실제로 이동이 안 됐다. 실제 드래그 소스 목록에서 각 소스의 부모를 계산해,
+			//하나라도 대상과 다르면(=실제 이동이 있음) 진행한다. (로컬 분기 2298 의 parent 가드와 동일 취지.)
+			if (!m_drag_copy)
 			{
-				TRACE(_T("same folder. skip"));
-				return;
+				bool all_noop = true;
+				for (auto& fd : m_transfer_list)
+				{
+					CString src = fd.cFileName;
+					if (src.Find(_T(':')) < 0)	//name-only(리스트 드래그) → 소스 폴더 = m_transfer_from
+						src = concat_path(m_transfer_from, src);
+					if (get_parent_dir(src).CompareNoCase(m_transfer_to) != 0)
+					{
+						all_noop = false;
+						break;
+					}
+				}
+				if (all_noop)
+					return;
 			}
 
 			//20260704 by claude. 리모트→리모트는 같은 client 머신 내 이동/복사 → 소켓 전송이 아니라 client 의 SHFileOperation 에 위임.
@@ -2377,6 +2402,7 @@ void CnFTDServerDlg::file_transfer()
 					sel_names.push_back(get_part(fd.cFileName, fn_name));
 			}
 			m_ServerManager.m_socket.file_command(cmd, NULL, m_transfer_to, &srcs);	//배치: N개 소스 + 대상 폴더
+			logWrite(_T("[dnd] remote SEND cmd=%d to=[%s] srcs=%d"), cmd, (LPCTSTR)m_transfer_to, (int)srcs.size());	//20260712 by claude. [diag temp]
 
 			//대상/소스가 보이는 원격 리스트 갱신. 트리는 호출부(트리 핸들러)가 갱신.
 			m_list_remote.refresh_list(true, true);
@@ -3580,6 +3606,7 @@ void CnFTDServerDlg::OnNMDblclkListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult
 		}
 		else
 		{
+			m_list_local_favorite.set_default_text_color(item);
 			change_directory(m_list_local_favorite.get_text(item, 1), SERVER_SIDE);
 		}
 	}
@@ -3606,9 +3633,14 @@ void CnFTDServerDlg::OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResul
 			bool res = m_ServerManager.m_socket.file_command(file_cmd_check_exist, path);
 
 			if (!res)
+			{
 				m_list_remote_favorite.set_text_color(item, -1, Gdiplus::Color::Firebrick);
+			}
 			else
+			{
+				m_list_remote_favorite.set_default_text_color(item);
 				change_directory(m_list_remote_favorite.get_text(item, 1), CLIENT_SIDE);
+			}
 		}
 	}
 
