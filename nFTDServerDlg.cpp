@@ -111,6 +111,8 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_WM_RBUTTONDOWN()
 	ON_WM_ERASEBKGND()
 	ON_WM_SIZE()
+	ON_WM_ENTERSIZEMOVE()
+	ON_WM_EXITSIZEMOVE()
 	ON_REGISTERED_MESSAGE(Message_CPathCtrl, &CnFTDServerDlg::on_message_CPathCtrl)
 	ON_REGISTERED_MESSAGE(Message_CSCListCtrl, &CnFTDServerDlg::on_message_CSCListCtrl)
 	ON_REGISTERED_MESSAGE(Message_CSCTreeCtrl, &CnFTDServerDlg::on_message_CSCTreeCtrl)
@@ -448,6 +450,16 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	init_treectrl();
 	init_listctrl();
 	init_pathctrl();
+
+	//20260712 by claude. 이 앱은 컨트롤이 많아 리사이즈 드래그가 느리므로(리스트당 sync_scrollbar 5~10ms) '바 숨김' 최적화를
+	//opt-in 한다. 리사이즈 드래그 중엔 오버레이 스크롤바를 숨겨 window 조작 비용을 없애고, 놓으면 정확히 복원한다.
+	//(CSCListCtrl/CSCTreeCtrl 기본값은 false — 바 유지. 여기서만 켠다.) 원격 컨트롤은 아직 생성 전이라도 멤버 bool 설정은 무해.
+	m_list_local.set_hide_when_resize(true);
+	m_list_remote.set_hide_when_resize(true);
+	m_list_local_favorite.set_hide_when_resize(true);
+	m_list_remote_favorite.set_hide_when_resize(true);
+	m_tree_local.set_hide_when_resize(true);
+	m_tree_remote.set_hide_when_resize(true);
 
 	//로컬 경로를 복원시킨다. 이 작업은 연결 여부와 관계없이 먼저 진행시킨다.
 	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
@@ -810,6 +822,30 @@ void CnFTDServerDlg::OnSize(UINT nType, int cx, int cy)
 		return;
 
 	adjust_processing_progress_ctrl();
+}
+
+//20260712 by claude. 리사이즈 드래그 시작 — 오버레이 스크롤바 window 조작(리스트당 5~10ms, 형제 clip 재계산)을 건너뛰게 한다.
+//드래그 중 바는 숨겨지고, 드래그 종료 시 OnExitSizeMove 가 정확 위치로 복원·표시한다.
+void CnFTDServerDlg::OnEnterSizeMove()
+{
+	CSCListCtrl::set_live_resize(true);
+	CSCTreeCtrl::set_live_resize(true);
+	Default();
+}
+
+//20260712 by claude. 리사이즈 드래그 종료 — 플래그 해제 후 각 컨트롤 sync_scrollbar 로 바를 정확 위치로 복원·표시한다.
+void CnFTDServerDlg::OnExitSizeMove()
+{
+	CSCListCtrl::set_live_resize(false);
+	CSCTreeCtrl::set_live_resize(false);
+	Default();
+
+	m_list_local.sync_scrollbar();
+	m_list_remote.sync_scrollbar();
+	m_list_local_favorite.sync_scrollbar();
+	m_list_remote_favorite.sync_scrollbar();
+	m_tree_local.sync_scrollbar();
+	m_tree_remote.sync_scrollbar();
 }
 
 void CnFTDServerDlg::thread_connect()
@@ -2284,6 +2320,7 @@ void CnFTDServerDlg::file_transfer()
 			//20260705 by claude. 복사 시 대상에 같은 이름이 있으면 FOF_RENAMEONCOLLISION 으로 탐색기처럼 "… - 복사본"/"… (2)" 자동 리네임.
 			op.fFlags = FOF_ALLOWUNDO | (m_drag_copy ? FOF_RENAMEONCOLLISION : 0);
 			int move_rc = SHFileOperation(&op);
+
 
 			//20260705 by claude. 복사는 소스 항목이 그대로 남으므로 refresh 로 사라진 선택을 원래 소스 항목으로 복원(사용자 기대: 복사
 			//후에도 원본이 선택 유지). 이동은 소스가 사라져 복원 대상 없음.

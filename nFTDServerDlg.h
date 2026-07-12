@@ -190,6 +190,9 @@ public:
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
+	//20260712 by claude. 리사이즈 드래그 동안 오버레이 스크롤바 window 조작(비쌈)을 건너뛰게 해 리사이즈 성능 확보.
+	afx_msg void OnEnterSizeMove();
+	afx_msg void OnExitSizeMove();
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	CSCTreeCtrl m_tree_local;
 	CSCListCtrl m_list_local;
