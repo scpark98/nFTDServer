@@ -2982,7 +2982,8 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				std::deque<CString> dq_fullpath;
 				m_list_local.get_selected_items(&dq_fullpath, true);
 				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
-				for (auto item : dq_fullpath)
+				//20260712 by claude. 중괄호 없는 stray for 제거 — 선택 항목 수(N)만큼 show_property_window 가 반복 호출돼
+				//속성창을 닫아도 다음 것이 또 뜨던 버그(회귀). show_property_window 는 dq_fullpath 전체를 받아 1회로 다중 속성 표시.
 				res = show_property_window(dq_fullpath);
 			}
 			break;
@@ -3098,8 +3099,8 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				m_list_remote.get_selected_items(&dq_fullpath, true);
 
 				logWrite(_T("multiple file property. %d files"), dq_fullpath.size());
-				for (auto item : dq_fullpath)
-
+				//20260712 by claude. 중괄호 없는 stray for 제거 — 선택 항목 수(N)만큼 file_command(property)가 반복 전송돼
+				//원격 속성창을 닫아도 다음 것이 또 뜨던 버그(회귀, 68160293). 다중 선택은 dq_fullpath 를 한 번에 넘겨 1회 전송.
 				if (dq_fullpath.size())
 					res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
 				else
