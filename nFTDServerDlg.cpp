@@ -1721,7 +1721,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		{
 			int side = (ptree == &m_tree_remote) ? CLIENT_SIDE : SERVER_SIDE;
 			CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ptree->get_path(hItem));
-			if (!theApp.m_shell_imagelist.is_protected(side, path))	//보호 폴더는 이름변경 금지(메뉴 disable 과 일관)
+			if (theApp.m_shell_imagelist.is_movable(side, path))	//보호 폴더는 이름변경 금지(메뉴 disable 과 일관)
 				ptree->edit_item(hItem);
 		}
 	}
@@ -2193,7 +2193,13 @@ void CnFTDServerDlg::file_transfer()
 	//다시 검사한다. 소스에 보호 항목(드라이브 루트·시스템 폴더 등)이 하나라도 있으면 전송 금지.
 	for (auto& fd : m_transfer_list)
 	{
-		if (theApp.m_shell_imagelist.is_protected(m_srcSide, fd.cFileName))
+		//20260712 by claude. 소스 방어선 — 실제 이동(같은 side + 복사아님)이면 is_movable, 그 외(복사/크로스머신 전송=복사)면
+		//is_copyable_from. move 는 시스템 경로에서 절대 불가(소스 제거). 현재 규칙은 균일하나 액션 의도를 코드에 명시.
+		bool is_move = (m_srcSide == m_dstSide) && !m_drag_copy;
+		bool src_ok = is_move
+			? theApp.m_shell_imagelist.is_movable(m_srcSide, fd.cFileName)
+			: theApp.m_shell_imagelist.is_copyable_from(m_srcSide, fd.cFileName);
+		if (!src_ok)
 		{
 			m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더(및 그 하위)는 시스템 손상을 막기 위해 전송할 수 없습니다."));
 			m_transfer_list.clear();
@@ -2201,7 +2207,7 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
-	if (theApp.m_shell_imagelist.is_protected(m_dstSide, m_transfer_to, true))
+	if (!theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to))
 	{
 		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
 		m_transfer_list.clear();
@@ -2471,7 +2477,7 @@ bool CnFTDServerDlg::is_transfer_enable_for_list(int dwSide)
 			return false;
 
 		//드라이브 루트·주요 시스템 폴더(및 하위)는 전송 불가. 판정은 is_protected 단일 출처로 통합.
-		if (theApp.m_shell_imagelist.is_protected(dwSide, path))
+		if (!theApp.m_shell_imagelist.is_copyable_from(dwSide, path))
 			return false;
 	}
 
@@ -2504,7 +2510,7 @@ bool CnFTDServerDlg::is_transfer_enable_for_tree(int dwSide)
 		return false;
 
 	//드라이브 루트·주요 시스템 폴더(및 하위)는 전송 불가. 판정은 is_protected 단일 출처로 통합.
-	if (theApp.m_shell_imagelist.is_protected(dwSide, path))
+	if (!theApp.m_shell_imagelist.is_copyable_from(dwSide, path))
 		return false;
 
 	return true;
@@ -2532,7 +2538,7 @@ bool CnFTDServerDlg::any_selected_item_protected(int dwSide)
 	plist->get_selected_items(&dq);
 
 	for (int i = 0; i < dq.size(); i++)
-		if (theApp.m_shell_imagelist.is_protected(dwSide, plist->get_path(dq[i])))
+		if (!theApp.m_shell_imagelist.is_movable(dwSide, plist->get_path(dq[i])))
 			return true;
 
 	return false;
@@ -2584,7 +2590,7 @@ void CnFTDServerDlg::show_tree_context_menu(int side, CPoint point)
 	//보호된 파일/폴더(드라이브 루트·주요 시스템 폴더)일 경우 삭제/이름변경 비활성.
 	//is_protected 는 실제 경로 기준이므로 get_path()(특수폴더 표시형)를 real path 로 변환해 판정한다.
 	CString real_path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, path);
-	if (theApp.m_shell_imagelist.is_protected(side, real_path))
+	if (!theApp.m_shell_imagelist.is_movable(side, real_path))
 	{
 		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_DELETE, MF_DISABLED);
 		pMenu->EnableMenuItem(ID_TREE_CONTEXT_MENU_RENAME, MF_DISABLED);
@@ -3370,7 +3376,7 @@ CString CnFTDServerDlg::get_transfer_block_reason(int dwSide)
 	for (int i = 0; i < dq.size(); i++)
 	{
 		CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, plist->get_path(dq[i]));
-		if (theApp.m_shell_imagelist.is_protected(dwSide, path))
+		if (!theApp.m_shell_imagelist.is_copyable_from(dwSide, path))
 			return _S(IDS_PROTECTED_FOLDER_FILE);	//TODO: 다국어 — 이미 리소스 문자열 사용 중
 	}
 
@@ -3994,7 +4000,7 @@ void CnFTDServerDlg::OnTreeContextMenuDelete()
 	CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ptree->get_path(hItem));
 
 	//실행부 방어선: 보호 폴더(드라이브 루트·시스템 폴더)는 삭제 금지 — 메뉴 disable 과 이원화(조작된 경로 방지).
-	if (theApp.m_shell_imagelist.is_protected(side, path))
+	if (!theApp.m_shell_imagelist.is_movable(side, path))
 	{
 		m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더는 삭제할 수 없습니다."));
 		return;
