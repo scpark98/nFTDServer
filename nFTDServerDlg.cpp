@@ -454,12 +454,12 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	//20260712 by claude. 이 앱은 컨트롤이 많아 리사이즈 드래그가 느리므로(리스트당 sync_scrollbar 5~10ms) '바 숨김' 최적화를
 	//opt-in 한다. 리사이즈 드래그 중엔 오버레이 스크롤바를 숨겨 window 조작 비용을 없애고, 놓으면 정확히 복원한다.
 	//(CSCListCtrl/CSCTreeCtrl 기본값은 false — 바 유지. 여기서만 켠다.) 원격 컨트롤은 아직 생성 전이라도 멤버 bool 설정은 무해.
-	m_list_local.set_hide_when_resize(true);
-	m_list_remote.set_hide_when_resize(true);
-	m_list_local_favorite.set_hide_when_resize(true);
-	m_list_remote_favorite.set_hide_when_resize(true);
-	m_tree_local.set_hide_when_resize(true);
-	m_tree_remote.set_hide_when_resize(true);
+	m_list_local.set_hide_scroll_when_resize(true);
+	m_list_remote.set_hide_scroll_when_resize(true);
+	m_list_local_favorite.set_hide_scroll_when_resize(true);
+	m_list_remote_favorite.set_hide_scroll_when_resize(true);
+	m_tree_local.set_hide_scroll_when_resize(true);
+	m_tree_remote.set_hide_scroll_when_resize(true);
 
 	//로컬 경로를 복원시킨다. 이 작업은 연결 여부와 관계없이 먼저 진행시킨다.
 	//real path로 변환하여 실제 존재하는 경로가 아니라면 내 PC를 선택하고
