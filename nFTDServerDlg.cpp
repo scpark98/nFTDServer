@@ -3918,6 +3918,7 @@ void CnFTDServerDlg::rewatch_local()
 	{
 		m_dir_watcher.add(cur, false);
 		count++;
+		logWrite(_T("[rewatch] +list %s"), (LPCTSTR)cur);	//20260712 by claude. [diag temp]
 	}
 
 	for (HTREEITEM h = m_tree_local.GetFirstVisibleItem(); h != NULL; h = m_tree_local.GetNextVisibleItem(h))
@@ -3929,6 +3930,7 @@ void CnFTDServerDlg::rewatch_local()
 		{
 			m_dir_watcher.add(p, false);	//CSCDirWatcher::add 는 is_watching 으로 중복 skip
 			count++;
+			logWrite(_T("[rewatch] +tree %s"), (LPCTSTR)p);	//20260712 by claude. [diag temp]
 		}
 	}
 
@@ -3960,6 +3962,7 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	if (msg->action == FILE_ACTION_REMOVED || msg->action == FILE_ACTION_RENAMED_NEW_NAME || msg->action == FILE_ACTION_ADDED)
 	{
 		HTREEITEM hParentNode = m_tree_local.get_item_by_fullpath(changed_parent);
+		logWrite(_T("[chevron] action=%d changed_parent='%s' hParent=%p childLoaded=%d"), msg->action, (LPCTSTR)changed_parent, hParentNode, hParentNode ? (int)(m_tree_local.GetChildItem(hParentNode) != NULL) : -1);	//20260712 by claude. [diag temp] chevron ADD 조사 — 테스트 후 정리.
 		if (hParentNode)
 		{
 			if (msg->action == FILE_ACTION_REMOVED)
@@ -3986,13 +3989,44 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 			}
 			else if (msg->action == FILE_ACTION_ADDED)
 			{
-				if (PathIsDirectory(msg->path0) && m_tree_local.GetChildItem(hParentNode) != NULL)	//폴더 추가 + 자식 로드된 경우만
+				if (PathIsDirectory(msg->path0))
 				{
-					WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
-					_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(msg->path0, fn_name));
-					m_tree_local.insert_folder_sorted(hParentNode, &fd);
+					if (m_tree_local.GetChildItem(hParentNode) != NULL)	//자식 로드됨 → 정렬 위치에 노드 삽입(확장버튼 자동 표시)
+					{
+						WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
+						_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(msg->path0, fn_name));
+						m_tree_local.insert_folder_sorted(hParentNode, &fd);
+					}
+					else
+					{
+						//20260712 by claude. 자식 미로드(접힘/하위폴더 없던 상태)면 노드는 확장 시 지연 로드하되, 하위폴더가
+						//생겼으니 확장버튼(cChildren)을 켠다 — 안 그러면 새로고침 전까지 chevron 이 안 나타남(REMOVED 의 chevron 끄기와 대칭).
+						TVITEM tv = { 0 };
+						tv.mask = TVIF_HANDLE | TVIF_CHILDREN;
+						tv.hItem = hParentNode;
+						tv.cChildren = 1;
+						m_tree_local.SetItem(&tv);
+						logWrite(_T("[chevron] set cChildren=1 -> ItemHasChildren=%d"), (int)m_tree_local.ItemHasChildren(hParentNode));	//20260712 by claude. [diag temp]
+					}
 				}
 			}
+		}
+	}
+
+	//20260712 by claude. [트리 chevron — 접힌 폴더] 감시된 상위 폴더가 준 MODIFIED(자식 디렉토리 내용 변경)로, 접혀서 직접
+	//감시되지 않는 그 디렉토리의 확장버튼을 has_sub_folders 로 재평가한다. 목적지 폴더가 접혀 있으면 하위폴더 이동 시 ADDED 가
+	//그 폴더로 안 오고(상위 감시가 '자식 dir modified' 만 통지) 이 MODIFIED 가 유일한 신호다. 자식 로드된 노드는 ADDED/REMOVED 가 처리.
+	if (msg->action == FILE_ACTION_MODIFIED && PathIsDirectory(msg->path0))
+	{
+		HTREEITEM hDirNode = m_tree_local.get_item_by_fullpath(msg->path0);
+		if (hDirNode && m_tree_local.GetChildItem(hDirNode) == NULL)
+		{
+			TVITEM tv = { 0 };
+			tv.mask = TVIF_HANDLE | TVIF_CHILDREN;
+			tv.hItem = hDirNode;
+			tv.cChildren = has_sub_folders(msg->path0) ? 1 : 0;
+			m_tree_local.SetItem(&tv);
+			logWrite(_T("[chevron] MODIFIED dir='%s' -> cChildren=%d hasChildren=%d"), (LPCTSTR)msg->path0, tv.cChildren, (int)m_tree_local.ItemHasChildren(hDirNode));	//20260712 by claude. [diag temp]
 		}
 	}
 
