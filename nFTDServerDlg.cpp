@@ -915,6 +915,15 @@ int CnFTDServerDlg::connect()
 	SetWindowText(m_ServerManager.m_strStatusbarTitle);
 #endif
 
+	//20260713 by claude. 구버전(호환 안 되는) 클라와 연결됐으면 타이틀에 "(구버전 호환모드)"를 붙여 사용자가 일부 기능 제한을 인지하게 한다.
+	//is_client_compatible() 은 접속 시 receive_client_version() 으로 받은 버전 기준(위 Connection() 안에서 수신 완료).
+	if (!m_ServerManager.m_socket.is_client_compatible())
+	{
+		CString title;
+		GetWindowText(title);
+		SetWindowText(title + _T(" (Agent 구버전 · 일부 기능 제한)"));
+	}
+
 	logWrite(_T("Connection ok."));
 
 	return true;
@@ -1271,7 +1280,13 @@ LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 		CString dropped_path;
 		CString droppedItemText;
 		CSCListCtrl* pDragListCtrl = (CSCListCtrl*)msg->pThis;
-		
+
+		//20260713 by claude. 리스트에서 드래그해 '트리 폴더'로 드롭할 때, 전송 후 그 대상 트리 노드를 refresh 해 확장버튼(chevron)을
+		//반영한다(자식 없던 폴더에 이동/복사 시 확장버튼 표시). 예전엔 이 리스트-소스 핸들러에 dest 트리 갱신이 없어(트리-소스 핸들러에만
+		//있었음) 트리→트리 이동만 chevron 이 뜨고 리스트→트리는 수동 새로고침 전까지 안 떴다.
+		CSCTreeCtrl* pDstTree = NULL;
+		HTREEITEM    hDstTreeItem = NULL;
+
 		m_srcSide = (pDragListCtrl == &m_list_remote);
 
 		if (msg->pTarget->IsKindOf(RUNTIME_CLASS(CListCtrl)))
@@ -1334,6 +1349,9 @@ LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 				dropped_path = pDropTreeCtrl->get_path(hItem);
 				TRACE(_T("dropped on = %s (%s)\n"), droppedItemText, dropped_path);
 
+				pDstTree = pDropTreeCtrl;	//전송 후 이 대상 트리 노드를 refresh(확장버튼 반영)하기 위해 저장.
+				hDstTreeItem = hItem;
+
 				//필요한 모든 처리가 끝나면 drophilited 표시를 없애준다.
 				//pDropTreeCtrl->SetItemState(hItem, 0, TVIS_DROPHILITED);	<= 이걸로는 해제 안된다.
 				pDropTreeCtrl->SelectDropTarget(NULL);
@@ -1382,7 +1400,53 @@ LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 			TRACE(_T("dragged src %d = %s (%s)\n"), i, pDragListCtrl->get_text(dq[i], CSCListCtrl::col_filename), m_transfer_list.back().cFileName);
 		}
 
+		//20260713 by claude. 드롭 항목에 '폴더'가 있는지 file_transfer 전에 확인(전송 중 m_transfer_list 가 바뀔 수 있으므로).
+		//확장버튼(chevron)은 '하위폴더 존재' 표시라, 폴더가 드롭됐을 때만 대상 트리 노드 refresh 대상이 된다(파일만이면 불필요).
+		bool dropped_folder = false;
+		for (auto& fd : m_transfer_list)
+		{
+			if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				dropped_folder = true;
+				break;
+			}
+		}
+
 		file_transfer();
+
+		//20260713 by claude. 리스트-소스 이동/복사도 트리-소스와 '동일하게' 소스·대상 폴더의 트리 노드를 갱신한다(트리/리스트는 한 쌍이라
+		//이동/복사 같은 액션의 트리 반영은 양쪽 공통이어야 한다). 예전엔 리스트-소스 핸들러가 트리를 안 건드려, 리스트에서 여러 폴더를 옮기면
+		//리스트만 갱신되고 트리(소스·대상 노드)가 stale 이던 버그. 폴더가 이동/복사됐을 때만(파일은 트리 노드가 아님).
+		//경로→트리 노드는 get_item_by_fullpath(실경로). m_transfer_from/to 는 file_transfer 에서 실경로로 변환돼 있다.
+		//20260713 by claude. 원격→원격 이동/복사가 구버전 클라라 스킵된 경우(안내만)엔 실제 변경이 없으므로 소스·대상 트리를 갱신하지 않는다
+		//(블록 A[트리-소스]와 동일 취지 — src/dst 가 트리든 리스트든 대칭 처리). 로컬은 버전 무관하게 수행되므로 해당 없음.
+		bool skipped_incompatible = (m_srcSide == m_dstSide && m_dstSide == CLIENT_SIDE && !m_ServerManager.m_socket.is_client_compatible());
+		if (dropped_folder && !skipped_incompatible)
+		{
+			//대상 폴더 트리 노드: 드롭이 트리 노드였으면 그 핸들, 아니면(리스트에 드롭) 대상 경로로 찾는다.
+			CSCTreeCtrl* pDst = (pDstTree && hDstTreeItem) ? pDstTree : ((m_dstSide == SERVER_SIDE) ? &m_tree_local : &m_tree_remote);
+			HTREEITEM    hDst = (pDstTree && hDstTreeItem) ? hDstTreeItem : pDst->get_item_by_fullpath(m_transfer_to);
+			if (hDst)
+			{
+				bool dst_had_chevron = (pDst->ItemHasChildren(hDst) != 0);
+				pDst->refresh(hDst);							//이동/복사된 폴더가 대상 트리에 보이도록 자식 재열거.
+				if (!dst_had_chevron)
+				{
+					pDst->Expand(hDst, TVE_EXPAND);			//빈 폴더였으면 펼쳐 결과 확인(이미 확장버튼 있으면 강제 펼침 안 함).
+				}
+			}
+
+			//소스 폴더 트리 노드: 이동(move)이면 옮겨진 하위폴더가 사라져야 하므로 소스 폴더 노드 refresh(복사는 소스 유지라 불필요).
+			if (!m_drag_copy)
+			{
+				CSCTreeCtrl* pSrcTree = (m_srcSide == SERVER_SIDE) ? &m_tree_local : &m_tree_remote;
+				HTREEITEM    hSrc = pSrcTree->get_item_by_fullpath(m_transfer_from);
+				if (hSrc)
+				{
+					pSrcTree->refresh(hSrc);
+				}
+			}
+		}
 	}
 	else if (msg->message == CSCListCtrl::message_get_remote_free_space)
 	{
@@ -1407,15 +1471,22 @@ LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 	else if (msg->message == CSCListCtrl::message_request_rename)
 	{
 		bool* res = (bool*)lParam;
-		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1);
+		//20260713 by claude. 원격 rename 실패 원인(rename_err_*)을 받아 정확한 메시지 표시(중복/권한/사용중/기타). 예전엔 실패=무조건 "이미 존재"라 오표시.
+		int fail_reason = 0;
+		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1, &fail_reason);
 		if (*res == false)
 		{
 			CString folder = get_part(msg->param1, fn_folder);
 			CString name = get_part(msg->param1, fn_name);
-			CString msg;
-
-			msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_ITEM), folder, name);
-			m_messagebox.DoModal(msg, MB_OK);
+			CString m;
+			switch (fail_reason)
+			{
+				case rename_err_exists:  m.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_ITEM), folder, name); break;
+				case rename_err_access:  m = _T("권한이 없어 이름을 변경할 수 없습니다."); break;
+				case rename_err_sharing: m = _T("다른 프로그램이 사용 중이라 이름을 변경할 수 없습니다."); break;
+				default:                 m = _T("이름을 변경하지 못했습니다.");	break;	//rename_err_other / 구클라(nFTD_ERROR) / 기타
+			}
+			m_messagebox.DoModal(m, MB_OK);
 		}
 	}
 	else if (msg->message == CSCListCtrl::message_rename_duplicated)
@@ -1583,9 +1654,37 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		//트리는 미갱신 → 소스·대상 트리를 refresh 로 반영(복사는 소스 유지, 이동은 소스에서 사라짐도 반영). cross-side 전송은 file_transfer 가 이미 트리 refresh.
 		else if (m_srcSide == m_dstSide)
 		{
-			pDragTreeCtrl->refresh(pDragTreeCtrl->GetSelectedItem());
+			//20260713 by claude. 원격→원격 이동/복사가 구버전 클라라 지원되지 않아 스킵된 경우(안내 메시지만 표시), 실제로는 아무것도
+			//이동/복사되지 않았으므로 소스·대상 트리를 refresh/Expand 하면 안 된다(변경이 없는데 대상이 갱신·펼쳐져 성공한 것처럼 오인).
+			//로컬(SERVER_SIDE)은 버전과 무관하게 항상 수행되므로 해당 없음.
+			if (m_dstSide == CLIENT_SIDE && !m_ServerManager.m_socket.is_client_compatible())
+			{
+				return 0;
+			}
+
+			//20260713 by claude. 대상 트리 노드에 '확장버튼이 없던(빈)' 경우엔 refresh 후 펼쳐서 결과를 보여준다(원격 tree→tree 이동 시
+			//chevron 만 생기고 안 펼쳐지던 문제). 이미 확장버튼이 있으면 refresh 만(기존 동작 유지, 강제 펼침 안 함). refresh 전에 상태를 캡처한다.
+			bool dst_had_chevron = (pDstTree && hDstTreeItem) ? (pDstTree->ItemHasChildren(hDstTreeItem) != 0) : true;
+
+			//20260713 by claude. 이동(move)이면 옮겨진 소스가 부모에서 사라져야 하므로 소스의 '부모'를 refresh(결정적). 예전엔 GetSelectedItem()을
+			//refresh 했는데, 드롭 후 선택 항목이 소스 부모가 아니면(드롭 대상 등이 선택됨) 소스 부모가 갱신 안 돼 옮겨진 src 가 트리에 남던 버그.
+			//복사(copy)는 소스가 그대로라 소스쪽 갱신 불필요.
+			if (!m_drag_copy)
+			{
+				HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(pDragTreeCtrl->m_DragItem);
+				if (hSrcParent)
+				{
+					pDragTreeCtrl->refresh(hSrcParent);
+				}
+			}
 			if (pDstTree && hDstTreeItem)
+			{
 				pDstTree->refresh(hDstTreeItem);
+				if (!dst_had_chevron)
+				{
+					pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
+				}
+			}
 		}
 
 		return 0;
@@ -1696,15 +1795,22 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	else if (msg->message == CSCTreeCtrl::message_request_rename)
 	{
 		bool* res = (bool*)lParam;
-		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1);
+		//20260713 by claude. 원격 rename 실패 원인(rename_err_*)을 받아 정확한 메시지 표시. 예전엔 실패=무조건 "이미 존재하는 폴더"라 오표시(볼륨 rename 등).
+		int fail_reason = 0;
+		*res = m_ServerManager.m_socket.Rename(msg->param0, msg->param1, &fail_reason);
 		if (*res == false)
 		{
 			CString folder = get_part(msg->param1, fn_folder);
 			CString folder_name = get_part(msg->param1, fn_name);
-			CString msg;
-
-			msg.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_FOLDER), folder, folder_name);
-			m_messagebox.DoModal(msg, MB_OK);
+			CString m;
+			switch (fail_reason)
+			{
+				case rename_err_exists:  m.Format(_S(IDS_ALREADY_EXIST_SAME_NAME_FOLDER), folder, folder_name); break;
+				case rename_err_access:  m = _T("권한이 없어 이름을 변경할 수 없습니다."); break;
+				case rename_err_sharing: m = _T("다른 프로그램이 사용 중이라 이름을 변경할 수 없습니다."); break;
+				default:                 m = _T("이름을 변경하지 못했습니다.");	break;	//rename_err_other / 구클라 / 기타
+			}
+			m_messagebox.DoModal(m, MB_OK);
 		}
 	}
 	else if (msg->message == CSCTreeCtrl::message_rename_duplicated)
@@ -2875,7 +2981,7 @@ bool CnFTDServerDlg::warn_if_client_outdated()
 	if (m_ServerManager.m_socket.is_client_compatible())
 		return false;
 
-	m_messagebox.DoModal(_T("해당 기능은 nFTDClient.exe 의 버전이 낮아 현재 지원되지 않습니다.\nAgent 를 업데이트하면 모든 기능이 정상 동작합니다."), MB_OK);
+	m_messagebox.DoModal(_S(IDS_CLIENT_VERSION_OUTDATED), MB_OK | MB_ICONEXCLAMATION);
 	return true;
 }
 
@@ -3627,7 +3733,7 @@ void CnFTDServerDlg::OnNMDblclkListLocalFavorite(NMHDR* pNMHDR, LRESULT* pResult
 		}
 		else
 		{
-			m_list_local_favorite.set_default_text_color(item);
+			m_list_local_favorite.reset_text_color(item, -1);
 			change_directory(m_list_local_favorite.get_text(item, 1), SERVER_SIDE);
 		}
 	}
@@ -3646,9 +3752,6 @@ void CnFTDServerDlg::OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResul
 	{
 		if (m_ServerManager.is_connected())
 		{
-			//std::deque<WIN32_FIND_DATA> dq;
-			//bool res = m_ServerManager.get_folderlist(m_list_remote_favorite.get_text(item, 1), &dq, false);
-
 			//remote에 해당 경로가 존재하는지만 검사하면 된다.
 			CString path = m_list_remote_favorite.get_text(item, 1);
 			bool res = m_ServerManager.m_socket.file_command(file_cmd_check_exist, path);
@@ -3659,7 +3762,7 @@ void CnFTDServerDlg::OnNMDblclkListRemoteFavorite(NMHDR* pNMHDR, LRESULT* pResul
 			}
 			else
 			{
-				m_list_remote_favorite.set_default_text_color(item);
+				m_list_remote_favorite.reset_text_color(item, -1);
 				change_directory(m_list_remote_favorite.get_text(item, 1), CLIENT_SIDE);
 			}
 		}

@@ -79,7 +79,8 @@ public:
 	CString	m_client_version = _T("0.0.0.0");	//접속 시 받은 클라 FileVersion. 기본=구버전(미수신).
 
 	BOOL ExecuteFile(LPCTSTR lpDirName);
-	BOOL Rename(LPCTSTR lpOldName, LPCTSTR lpNewName);
+	//20260713 by claude. fail_reason: 실패 시 클라가 회신한 원인 코드(rename_err_*). 성공/구클라(nFTD_ERROR)면 그대로 담긴다. NULL 이면 무시.
+	BOOL Rename(LPCTSTR lpOldName, LPCTSTR lpNewName, int* fail_reason = NULL);
 	BOOL delete_directory(LPCTSTR lpPath);
 	BOOL delete_file(LPCTSTR lpPathName);
 	BOOL change_directory(LPCTSTR lpDirName);

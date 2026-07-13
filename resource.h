@@ -118,7 +118,9 @@
 #define IDB_RESUME24                    175
 #define IDS_TRANSFER_RESULT             175
 #define IDB_RESUME28                    176
+#define IDS_CLIENT_VERSION_OUTDATED     176
 #define IDB_SKIP20                      177
+#define IDS_TRANSFER_RESULT_CONFIRM     177
 #define IDB_SKIP24                      178
 #define IDB_PNG9                        179
 #define IDB_SKIP28                      179

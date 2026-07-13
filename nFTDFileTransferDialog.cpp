@@ -9,6 +9,7 @@
 
 #include <thread>
 #include <algorithm>
+#include <shobjidl.h>	//20260713 by claude. ITaskbarList3(작업표시줄 진행율)
 
 #include "Common/MemoryDC.h"
 
@@ -42,6 +43,27 @@ void CnFTDFileTransferDialog::OnDestroy()
 		TRACE(_T("wait until transfer thread is finished\n"));
 		Wait(1000);
 	}
+
+	//20260713 by claude. 전송창 종료 시 작업표시줄 빨강(TBPF_ERROR) 리셋. 워커 스레드가 만든 m_pTaskbar 는 이미 Release 됐고
+	//COM 은 아파트먼트 종속이라 UI 스레드인 여기서 그 객체를 쓸 수 없으므로, UI 스레드에서 임시 객체를 새로 만들어 NOPROGRESS 로 지운다.
+	if (m_taskbar_hwnd)
+	{
+		HRESULT hr_init = ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+		ITaskbarList3* p_taskbar = NULL;
+		if (SUCCEEDED(::CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&p_taskbar))) && p_taskbar)
+		{
+			p_taskbar->HrInit();
+			p_taskbar->SetProgressState(m_taskbar_hwnd, TBPF_NOPROGRESS);
+			p_taskbar->Release();
+		}
+		//S_FALSE(이미 초기화됨)도 SUCCEEDED — CoInitialize 성공 건은 CoUninitialize 로 균형을 맞춘다.
+		//RPC_E_CHANGED_MODE(실패)면 우리가 초기화한 게 아니므로 해제하지 않는다.
+		if (SUCCEEDED(hr_init))
+		{
+			::CoUninitialize();
+		}
+	}
+
 	__super::OnDestroy();
 
 	// TODO: 여기에 메시지 처리기 코드를 추가합니다.
@@ -126,6 +148,9 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 	RestoreWindowPosition(&theApp, this, _T("CnFTDFileTransferDialog"));
 	Wait(10);
 	CenterWindow(GetParent());
+
+	//20260713 by claude. 작업표시줄 버튼을 가진 메인 창 HWND 를 UI 스레드에서 캡처(전송 워커 스레드에서 taskbar 진행율 갱신에 사용).
+	m_taskbar_hwnd = AfxGetMainWnd() ? AfxGetMainWnd()->GetSafeHwnd() : NULL;
 
 	m_thread_transfer = std::thread(&CnFTDFileTransferDialog::thread_transfer, this);
 	m_thread_transfer.detach();
@@ -267,11 +292,42 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.use_indent_from_prefix_space(true);
 }
 
+//20260713 by claude. 작업표시줄 버튼 진행율(0~100) 갱신. 전송 갯수 기준 값(화면 진행바와 동일)을 그대로 넘겨받는다. m_pTaskbar 는
+//전송 워커 스레드에서 생성됐고, 이 함수도 그 스레드(및 소켓 send/recv_file)에서 호출되므로 같은 COM 아파트먼트다.
+void CnFTDFileTransferDialog::set_taskbar_progress(int percent)
+{
+	if (!m_pTaskbar || !m_taskbar_hwnd)
+	{
+		return;
+	}
+	if (percent < 0)
+	{
+		percent = 0;
+	}
+	if (percent > 100)
+	{
+		percent = 100;
+	}
+	m_pTaskbar->SetProgressValue(m_taskbar_hwnd, (ULONGLONG)percent, 100);
+}
+
 void CnFTDFileTransferDialog::thread_transfer()
 {
 	int i;
 
 	m_thread_transfer_started = true;
+
+	//20260713 by claude. 작업표시줄 진행율 준비 — 이 워커 스레드에서 COM 초기화 후 taskbar 객체를 만든다(이후 갱신도 같은 스레드=같은 아파트먼트).
+	//NORMAL 상태(초록)로 시작. 종료 시(아래) NOPROGRESS + Release + CoUninitialize.
+	::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+	if (SUCCEEDED(::CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pTaskbar))) && m_pTaskbar)
+	{
+		m_pTaskbar->HrInit();
+		if (m_taskbar_hwnd)
+		{
+			m_pTaskbar->SetProgressState(m_taskbar_hwnd, TBPF_NORMAL);
+		}
+	}
 
 	m_static_message.set_text(_S(IDS_MAKE_FILE_FOLDER_LIST));
 
@@ -377,6 +433,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	//전체 데이터 송수신 양은 항상 100%로 환산한다. 그래야 용량에 관계없이 표현가능하다.
 	m_progress.SetPos(0);
+	set_taskbar_progress(0);	//20260713 by claude. 작업표시줄 진행율(전송 갯수 기준, 화면 진행바와 동일 값) 미러.
 	m_progress.SetRange(0, 100);
 
 	int res;
@@ -415,6 +472,9 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//1개 이상 전송됐으면 취소해도 "완료 후 닫기" 체크박스를 따르고(결과 확인 위해 남길 수 있게), 0개면 볼 게 없으니 무조건 닫는다.
 	int transferred_count = 0;
 
+	//20260713 by claude. 스킵된 항목 수(전송 결과 skip + 동일 경로 스킵). 완료 요약("성공/스킵/실패")에 표시한다.
+	int skipped_count = 0;
+
 	//20260713 by claude. 새 전송 시작 시 실패 항목 기록을 리셋. 이후 실패마다 해당 인덱스를 push_back 한다.
 	m_fail_items.clear();
 	m_fail_view_index = 0;
@@ -444,7 +504,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//진행 카운트(x/total)를 항목 종류(폴더/파일/스킵)와 무관하게 루프 최상단에서 올린다.
 		//폴더 생성 분기는 바이트 진행 콜백이 없어, 마지막 항목들이 폴더면 카운트가 멈춰 15/19 처럼 표시되던 문제를 방지.
 		m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
-			get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+			get_size_str(m_ProgressData.ulReceivedSize.QuadPart, -1), get_size_str(m_ProgressData.ulTotalSize.QuadPart, -1));
 
 		memcpy(&to, &m_filelist[i], sizeof(to));
 
@@ -472,7 +532,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 			exceed_size.HighPart = m_filelist[i].nFileSizeHigh;
 			m_ProgressData.ulReceivedSize.QuadPart += exceed_size.QuadPart;	//전체 진행률이 100% 로 마무리되도록 크기 반영.
 			m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
-				get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+				get_size_str(m_ProgressData.ulReceivedSize.QuadPart, -1), get_size_str(m_ProgressData.ulTotalSize.QuadPart, -1));
 			m_progress.SetPos((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));	//완료 파일수 기준 진행률 스냅.
 			continue;
 		}
@@ -525,13 +585,14 @@ void CnFTDFileTransferDialog::thread_transfer()
 			{
 				m_list.set_text(i, col_status, _S(IDS_SRC_DST_SAME_PATH));
 				logWrite(_T("fullpath가 동일하므로 스킵."));
+				skipped_count++;
 
 				//ULARGE_INTEGER filesize;
 				//filesize.HighPart = m_filelist[i].nFileSizeHigh;
 				//filesize.LowPart = m_filelist[i].nFileSizeLow;
 				m_ProgressData.ulReceivedSize.QuadPart += filesize.QuadPart;
 				m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
-					get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+					get_size_str(m_ProgressData.ulReceivedSize.QuadPart, -1), get_size_str(m_ProgressData.ulTotalSize.QuadPart, -1));
 				m_progress.SetPos((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));	//완료 파일수 기준 진행률 스냅.
 				continue;
 			}
@@ -574,6 +635,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 				case transfer_result_skip :
 					m_list.set_text(i, col_status, _T("skip"));
 					logWrite(_T("skip."));
+					skipped_count++;
 					break;
 				case transfer_result_overwrite :
 					m_list.set_text(i, col_status, _T("overwrite"));
@@ -594,6 +656,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//실패(fail) 항목도 진행률에 반영되어, 실패가 1건 있어도 마지막 항목에서 100%로 마무리된다(바이트 기준 99% 잔류 방지).
 		//파일 전송 중의 부드러운 갱신은 소켓 코드가 (index+진행분)/total 로 담당하고, 여기서 매 항목 완료 시 정확히 스냅한다.
 		m_progress.SetPos((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));
+		set_taskbar_progress((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));	//작업표시줄 미러(전송 갯수 기준).
 
 		if ((res == transfer_result_success || res == transfer_result_overwrite))
 		{
@@ -625,20 +688,28 @@ void CnFTDFileTransferDialog::thread_transfer()
 		}
 	}
 
-	//20260713 by claude. 전송 완료 후 실패가 1건이라도 있으면: (1) 요약을 m_static_message 에 Red 로 표시,
+	//20260713 by claude. 전송 완료 요약을 m_static_message 에 항상 표시한다: "성공 : %d, 스킵 : %d, 실패 : %d"(IDS_TRANSFER_RESULT).
+	//실패가 1건 이상일 때만: (1) 뒤에 "여기를 클릭하여 확인"(IDS_TRANSFER_RESULT_CONFIRM)을 덧붙이고 Red 로 표시,
 	//(2) m_auto_close 강제 해제(옵션이 true 라도 창을 닫지 않음 — 각 실패 지점에서 이미 false 로 두지만 방어적으로 재확정),
 	//(3) 첫 실패 항목으로 자동 스크롤+선택해 사용자가 바로 확인하도록 한다. transferred_count = 100% 전송 성공 건수.
+	CString summary;
+	summary.Format(_S(IDS_TRANSFER_RESULT), transferred_count, skipped_count, (int)m_fail_items.size());
 	if (!m_fail_items.empty())
 	{
+		summary += _S(IDS_TRANSFER_RESULT_CONFIRM);
+		m_static_message.set_tagged_text(summary);
+
 		m_auto_close = false;
-		CString summary;
-		summary.Format(_S(IDS_TRANSFER_RESULT), transferred_count, (int)m_fail_items.size());
-		m_static_message.set_text(summary, Gdiplus::Color::Red);
 
 		//첫 실패 항목(0번)부터 보여준다. 이후 요약 문구 클릭 시 다음 실패 항목으로 순환한다(OnStnClickedStaticMessage).
 		m_fail_view_index = 0;
 		//select_item(index, select, after_unselect, insure_visible) — 선택+타 항목 해제+가시화까지 한 번에.
 		m_list.select_item(m_fail_items.front(), true, true, true);
+	}
+	else
+	{
+		//실패 없음: 요약만 기본색으로 표시(클릭 확인 문구 없음). 창 닫기 여부는 사용자 체크박스(m_auto_close)를 따른다.
+		m_static_message.set_tagged_text(summary);
 	}
 
 	//전송이 모두 완료되면 dataSocket은 닫아준다.
@@ -653,6 +724,29 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//pause_gif(0)으로 첫 프레임에 정지시켜 그대로 보이게 한다(pos>=0 은 비-토글이라 아래 OnTimer 재호출에도 안전).
 	m_static_copy.pause_gif(0);
 	m_thread_transfer_started = false;
+
+	//20260713 by claude. 작업표시줄 진행율 마무리. 실패가 1건 이상이면 TBPF_ERROR(빨강) + 100% 로 표시해, 창이 뒤에 가려져도
+	//작업표시줄 버튼만으로 실패를 인지하게 한다. 실패가 없으면 NOPROGRESS 로 오버레이 제거. 이후 COM 정리.
+	//ERROR 상태는 shell 이 해당 HWND(메인창) 버튼에 유지하므로 Release/CoUninitialize 후에도 남으며, 사용자가 창을 활성화하면 자연 해제된다.
+	if (m_pTaskbar)
+	{
+		if (m_taskbar_hwnd)
+		{
+			if (!m_fail_items.empty())
+			{
+				m_pTaskbar->SetProgressValue(m_taskbar_hwnd, 100, 100);
+				m_pTaskbar->SetProgressState(m_taskbar_hwnd, TBPF_ERROR);
+			}
+			else
+			{
+				m_pTaskbar->SetProgressState(m_taskbar_hwnd, TBPF_NOPROGRESS);
+			}
+		}
+		m_pTaskbar->Release();
+		m_pTaskbar = NULL;
+	}
+	::CoUninitialize();
+
 	//GetDlgItem(IDCANCEL)->EnableWindow(true);
 	TRACE(_T("exit thread_transfer()\n"));
 

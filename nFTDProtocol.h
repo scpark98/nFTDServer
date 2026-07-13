@@ -69,6 +69,17 @@ enum FILE_COMMAND
 	file_cmd_copy,					//20260704 by claude. Ctrl+드래그 복사 — client 가 SHFileOperation FO_COPY.
 };
 
+//20260713 by claude. 원격 rename 결과 응답 코드(1바이트 msg.type 로 회신). 성공은 기존 nFTD_OK(0) 그대로 사용.
+//실패 원인을 카테고리로 구분해 서버가 정확한 메시지(중복/권한/사용중/기타)를 표시한다. 값은 기존 명령 코드(0~49)와 안 겹치게 210+.
+//구버전 클라는 실패 시 nFTD_ERROR(1)만 보내므로 서버는 '기타/일반 실패'로 처리(하위호환, 프로토콜 크기 불변이라 desync 없음).
+enum RENAME_RESULT
+{
+	rename_err_exists = 210,		//이미 같은 이름이 존재(ERROR_ALREADY_EXISTS/FILE_EXISTS)
+	rename_err_access = 211,		//권한 없음(ERROR_ACCESS_DENIED)
+	rename_err_sharing = 212,		//다른 프로그램이 사용 중(ERROR_SHARING_VIOLATION)
+	rename_err_other = 213,			//그 외
+};
+
 
 //scpark mwj 20240508 양방향 파일전송 오류 수정을 위해 추가
 #define		P2P_NFTD_SERVERNUM				700

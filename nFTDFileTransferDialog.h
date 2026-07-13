@@ -12,6 +12,8 @@
 #include "Common/CDialog/SCThemeDlg/SCThemeDlg.h"
 #include "Common/messagebox/CSCMessageBox/SCMessageBox.h"
 
+struct ITaskbarList3;	//20260713 by claude. 작업표시줄 진행율(ITaskbarList3) 전방 선언 — 구현부(.cpp)에서만 <shobjidl.h> include.
+
 // CnFTDFileTransferDialog 대화 상자
 
 class CnFTDFileTransferDialog : public CSCThemeDlg
@@ -20,6 +22,10 @@ class CnFTDFileTransferDialog : public CSCThemeDlg
 
 public:
 	CnFTDFileTransferDialog(CWnd* pParent = nullptr);   // 표준 생성자입니다.
+
+	//20260713 by claude. 작업표시줄 버튼에 전송 진행율 표시(0~100). 전송 워커 스레드(thread_transfer)와 소켓(send/recv_file)에서 호출.
+	//taskbar 색은 상태로만 정해짐(NORMAL=초록) — 임의 색 지정 불가라 커스텀(RoyalBlue 등)은 불가능.
+	void set_taskbar_progress(int percent);
 	virtual ~CnFTDFileTransferDialog();
 
 	//m_list.set_headings(_T("파일명,100;크기,100;상태,60;원본 위치,100;대상 위치,100"));
@@ -66,6 +72,11 @@ protected:
 	CString				m_ReceivedSize, m_TotalSize;
 
 	std::deque<WIN32_FIND_DATA>	m_filelist;
+
+	//20260713 by claude. 작업표시줄 진행율. m_pTaskbar 는 전송 워커 스레드에서 CoCreateInstance(같은 COM 아파트먼트에서 갱신).
+	//m_taskbar_hwnd = 작업표시줄 버튼을 가진 메인 창(OnInitDialog 에서 UI 스레드로 캡처).
+	ITaskbarList3*	m_pTaskbar = NULL;
+	HWND			m_taskbar_hwnd = NULL;
 
 	//20260713 by claude. 전송 중 실패한 항목들의 m_filelist 인덱스. 새 전송 시작 시 clear, 실패마다 push_back.
 	//완료 후 요약("N 성공, M 실패") 표시·자동닫기 억제·첫 실패 항목 자동 스크롤에 사용한다.

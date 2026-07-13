@@ -662,10 +662,16 @@ bool CnFTDServerSocket::receive_client_version()
 			CString v = ver;
 			bool valid = !v.IsEmpty();
 			for (int i = 0; valid && i < v.GetLength(); i++)
+			{
 				if (!_istdigit(v[i]) && v[i] != _T('.'))
+				{
 					valid = false;
+				}
+			}
 			if (valid)
+			{
 				m_client_version = v;
+			}
 		}
 	}
 
@@ -680,7 +686,7 @@ bool CnFTDServerSocket::is_client_compatible()
 	return compare_str(m_client_version, get_file_property(), _T('.')) >= 0;
 }
 
-BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)
+BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName, int* fail_reason)
 {
 	msgString2 str2;
 	msg ret;
@@ -718,7 +724,10 @@ BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)
 	}
 	else
 	{
-		logWriteE(_T("Receive Not OK"));
+		//20260713 by claude. 실패 원인 코드(클라가 회신한 rename_err_* / 구클라는 nFTD_ERROR)를 caller 로 전달 → 정확한 메시지 표시.
+		if (fail_reason)
+			*fail_reason = ret.type;
+		logWriteE(_T("Receive Not OK (reason=%d)"), ret.type);
 		return FALSE;
 	}
 }
@@ -1274,7 +1283,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		CloseHandle(hFile);
 
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 
 		return transfer_result_success;
 	}
@@ -1380,7 +1389,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			//(같은PC 스킵/이어받기/length-exceed 등 다른 '처리분' 경로는 모두 received += 크기 로 계상한다 — 이와 통일.)
 			Progress.ulReceivedSize.QuadPart += filesize.QuadPart;
 			parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-				get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+				get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 
 			return transfer_result_skip;
 		}
@@ -1515,7 +1524,9 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				long   session_elapsed = max((long)(clock() - Progress.session_start_clock), 1L);
 				double avg_speed = (double)Progress.session_bytes.QuadPart / (double)session_elapsed * 1000.0;
 				double remain_sec = (avg_speed > 1.0) ? (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / avg_speed : 0.0;
-				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(avg_speed / 1024.0, true, 0));
+				//20260713 by claude. 속도를 자동 단위(get_size_str, unit<0 → 유효숫자 3자리로 KB/MB/GB 자동 승격)로 표시.
+			//기존 "KB/s" 고정은 빠른 로컬 전송에서 172,786 처럼 7자리가 돼 좁은 컨트롤(121 DLU)에서 word-wrap 으로 단위가 다음 줄로 밀렸다.
+			parent->m_static_remain_speed.set_textf(_T("%s / %s/s"), get_time_str(remain_sec), get_size_str((ULONGLONG)avg_speed, -1));
 			}
 		}
 
@@ -1534,8 +1545,9 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		double file_fraction = (filesize.QuadPart > 0) ? (double)sent_size / (double)filesize.QuadPart : 1.0;
 		if (file_fraction > 1.0) file_fraction = 1.0;
 		parent->m_progress.SetPos((int)((double)(index + file_fraction) * 100.0 / (double)((Progress.total_count > 0) ? Progress.total_count : 1)));
+		parent->set_taskbar_progress((int)((double)(index + file_fraction) * 100.0 / (double)((Progress.total_count > 0) ? Progress.total_count : 1)));	//20260713 by claude. 작업표시줄 미러(전송 갯수 기준).
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 #endif
 	} while (dwBytesRead == BUFFER_SIZE);
 
@@ -1551,7 +1563,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	if (t_elapsed <= 1)
 	{
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 		parent->m_static_remain_speed.set_textf(_T("0 Sec / 0 KB/s"));
 	}
 
@@ -1643,7 +1655,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		CloseHandle(hFile);
 
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 
 		return transfer_result_success;
 	}
@@ -1773,7 +1785,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 				//20260710 by claude. 건너뛰기도 '처리 완료'로 received 에 계상(total 은 그대로). 위 send_file 과 동일 취지.
 				Progress.ulReceivedSize.QuadPart += src_filesize.QuadPart;
 				parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-					get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+					get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 
 				return transfer_result_skip;
 			}
@@ -1887,7 +1899,9 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 			if (avg_speed > 1.0)
 			{
 				double remain_sec = (double)(Progress.ulTotalSize.QuadPart - Progress.ulReceivedSize.QuadPart) / avg_speed;
-				parent->m_static_remain_speed.set_textf(_T("%s / %s KB/s"), get_time_str(remain_sec), d2S(avg_speed / 1024.0, true, 0));
+				//20260713 by claude. 속도를 자동 단위(get_size_str, unit<0 → 유효숫자 3자리로 KB/MB/GB 자동 승격)로 표시.
+			//기존 "KB/s" 고정은 빠른 로컬 전송에서 172,786 처럼 7자리가 돼 좁은 컨트롤(121 DLU)에서 word-wrap 으로 단위가 다음 줄로 밀렸다.
+			parent->m_static_remain_speed.set_textf(_T("%s / %s/s"), get_time_str(remain_sec), get_size_str((ULONGLONG)avg_speed, -1));
 			}
 		}
 
@@ -1904,8 +1918,9 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		double file_fraction = (src_filesize.QuadPart > 0) ? (double)received_size / (double)src_filesize.QuadPart : 1.0;
 		if (file_fraction > 1.0) file_fraction = 1.0;
 		parent->m_progress.SetPos((int)((double)(index + file_fraction) * 100.0 / (double)((Progress.total_count > 0) ? Progress.total_count : 1)));
+		parent->set_taskbar_progress((int)((double)(index + file_fraction) * 100.0 / (double)((Progress.total_count > 0) ? Progress.total_count : 1)));	//20260713 by claude. 작업표시줄 미러(전송 갯수 기준).
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 
 		/*
 		if (++cnt == 10)
@@ -1933,7 +1948,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	if (t1 <= 0)
 	{
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
-			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
+			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
 		parent->m_static_remain_speed.set_textf(_T("0 Sec / 0 KB/s"));
 	}
 
