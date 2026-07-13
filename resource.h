@@ -116,11 +116,29 @@
 #define IDS_SHOW_ON_CLIENT              174
 #define IDB_RESUME20                    174
 #define IDB_RESUME24                    175
+#define IDS_TRANSFER_RESULT             175
 #define IDB_RESUME28                    176
 #define IDB_SKIP20                      177
 #define IDB_SKIP24                      178
 #define IDB_PNG9                        179
 #define IDB_SKIP28                      179
+#define IDS_CMP_SAME                    180
+#define IDS_CMP_LARGER                  181
+#define IDS_CMP_SMALLER                 182
+#define IDS_CMP_NEWER                   183
+#define IDS_CMP_OLDER                   184
+#define IDS_CMP_EQUAL                   185
+#define IDS_TITLE_IDENTICAL             186
+#define IDS_ST_IDENTICAL                187
+#define IDS_ST_TARGET_LARGER            188
+#define IDS_ST_TARGET_SMALLER           189
+#define IDS_ST_SRC_NEWER                190
+#define IDS_ST_TGT_NEWER                191
+#define IDS_REC_SKIP                    192
+#define IDS_REC_OVERWRITE               193
+#define IDS_REC_RESUME                  194
+#define IDS_ST_CONFLICT                 195
+#define IDS_REC_MANUAL                  196
 #define IDB_QUESTION20                  197
 #define IDB_QUESTION24                  198
 #define IDB_QUESTION28                  199
@@ -252,23 +270,6 @@
 #define ID_TREE_CONTEXT_MENU_RENAME     32800
 #define ID_TREE_CONTEXT_MENU_PATH_TO_CLIPBOARD 32801
 #define ID_LIST_CONTEXT_MENU_PATH_TO_CLIPBOARD 32802
-#define IDS_CMP_SAME                    180
-#define IDS_CMP_LARGER                  181
-#define IDS_CMP_SMALLER                 182
-#define IDS_CMP_NEWER                   183
-#define IDS_CMP_OLDER                   184
-#define IDS_CMP_EQUAL                   185
-#define IDS_TITLE_IDENTICAL             186
-#define IDS_ST_IDENTICAL                187
-#define IDS_ST_TARGET_LARGER            188
-#define IDS_ST_TARGET_SMALLER           189
-#define IDS_ST_SRC_NEWER                190
-#define IDS_ST_TGT_NEWER                191
-#define IDS_REC_SKIP                    192
-#define IDS_REC_OVERWRITE               193
-#define IDS_REC_RESUME                  194
-#define IDS_ST_CONFLICT                 195
-#define IDS_REC_MANUAL                  196
 
 // Next default values for new objects
 // 

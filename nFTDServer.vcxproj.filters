@@ -16,9 +16,6 @@
     <Filter Include="Common">
       <UniqueIdentifier>{40f89237-66c7-4f1f-9e06-6c91bd237d25}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Common\VtListCtrlEx">
-      <UniqueIdentifier>{5bc61e4c-8e46-4940-84fe-c318c674cd94}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Common\SCMenuBar">
       <UniqueIdentifier>{2467b52b-8237-44da-aac9-6389ec6a299c}</UniqueIdentifier>
     </Filter>
@@ -62,15 +59,6 @@
     </ClInclude>
     <ClInclude Include="$(CommonLibDir)\CButton\SCSystemButtons\SCSystemButtons.h">
       <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.h">
-      <Filter>Common\VtListCtrlEx</Filter>
-    </ClInclude>
-    <ClInclude Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\list_data.h">
-      <Filter>Common\VtListCtrlEx</Filter>
-    </ClInclude>
-    <ClInclude Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\VtListCtrlEx.h">
-      <Filter>Common\VtListCtrlEx</Filter>
     </ClInclude>
     <ClInclude Include="$(CommonLibDir)\ResizeCtrl.h">
       <Filter>Common</Filter>
@@ -217,15 +205,6 @@
     </ClCompile>
     <ClCompile Include="$(CommonLibDir)\CButton\SCSystemButtons\SCSystemButtons.cpp">
       <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\list_data.cpp">
-      <Filter>Common\VtListCtrlEx</Filter>
-    </ClCompile>
-    <ClCompile Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\VtListCtrlEx.cpp">
-      <Filter>Common\VtListCtrlEx</Filter>
-    </ClCompile>
-    <ClCompile Include="$(CommonLibDir)\CListCtrl\CVtListCtrlEx\HeaderCtrlEx.cpp">
-      <Filter>Common\VtListCtrlEx</Filter>
     </ClCompile>
     <ClCompile Include="$(CommonLibDir)\ResizeCtrl.cpp">
       <Filter>Common</Filter>

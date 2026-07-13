@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <vector>
+
 #include "nFTDServerManager.h"
 
 #include "Common/colors.h"
@@ -65,6 +67,12 @@ protected:
 
 	std::deque<WIN32_FIND_DATA>	m_filelist;
 
+	//20260713 by claude. 전송 중 실패한 항목들의 m_filelist 인덱스. 새 전송 시작 시 clear, 실패마다 push_back.
+	//완료 후 요약("N 성공, M 실패") 표시·자동닫기 억제·첫 실패 항목 자동 스크롤에 사용한다.
+	std::vector<int>			m_fail_items;
+	//요약 문구 클릭 시 순환 표시할 현재 실패 항목 위치(m_fail_items 인덱스). 클릭마다 +1, 끝에서 0으로 순환.
+	int							m_fail_view_index = 0;
+
 	void				KeepConnection();
 	void				KeepDataConnection();
 
@@ -92,4 +100,6 @@ public:
 	afx_msg void OnDestroy();
 	//최신 Common 의 CSCSystemButtons(min/max/close)는 Message_CSCSystemButtons 를 parent 로 보내므로 여기서 처리한다.
 	afx_msg LRESULT on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam);
+	//전송 완료 요약 문구(m_static_message) 클릭 → 다음 실패 항목으로 순환 스크롤.
+	afx_msg void OnStnClickedStaticMessage();
 };

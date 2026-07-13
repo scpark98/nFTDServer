@@ -1466,11 +1466,14 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//TRACE(_T("dwBytesRead = %d, sent_size = %u, %d%%\n"), dwBytesRead, sent_size, (int)percent);
 
 		//전체 파일 진행 상태 표시
-		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
-		parent->m_progress.SetPos((int)percent);
+		//20260713 by claude. 전체 진행률 = '완료 파일수' 기준. 바이트 기준이면 실패한 파일의 미전송 바이트만큼 끝까지
+		//100%에 못 미친다(fail 1건 → 99% 잔류). index=현재 파일(0-base)=완료 파일수, 여기에 현재 파일 진행분
+		//(sent/filesize)을 더해 부드럽게 표시. 총 파일수=Progress.total_count.
+		double file_fraction = (filesize.QuadPart > 0) ? (double)sent_size / (double)filesize.QuadPart : 1.0;
+		if (file_fraction > 1.0) file_fraction = 1.0;
+		parent->m_progress.SetPos((int)((double)(index + file_fraction) * 100.0 / (double)((Progress.total_count > 0) ? Progress.total_count : 1)));
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
-		//TRACE(_T("total percent = %.2f\n"), percent);
 #endif
 	} while (dwBytesRead == BUFFER_SIZE);
 
@@ -1834,11 +1837,13 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		//TRACE(_T("dwBytesRead = %d, received_size = %u, %.2f%%\n"), dwBytesRead, received_size, percent);
 
 		//전체 파일 진행 상태 표시
-		percent = (double)Progress.ulReceivedSize.QuadPart * 100.0 / (double)Progress.ulTotalSize.QuadPart;
-		parent->m_progress.SetPos((int)percent);
+		//20260713 by claude. 전체 진행률 = '완료 파일수' 기준(위 send_file 과 동일 취지). 바이트 기준이면 실패 파일의
+		//미전송 바이트만큼 끝까지 100%에 못 미친다. index=완료 파일수, 현재 파일 진행분(received/src_filesize)을 더해 부드럽게.
+		double file_fraction = (src_filesize.QuadPart > 0) ? (double)received_size / (double)src_filesize.QuadPart : 1.0;
+		if (file_fraction > 1.0) file_fraction = 1.0;
+		parent->m_progress.SetPos((int)((double)(index + file_fraction) * 100.0 / (double)((Progress.total_count > 0) ? Progress.total_count : 1)));
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart), get_size_str(Progress.ulTotalSize.QuadPart));
-		//TRACE(_T("total percent = %.2f\n"), percent);
 
 		/*
 		if (++cnt == 10)

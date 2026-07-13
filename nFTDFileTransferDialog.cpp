@@ -69,6 +69,7 @@ BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CSCThemeDlg)
 	//최신 Common 의 CSCSystemButtons 는 min/max/close 를 WM_SYSCOMMAND 가 아니라 Message_CSCSystemButtons 로 parent 에
 	//보낸다. 핸들러가 없으면 닫기 버튼이 무반응이므로(메인 dlg 와 동일 패턴) 여기서 처리한다.
 	ON_REGISTERED_MESSAGE(Message_CSCSystemButtons, &CnFTDFileTransferDialog::on_message_CSCSystemButtons)
+	ON_STN_CLICKED(IDC_STATIC_MESSAGE, &CnFTDFileTransferDialog::OnStnClickedStaticMessage)
 END_MESSAGE_MAP()
 
 
@@ -106,6 +107,7 @@ BOOL CnFTDFileTransferDialog::OnInitDialog()
 
 	m_static_message.set_back_color(m_theme.cr_back);
 	m_static_message.set_no_prefix(true);	//파일명의 '&' 를 니모닉 접두로 먹지 않고 글자 그대로 표시(SS_NOPREFIX 미지정 컨트롤이라 강제 필요).
+	//m_static_message.word
 
 	m_static_index_bytes.set_back_color(m_theme.cr_back);
 	m_static_remain_speed.set_back_color(m_theme.cr_back);
@@ -198,6 +200,18 @@ LRESULT CnFTDFileTransferDialog::on_message_CSCSystemButtons(WPARAM wParam, LPAR
 	return 0;
 }
 
+//20260713 by claude. 전송 완료 후 표시된 요약("전송 성공 : N, 실패 : M  클릭하여 확인") 문구를 클릭하면
+//실패 항목들을 순환하며 보여준다. 현재 위치(m_fail_view_index)를 +1(마지막→0 순환)한 뒤 그 실패 항목을 리스트에서 가시화·선택한다.
+//(전송 완료 시점에 이미 0번 실패 항목을 보여주므로, 첫 클릭은 그 다음(1번) 항목으로 이동한다.)
+void CnFTDFileTransferDialog::OnStnClickedStaticMessage()
+{
+	if (m_fail_items.empty())
+		return;
+
+	m_fail_view_index = (m_fail_view_index + 1) % (int)m_fail_items.size();
+	m_list.select_item(m_fail_items[m_fail_view_index], true, true, true);
+}
+
 BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerManager, std::deque<WIN32_FIND_DATA>* filelist,
 			ULARGE_INTEGER* pulRemainDiskSpace, int srcSide, int dstSide, CString from, CString to, BOOL isAutoClose, LPCTSTR lpszStartPath)
 {
@@ -219,6 +233,8 @@ BOOL CnFTDFileTransferDialog::FileTransferInitalize(CnFTDServerManager* pServerM
 void CnFTDFileTransferDialog::init_list()
 {
 	CString headings;
+
+	m_list.SetExtendedStyle(LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP);
 
 	headings.Format(_T("%s,200;%s,100;%s,60"), _S(NFTD_IDS_LISTCTRL_NAME), _S(NFTD_IDS_LISTCTRL_SIZE), _S(NFTD_IDS_LISTCTRL_STATUS));
 	m_list.set_headings(headings);
@@ -399,6 +415,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 	//1개 이상 전송됐으면 취소해도 "완료 후 닫기" 체크박스를 따르고(결과 확인 위해 남길 수 있게), 0개면 볼 게 없으니 무조건 닫는다.
 	int transferred_count = 0;
 
+	//20260713 by claude. 새 전송 시작 시 실패 항목 기록을 리셋. 이후 실패마다 해당 인덱스를 push_back 한다.
+	m_fail_items.clear();
+	m_fail_view_index = 0;
+
 	//20260710 by claude. 표시용 평균 전송속도의 세션 기준점 초기화(목록 빌드 시간은 제외). 실제 시작 clock 은 소켓 코드가 첫 청크에서 잡는다(0=미시작).
 	m_ProgressData.session_bytes.QuadPart = 0;
 	m_ProgressData.session_start_clock = 0;
@@ -419,7 +439,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//m_filelist.size() 는 루프 내내 상수라, 목록이 1000개를 넘으면 i=0 에서 바로 빠져나가 아무것도 전송 안 됐다
 		//(대량 폴더 전송 시 '목록만 만들고 시작 안 함' 증상의 원인). 취소 방어는 위의 m_thread_transfer_started 검사가 담당한다.
 		//현재 전송중인 파일명 표시
-		m_static_message.set_textf(_T("%s"), get_part(m_filelist[i].cFileName, fn_name));
+		m_static_message.set_textf(_T("%s"), m_filelist[i].cFileName);// get_part(m_filelist[i].cFileName, fn_name));
 
 		//진행 카운트(x/total)를 항목 종류(폴더/파일/스킵)와 무관하게 루프 최상단에서 올린다.
 		//폴더 생성 분기는 바이트 진행 콜백이 없어, 마지막 항목들이 폴더면 카운트가 멈춰 15/19 처럼 표시되던 문제를 방지.
@@ -444,6 +464,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 			m_list.set_text(i, col_status, _T("length exceed"));
 			m_list.set_text_color(i, col_status, Gdiplus::Color::Red);
 			m_auto_close = false;	//fail 과 동일하게, 사용자가 인지하도록 자동 닫기 방지.
+			m_fail_items.push_back(i);
 			logWriteE(_T("path length exceeds MAX_PATH, skip: %s"), m_filelist[i].cFileName);
 
 			ULARGE_INTEGER exceed_size;
@@ -452,6 +473,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 			m_ProgressData.ulReceivedSize.QuadPart += exceed_size.QuadPart;	//전체 진행률이 100% 로 마무리되도록 크기 반영.
 			m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
 				get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+			m_progress.SetPos((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));	//완료 파일수 기준 진행률 스냅.
 			continue;
 		}
 
@@ -510,6 +532,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 				m_ProgressData.ulReceivedSize.QuadPart += filesize.QuadPart;
 				m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), i + 1, m_ProgressData.total_count,
 					get_size_str(m_ProgressData.ulReceivedSize.QuadPart), get_size_str(m_ProgressData.ulTotalSize.QuadPart));
+				m_progress.SetPos((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));	//완료 파일수 기준 진행률 스냅.
 				continue;
 			}
 
@@ -560,11 +583,17 @@ void CnFTDFileTransferDialog::thread_transfer()
 					//전송 완료 후 창 닫기 옵션이 true라고 해도 fail이 1건이라도 발생하면 창을 닫지 않아야만
 					//사용자가 fail 내용을 인지할 수 있도록 해야 한다.
 					m_auto_close = false;
+					m_fail_items.push_back(i);
 					logWriteE(_T("fail."));
 					m_list.set_text(i, col_status, _T("fail"));
 					m_list.set_text_color(i, col_status, Gdiplus::Color::Red);
 			}
 		}
+
+		//20260713 by claude. 전체 진행률을 '완료 파일수' 기준으로 스냅((i+1)/total). 소켓 콜백이 없는 폴더 생성과
+		//실패(fail) 항목도 진행률에 반영되어, 실패가 1건 있어도 마지막 항목에서 100%로 마무리된다(바이트 기준 99% 잔류 방지).
+		//파일 전송 중의 부드러운 갱신은 소켓 코드가 (index+진행분)/total 로 담당하고, 여기서 매 항목 완료 시 정확히 스냅한다.
+		m_progress.SetPos((int)((__int64)(i + 1) * 100 / max((DWORD)1, m_ProgressData.total_count)));
 
 		if ((res == transfer_result_success || res == transfer_result_overwrite))
 		{
@@ -594,6 +623,22 @@ void CnFTDFileTransferDialog::thread_transfer()
 			m_static_copy.stop_gif();
 			break;
 		}
+	}
+
+	//20260713 by claude. 전송 완료 후 실패가 1건이라도 있으면: (1) 요약을 m_static_message 에 Red 로 표시,
+	//(2) m_auto_close 강제 해제(옵션이 true 라도 창을 닫지 않음 — 각 실패 지점에서 이미 false 로 두지만 방어적으로 재확정),
+	//(3) 첫 실패 항목으로 자동 스크롤+선택해 사용자가 바로 확인하도록 한다. transferred_count = 100% 전송 성공 건수.
+	if (!m_fail_items.empty())
+	{
+		m_auto_close = false;
+		CString summary;
+		summary.Format(_S(IDS_TRANSFER_RESULT), transferred_count, (int)m_fail_items.size());
+		m_static_message.set_text(summary, Gdiplus::Color::Red);
+
+		//첫 실패 항목(0번)부터 보여준다. 이후 요약 문구 클릭 시 다음 실패 항목으로 순환한다(OnStnClickedStaticMessage).
+		m_fail_view_index = 0;
+		//select_item(index, select, after_unselect, insure_visible) — 선택+타 항목 해제+가시화까지 한 번에.
+		m_list.select_item(m_fail_items.front(), true, true, true);
 	}
 
 	//전송이 모두 완료되면 dataSocket은 닫아준다.
