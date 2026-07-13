@@ -3508,16 +3508,17 @@ void CnFTDServerDlg::update_transfer_buttons()
 {
 	bool src_l = is_transfer_enable(SERVER_SIDE);	//local→remote: 소스=로컬
 	bool dst_r = is_dest_writable(SERVER_SIDE);		//        목적지=원격 폴더
+
 	m_button_local_to_remote.EnableWindow(src_l && dst_r);
 	m_tooltip.UpdateTipText((src_l && dst_r) ? _T("")
-		: (!dst_r ? _T("받는 원격 폴더가 주요 시스템 폴더/시스템 드라이브 루트라 보낼 수 없습니다.") : get_transfer_block_reason(SERVER_SIDE)),
+		: (!dst_r ? _S(NFTD_IDS_SEND) + _S(IDS_TRANSFER_RESTRICTED) : get_transfer_block_reason(SERVER_SIDE)),
 		&m_button_local_to_remote);
 
 	bool src_r = is_transfer_enable(CLIENT_SIDE);	//remote→local: 소스=원격
 	bool dst_l = is_dest_writable(CLIENT_SIDE);		//        목적지=로컬 폴더
 	m_button_remote_to_local.EnableWindow(src_r && dst_l);
 	m_tooltip.UpdateTipText((src_r && dst_l) ? _T("")
-		: (!dst_l ? _T("받는 로컬 폴더가 주요 시스템 폴더/시스템 드라이브 루트라 보낼 수 없습니다.") : get_transfer_block_reason(CLIENT_SIDE)),
+		: (!dst_l ? _S(NFTD_IDS_RECV) + _S(IDS_TRANSFER_RESTRICTED) : get_transfer_block_reason(CLIENT_SIDE)),
 		&m_button_remote_to_local);
 }
 

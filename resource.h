@@ -122,6 +122,7 @@
 #define IDB_SKIP20                      177
 #define IDS_TRANSFER_RESULT_CONFIRM     177
 #define IDB_SKIP24                      178
+#define IDS_TRANSFER_RESTRICTED         178
 #define IDB_PNG9                        179
 #define IDB_SKIP28                      179
 #define IDS_CMP_SAME                    180
