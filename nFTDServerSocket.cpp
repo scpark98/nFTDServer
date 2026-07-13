@@ -448,9 +448,10 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 	msg ret;
 	USHORT length;
 
-	//20260713 by claude. 신규 원격 서브명령(이동/복사/존재확인)은 구클라가 미구현이라, 보내면 서버가 응답을 기다리며 무한대기한다.
-	//클라 버전이 서버보다 낮으면(구버전/미수신) 명령을 아예 보내지 않고 그냥 return 한다. (rename/delete/property/open 등 기존 명령은 그대로 허용.)
-	if ((cmd == file_cmd_move || cmd == file_cmd_copy || cmd == file_cmd_check_exist) && !is_client_compatible())
+	//20260713 by claude. 게이팅 대상은 '구클라가 미구현이라 보내면 서버가 무한대기하는 진짜 신규 명령'뿐이다 → 이동/복사(2026-07-04 신설).
+	//file_cmd_check_exist 는 6816029(2025-01-17)부터 있던 오래된 명령이라 모든 클라가 구현하고 있어 게이팅에서 제외한다(제외 안 하면
+	//서버 버전이 클라보다 높을 때 존재검사가 skip 돼 즐겨찾기가 전부 '경로 없음=빨간색'으로 오판됐다).
+	if ((cmd == file_cmd_move || cmd == file_cmd_copy) && !is_client_compatible())
 	{
 		logWriteE(_T("file_command(cmd=%d) skipped: client version %s < server."), cmd, m_client_version);
 		return false;
@@ -679,11 +680,15 @@ bool CnFTDServerSocket::receive_client_version()
 	return true;
 }
 
-//20260713 by claude. 클라 버전 >= 서버(자신) 버전이면 true. Common 의 compare_str(버전 파트별 숫자 비교, -1/0/+1)을 사용.
-//구버전(미수신 시 "0.0.0.0")은 어떤 정상 서버 버전보다 낮아 -1 → false → 신규 기능 차단(안전 기본값).
+//20260713 by claude. 신규 원격 서브명령(이동/복사/존재확인/새폴더인덱스)이 모두 구현된 '최소 클라 버전'과 비교한다.
+//이전엔 서버 자신의 현재 버전(get_file_property())과 비교했는데, 서버를 버전업할 때마다 그보다 낮은(=기능은 정상 보유) 클라가
+//전부 '구버전'으로 오판돼 이동/복사/존재검사가 막혔다(2026-07-13: 존재검사 skip → 즐겨찾기 전부 빨간색). 그래서 '서버 현재 버전'이
+//아니라 '기능 도입 최소 버전'(고정 상수)과 비교하도록 수정한다. 미수신 클라("0.0.0.0")는 여전히 최소 버전보다 낮아 안전하게 차단된다.
+//Common 의 compare_str(버전 파트별 숫자 비교, -1/0/+1)을 사용.
 bool CnFTDServerSocket::is_client_compatible()
 {
-	return compare_str(m_client_version, get_file_property(), _T('.')) >= 0;
+	static const TCHAR* MIN_CLIENT_VERSION = _T("2026.7.10.0");	//이 remote 기능들이 모두 구현된 최소 클라 버전.
+	return compare_str(m_client_version, MIN_CLIENT_VERSION, _T('.')) >= 0;
 }
 
 BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName, int* fail_reason)

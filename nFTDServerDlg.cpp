@@ -2291,7 +2291,6 @@ void CnFTDServerDlg::file_transfer()
 	//기준(같은 드라이브=이동, 다른 드라이브=복사). cross-side(로컬↔리모트)는 소켓 전송이라 m_drag_copy 미사용. 같은 폴더에 같은
 	//이름으로 복사 시 이름충돌은 아래 SHFileOperation 에 FOF_RENAMEONCOLLISION 을 줘 탐색기처럼 "… - 복사본" 으로 자동 리네임.
 	m_drag_copy = is_drag_copy(m_transfer_from, m_transfer_to);
-	logWrite(_T("[dnd] file_transfer src=%d dst=%d from=[%s] to=[%s] list=%d copy=%d srcExists=%d"), (int)m_srcSide, (int)m_dstSide, (LPCTSTR)m_transfer_from, (LPCTSTR)m_transfer_to, (int)m_transfer_list.size(), (int)m_drag_copy, (int)PathFileExists(m_transfer_from));	//20260712 by claude. [diag temp]
 
 
 	//목록이 없다면 m_transfer_from 이라는 1개의 폴더인 경우임.
@@ -2323,9 +2322,7 @@ void CnFTDServerDlg::file_transfer()
 		}
 	}
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
-	bool dst_writable = theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to);	//20260712 by claude. [diag temp]
-	logWrite(_T("[dnd] dst_writable(side=%d to=[%s]) = %d"), (int)m_dstSide, (LPCTSTR)m_transfer_to, (int)dst_writable);	//20260712 by claude. [diag temp]
-	if (!dst_writable)
+	if (!theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to))
 	{
 		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
 		m_transfer_list.clear();
@@ -2518,7 +2515,6 @@ void CnFTDServerDlg::file_transfer()
 				return;
 
 			m_ServerManager.m_socket.file_command(cmd, NULL, m_transfer_to, &srcs);	//배치: N개 소스 + 대상 폴더
-			logWrite(_T("[dnd] remote SEND cmd=%d to=[%s] srcs=%d"), cmd, (LPCTSTR)m_transfer_to, (int)srcs.size());	//20260712 by claude. [diag temp]
 
 			//대상/소스가 보이는 원격 리스트 갱신. 트리는 호출부(트리 핸들러)가 갱신.
 			m_list_remote.refresh_list(true, true);
@@ -3388,11 +3384,8 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				}
 				break;
 			case file_cmd_new_folder:
-				logWrite(_T("[newfolder] REMOTE start -> add_new_item"));	//20260712 by claude. [diag temp] 테스트 중 유지 — 최종 push 시 제거.
 				hItem = ptree->add_new_item(NULL, _S(IDS_NEW_FOLDER), true, true);
-				logWrite(_T("[newfolder] REMOTE add_new_item DONE -> insert_folder"));
 				plist->insert_folder(-1, ptree->GetItemText(hItem), true);
-				logWrite(_T("[newfolder] REMOTE insert_folder DONE"));
 				break;
 			case file_cmd_refresh:
 				ptree->refresh(ptree->GetSelectedItem());
@@ -4074,7 +4067,6 @@ void CnFTDServerDlg::rewatch_local()
 	{
 		m_dir_watcher.add(cur, false);
 		count++;
-		logWrite(_T("[rewatch] +list %s"), (LPCTSTR)cur);	//20260712 by claude. [diag temp]
 	}
 
 	for (HTREEITEM h = m_tree_local.GetFirstVisibleItem(); h != NULL; h = m_tree_local.GetNextVisibleItem(h))
@@ -4086,7 +4078,6 @@ void CnFTDServerDlg::rewatch_local()
 		{
 			m_dir_watcher.add(p, false);	//CSCDirWatcher::add 는 is_watching 으로 중복 skip
 			count++;
-			logWrite(_T("[rewatch] +tree %s"), (LPCTSTR)p);	//20260712 by claude. [diag temp]
 		}
 	}
 
@@ -4096,7 +4087,6 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_NEW_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
-	logWrite(_T("[watcher] action=%d path0='%s'"), msg->action, msg->path0);	//20260712 by claude. [diag temp] 테스트 중 유지 — 최종 push 시 제거.
 
 	//변경된 항목의 '부모 폴더'(=내용이 바뀐 폴더)와 현재 리스트 폴더(둘 다 real path).
 	CString changed_parent = get_part(msg->path0, fn_folder);
@@ -4118,7 +4108,6 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	if (msg->action == FILE_ACTION_REMOVED || msg->action == FILE_ACTION_RENAMED_NEW_NAME || msg->action == FILE_ACTION_ADDED)
 	{
 		HTREEITEM hParentNode = m_tree_local.get_item_by_fullpath(changed_parent);
-		logWrite(_T("[chevron] action=%d changed_parent='%s' hParent=%p childLoaded=%d"), msg->action, (LPCTSTR)changed_parent, hParentNode, hParentNode ? (int)(m_tree_local.GetChildItem(hParentNode) != NULL) : -1);	//20260712 by claude. [diag temp] chevron ADD 조사 — 테스트 후 정리.
 		if (hParentNode)
 		{
 			if (msg->action == FILE_ACTION_REMOVED)
@@ -4162,7 +4151,6 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 						tv.hItem = hParentNode;
 						tv.cChildren = 1;
 						m_tree_local.SetItem(&tv);
-						logWrite(_T("[chevron] set cChildren=1 -> ItemHasChildren=%d"), (int)m_tree_local.ItemHasChildren(hParentNode));	//20260712 by claude. [diag temp]
 					}
 				}
 			}
@@ -4182,7 +4170,6 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 			tv.hItem = hDirNode;
 			tv.cChildren = has_sub_folders(msg->path0) ? 1 : 0;
 			m_tree_local.SetItem(&tv);
-			logWrite(_T("[chevron] MODIFIED dir='%s' -> cChildren=%d hasChildren=%d"), (LPCTSTR)msg->path0, tv.cChildren, (int)m_tree_local.ItemHasChildren(hDirNode));	//20260712 by claude. [diag temp]
 		}
 	}
 
