@@ -3493,24 +3493,41 @@ void CnFTDServerDlg::refresh_selection_status(CSCListCtrl* plist)
 	}
 
 	if (plist == &m_list_local)
-	{
 		m_static_count_local.set_text(str);
-
-		//선택여부에 따라 송수신 버튼 상태도 변한다. 전송 대상은 리스트 선택 또는 트리 현재 폴더이므로 통합 판정한다.
-		bool enable = is_transfer_enable(SERVER_SIDE);
-		m_button_local_to_remote.EnableWindow(enable);
-		//disable 사유가 "보호 폴더/드라이브 루트 선택"이면 그 사유를 hover 툴팁으로 안내. enable 이면 툴팁 비움.
-		m_tooltip.UpdateTipText(enable ? _T("") : get_transfer_block_reason(SERVER_SIDE), &m_button_local_to_remote);
-	}
 	else if (plist == &m_list_remote)
-	{
 		m_static_count_remote.set_text(str);
 
-		//선택여부에 따라 송수신 버튼 상태도 변한다. 전송 대상은 리스트 선택 또는 트리 현재 폴더이므로 통합 판정한다.
-		bool enable = is_transfer_enable(CLIENT_SIDE);
-		m_button_remote_to_local.EnableWindow(enable);
-		m_tooltip.UpdateTipText(enable ? _T("") : get_transfer_block_reason(CLIENT_SIDE), &m_button_remote_to_local);
-	}
+	//20260713 by claude. 전송 버튼은 소스(선택/보호)뿐 아니라 '목적지 폴더가 보호폴더(쓰기 불가)'인지에도 좌우된다.
+	//local→remote 의 목적지는 원격 폴더, remote→local 의 목적지는 로컬 폴더 → 어느 쪽 폴더가 바뀌어도 두 버튼을 함께 재평가한다.
+	update_transfer_buttons();
+}
+
+//20260713 by claude. 두 전송 버튼의 활성/툴팁을 재평가한다. 활성 조건 = (소스가 전송 가능) AND (목적지 폴더가 쓰기 가능).
+//목적지 폴더가 주요 시스템 폴더/시스템 드라이브 루트(보호)면 그 방향 버튼을 비활성화한다(file_transfer 의 수신 차단과 이원화된 UI 게이트).
+void CnFTDServerDlg::update_transfer_buttons()
+{
+	bool src_l = is_transfer_enable(SERVER_SIDE);	//local→remote: 소스=로컬
+	bool dst_r = is_dest_writable(SERVER_SIDE);		//        목적지=원격 폴더
+	m_button_local_to_remote.EnableWindow(src_l && dst_r);
+	m_tooltip.UpdateTipText((src_l && dst_r) ? _T("")
+		: (!dst_r ? _T("받는 원격 폴더가 주요 시스템 폴더/시스템 드라이브 루트라 보낼 수 없습니다.") : get_transfer_block_reason(SERVER_SIDE)),
+		&m_button_local_to_remote);
+
+	bool src_r = is_transfer_enable(CLIENT_SIDE);	//remote→local: 소스=원격
+	bool dst_l = is_dest_writable(CLIENT_SIDE);		//        목적지=로컬 폴더
+	m_button_remote_to_local.EnableWindow(src_r && dst_l);
+	m_tooltip.UpdateTipText((src_r && dst_l) ? _T("")
+		: (!dst_l ? _T("받는 로컬 폴더가 주요 시스템 폴더/시스템 드라이브 루트라 보낼 수 없습니다.") : get_transfer_block_reason(CLIENT_SIDE)),
+		&m_button_remote_to_local);
+}
+
+//20260713 by claude. source_side 에서 보낼 때의 '목적지(반대편) 현재 폴더'가 쓰기 가능(보호폴더 아님)인지.
+bool CnFTDServerDlg::is_dest_writable(int source_side)
+{
+	int dest_side = (source_side == SERVER_SIDE) ? CLIENT_SIDE : SERVER_SIDE;
+	CSCListCtrl* pdest = (dest_side == SERVER_SIDE) ? &m_list_local : &m_list_remote;
+	CString dest_path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dest_side, pdest->get_path());
+	return theApp.m_shell_imagelist.is_writable_to(dest_side, dest_path);
 }
 
 //리스트에서 선택한 전송 대상 중 보호(전송 금지) 대상이 있으면 그 사유 문자열을, 없으면 빈 문자열을 리턴한다.

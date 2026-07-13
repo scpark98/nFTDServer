@@ -150,6 +150,10 @@ public:
 	bool				is_transfer_enable_for_tree(int srcSide);
 	//전송 대상은 리스트 선택 항목 또는(선택이 없으면) 트리에서 선택한 현재 폴더다. 두 경우를 통합 판정한다.
 	bool				is_transfer_enable(int srcSide);
+	//20260713 by claude. 두 전송 버튼(local↔remote)의 활성/툴팁을 (소스 전송가능 AND 목적지 폴더 쓰기가능)으로 함께 재평가.
+	void				update_transfer_buttons();
+	//source_side 에서 보낼 때 목적지(반대편) 현재 폴더가 쓰기 가능(보호폴더 아님)인지.
+	bool				is_dest_writable(int source_side);
 	//리스트에서 선택된 항목 중 하나라도 보호(삭제/이름변경 금지) 대상이면 true. 다중선택 삭제 방어에 사용.
 	bool				any_selected_item_protected(int dwSide);
 
