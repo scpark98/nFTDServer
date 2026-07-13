@@ -448,6 +448,14 @@ bool CnFTDServerSocket::file_command(int cmd, LPCTSTR param0, LPCTSTR param1, st
 	msg ret;
 	USHORT length;
 
+	//20260713 by claude. 신규 원격 서브명령(이동/복사/존재확인)은 구클라가 미구현이라, 보내면 서버가 응답을 기다리며 무한대기한다.
+	//클라 버전이 서버보다 낮으면(구버전/미수신) 명령을 아예 보내지 않고 그냥 return 한다. (rename/delete/property/open 등 기존 명령은 그대로 허용.)
+	if ((cmd == file_cmd_move || cmd == file_cmd_copy || cmd == file_cmd_check_exist) && !is_client_compatible())
+	{
+		logWriteE(_T("file_command(cmd=%d) skipped: client version %s < server."), cmd, m_client_version);
+		return false;
+	}
+
 	memset(&ret, 0, sizeof(ret));
 
 	//프로토콜 명령 코드 전송
@@ -565,6 +573,13 @@ bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_ti
 	msg ret;
 	USHORT length;
 
+	//20260713 by claude. nFTD_new_folder_index 는 신규 명령 — 구클라 미구현이라 보내면 무한대기. 호환 안 되면 그냥 return(폴더는 기존 create_directory 로 생성됨).
+	if (!is_client_compatible())
+	{
+		logWriteE(_T("get_new_folder_index skipped: client version %s < server."), m_client_version);
+		return false;
+	}
+
 	memset(&ret, 0, sizeof(ret));
 
 	//프로토콜 명령 코드 전송
@@ -616,6 +631,53 @@ bool CnFTDServerSocket::get_new_folder_index(CString path, CString new_folder_ti
 	*index = new_index;
 
 	return true;
+}
+
+//20260713 by claude. 접속 직후 1회 호출. 클라가 이미 연결된 명령 소켓으로 먼저 push 한 버전([USHORT 길이][문자열])을 받는다.
+//서버는 질의하지 않는다(구클라는 질의를 몰라 응답 못 하고 timeout 이 소켓을 닫아 freeze 되던 문제 회피). ReceiveReady(select)는
+//소켓을 닫지 않고 수신 대기만 확인 — 구클라는 push 안 하므로 짧게 기다린 뒤 데이터 없으면 "0.0.0.0"(구버전) 유지하고 그대로 진행.
+bool CnFTDServerSocket::receive_client_version()
+{
+	m_client_version = _T("0.0.0.0");	//기본=구버전(미수신).
+
+	//구클라 대비: push 가 없으면 select 가 짧게 기다린 뒤 false → 읽지 않고 소켓도 열린 채 진행. (RecvExact 는 실패 시 소켓을 닫으므로
+	//데이터가 확실히 있을 때만 호출해야 한다.) 신클라는 접속 직후 push 하므로 LAN 에서 즉시 ready.
+	timeval tv;
+	tv.tv_sec  = 0;
+	tv.tv_usec = 500 * 1000;			//500ms — 구클라만 1회 지불(미수신 감지용). 신클라는 데이터가 이미 도착해 즉시 반환.
+	if (!m_sock.ReceiveReady(&tv))
+	{
+		logWrite(_T("client version = (none, old client), server version = %s"), get_file_property());
+		return true;
+	}
+
+	USHORT length = 0;
+	if (m_sock.RecvExact((LPSTR)&length, sizeof(USHORT), BLASTSOCK_BUFFER) && length > 0 && length < 64 * sizeof(TCHAR))
+	{
+		TCHAR ver[64] = { 0, };
+		if (m_sock.RecvExact((LPSTR)ver, length, BLASTSOCK_BUFFER))
+		{
+			//compare_str 은 비숫자 세그먼트를 만나면 0(=동일)을 반환하므로, 형식(숫자와 '.' 만)을 먼저 검증해 통과 못 하면
+			//"0.0.0.0"(비호환) 유지 — 깨진/조작된 버전이 게이트를 통과하는 것을 막는 안전 기본값.
+			CString v = ver;
+			bool valid = !v.IsEmpty();
+			for (int i = 0; valid && i < v.GetLength(); i++)
+				if (!_istdigit(v[i]) && v[i] != _T('.'))
+					valid = false;
+			if (valid)
+				m_client_version = v;
+		}
+	}
+
+	logWrite(_T("client version = %s, server version = %s"), m_client_version, get_file_property());
+	return true;
+}
+
+//20260713 by claude. 클라 버전 >= 서버(자신) 버전이면 true. Common 의 compare_str(버전 파트별 숫자 비교, -1/0/+1)을 사용.
+//구버전(미수신 시 "0.0.0.0")은 어떤 정상 서버 버전보다 낮아 -1 → false → 신규 기능 차단(안전 기본값).
+bool CnFTDServerSocket::is_client_compatible()
+{
+	return compare_str(m_client_version, get_file_property(), _T('.')) >= 0;
 }
 
 BOOL CnFTDServerSocket::Rename(LPCTSTR lpOldName, LPCTSTR lpNewName)

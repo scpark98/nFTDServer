@@ -222,6 +222,9 @@ BOOL CnFTDServerDlg::OnInitDialog()
 	m_resize.Add(IDC_BUTTON_LOCAL_TO_REMOTE, 50, 50, 0, 0);
 	m_resize.Add(IDC_BUTTON_REMOTE_TO_LOCAL, 50, 50, 0, 0);
 
+	//연결중이어도 타이틀이 표시되어야 하므로 우선 기본 타이틀 세팅.
+	SetWindowText(_S(NFTD_IDS_MSGBOX_TITLE));
+
 	set_color_theme(theApp.m_color_theme);
 	set_system_buttons(this, SC_MINIMIZE, SC_MAXIMIZE, SC_CLOSE);
 	set_titlebar_icon(IDR_MAINFRAME);// , 20, 20);
@@ -2111,8 +2114,11 @@ CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint
 		dst_side = (pDropWnd == &m_list_remote) ? CLIENT_SIDE : SERVER_SIDE;
 		CString base_path = (pDropWnd == &m_list_remote) ? m_remoteCurrentPath : pl->get_path();
 		pl->ScreenToClient(&cli);
-		UINT flags = 0;
-		int idx = pl->HitTest(cli, &flags);
+		//20260713 by claude. native CListCtrl::HitTest 는 smooth 스크롤(m_scroll_y)을 무시하고 클라이언트 Y 를 top(0번 행) 기준으로
+		//매핑해, 리스트가 아래로 스크롤돼 있으면 커서 밑과 다른 항목을 짚었다(파일 위에서도 엉뚱한 폴더명이 dest 로 떠 계속 바뀜).
+		//→ smooth 스크롤을 반영하는 CSCListCtrl::hit_test(client 좌표, m_scroll_y 기준)로 교체.
+		int idx = -1, sub = -1;
+		pl->hit_test(cli, idx, sub, false);
 		//폴더 항목(크기 컬럼 empty) 위면 그 하위 폴더로, 아니면 현재 폴더로 드롭.
 		if (idx >= 0 && pl->get_text(idx, CSCListCtrl::col_filesize).IsEmpty())
 		{
@@ -2401,6 +2407,10 @@ void CnFTDServerDlg::file_transfer()
 				if (m_drag_copy)
 					sel_names.push_back(get_part(fd.cFileName, fn_name));
 			}
+			//20260713 by claude. 리모트 이동/복사는 신규 명령(file_cmd_move/copy) — 구버전 클라는 미구현이라, 버전이 낮으면 안내 후 스킵.
+			if (warn_if_client_outdated())
+				return;
+
 			m_ServerManager.m_socket.file_command(cmd, NULL, m_transfer_to, &srcs);	//배치: N개 소스 + 대상 폴더
 			logWrite(_T("[dnd] remote SEND cmd=%d to=[%s] srcs=%d"), cmd, (LPCTSTR)m_transfer_to, (int)srcs.size());	//20260712 by claude. [diag temp]
 
@@ -2856,6 +2866,17 @@ LRESULT CnFTDServerDlg::on_message(WPARAM wParam, LPARAM lParam)
 	CDialogEx::OnCancel();
 
 	return 0;
+}
+
+//20260713 by claude. 원격 신규기능 실행 전 클라 버전 확인. 클라(nFTDClient)가 서버보다 낮으면(구버전/버전 미수신) 안내 메시지 후 true(=스킵).
+//접속 시 서버가 받은 클라 버전으로 스스로 판단하므로, 실제 액션 실패와 구분해 "Agent 업데이트" 안내를 띄울 수 있다.
+bool CnFTDServerDlg::warn_if_client_outdated()
+{
+	if (m_ServerManager.m_socket.is_client_compatible())
+		return false;
+
+	m_messagebox.DoModal(_T("해당 기능은 nFTDClient.exe 의 버전이 낮아 현재 지원되지 않습니다.\nAgent 를 업데이트하면 모든 기능이 정상 동작합니다."), MB_OK);
+	return true;
 }
 
 bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param1)

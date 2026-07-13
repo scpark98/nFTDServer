@@ -315,6 +315,12 @@ BOOL CnFTDServerManager::SetConnection(LPTSTR lptCmdLine)
 BOOL CnFTDServerManager::Connection()
 {
 	m_is_connected = m_socket.Connection();
+
+	//20260713 by claude. 접속 성공 직후, 클라가 명령 소켓으로 먼저 보낸 버전을 받는다(서버는 질의 안 함). 구클라는 미수신 → "0.0.0.0".
+	//신규 원격기능(이동/복사 등)은 이 버전으로 허용 여부 판단. 첫 명령 교환 전에 읽어야 스트림이 어긋나지 않으므로 여기서 호출.
+	if (m_is_connected)
+		m_socket.receive_client_version();
+
 	return m_is_connected;
 }
 

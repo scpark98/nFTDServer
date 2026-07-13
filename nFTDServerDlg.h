@@ -41,6 +41,10 @@ public:
 	CSCShapeDlg			m_toast_popup;
 	CSCMessageBox		m_messagebox;
 
+	//20260713 by claude. 원격 신규기능(이동/복사 등) 실행 전 클라 버전 확인. 클라(nFTDClient)가 서버보다 낮으면 안내 메시지 후 true 반환(=액션 스킵).
+	//서버가 접속 시 받은 버전으로 스스로 판단하므로, 실제 액션 실패와 구분해 "Agent 업데이트 안내"를 띄울 수 있다.
+	bool				warn_if_client_outdated();
+
 	CSCDirWatcher		m_dir_watcher;
 	LRESULT				on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam);
 	//로컬 dir watcher 를 현재 상태 기준으로 재설정한다: 리스트 현재 폴더 + 트리에서 펼쳐진 폴더들을 각각 '비재귀'로 감시.

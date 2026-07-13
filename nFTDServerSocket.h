@@ -71,6 +71,13 @@ public:
 
 	bool get_new_folder_index(CString path, CString new_folder_title, int *index);
 
+	//20260713 by claude. 접속 직후 1회 호출. 클라가 이미 연결된 명령 소켓으로 먼저 push 한 버전을 받는다(서버는 질의하지 않음).
+	//소켓을 닫지 않는 ReceiveReady(select, 짧은 대기)로 확인 — 구클라는 push 안 하므로 미수신 → m_client_version 은 "0.0.0.0"(구버전) 유지.
+	//신규 원격기능(이동/복사/존재확인/새폴더인덱스)은 is_client_compatible() 이 false 면 서버가 명령을 보내지 않고 return(구클라 무한대기 방지).
+	bool receive_client_version();
+	bool is_client_compatible();		//클라 버전 >= 서버(자신) 버전이면 true.
+	CString	m_client_version = _T("0.0.0.0");	//접속 시 받은 클라 FileVersion. 기본=구버전(미수신).
+
 	BOOL ExecuteFile(LPCTSTR lpDirName);
 	BOOL Rename(LPCTSTR lpOldName, LPCTSTR lpNewName);
 	BOOL delete_directory(LPCTSTR lpPath);
