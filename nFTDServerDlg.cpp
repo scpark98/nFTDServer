@@ -412,7 +412,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 
 	//for test. 한 PC에서 단독으로 테스트 할 경우
-	if (true)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
+	if (false)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
 	{
 		CString my_ip = get_my_ip();
 #ifdef _REMOTE_SDK
@@ -1781,6 +1781,15 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			m_path_remote.set_path(m_tree_remote.get_path());
 			m_list_remote.set_path(m_tree_remote.get_path(), true);
 		}
+	}
+	else if (msg->message == CSCTreeCtrl::message_folder_created)
+	{
+		//20260714 by claude. 트리에서 새 폴더 생성+명명 완료 → 그 노드를 선택한다(이름 입력/그냥 엔터 모두).
+		//선택하면 TVN_SELCHANGED(OnTvnSelchangedTree*)가 pathctrl/listctrl 까지 갱신한다. param0=새 폴더 실경로.
+		CSCTreeCtrl* ptree = (CSCTreeCtrl*)msg->pThis;
+		HTREEITEM hItem = ptree->get_item_by_fullpath(msg->param0);
+		if (hItem)
+			ptree->SelectItem(hItem);
 	}
 	else if (msg->message == CSCTreeCtrl::message_request_new_folder_index)
 	{

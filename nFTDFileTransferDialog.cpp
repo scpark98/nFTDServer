@@ -514,6 +514,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 	m_ProgressData.session_bytes.QuadPart = 0;
 	m_ProgressData.session_start_clock = 0;
 
+	//20260714 by claude. is_same_device(같은 PC 내 local↔local 여부) = 커맨드라인 peer IP(__targv[4])와 내 IP 비교로 결정되는
+	//세션 불변값이라 루프 밖에서 1회만 계산한다. 예전엔 매 파일마다 get_my_ip()(GetNetworkInformation 조회)를 호출해 낭비였다.
+	bool is_same_device = (__argc > 4) && (get_my_ip().Compare(__targv[4]) == 0);
+
 	//실제 파일 송수신 시작
 	for (i = 0; i < m_filelist.size(); i++)
 	{
@@ -596,11 +600,6 @@ void CnFTDFileTransferDialog::thread_transfer()
 		ULARGE_INTEGER	filesize;
 		filesize.LowPart = 0;
 		filesize.HighPart = 0;
-
-		bool is_same_device = false;
-
-		if ((__argc > 4) && (get_my_ip().Compare(__targv[4]) == 0))
-			is_same_device = true;
 
 		//폴더 전송. 폴더는 실제 폴더를 전송하지 않고 동일한 이름으로 폴더를 생성해주면 된다.
 		if (m_filelist[i].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
