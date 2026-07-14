@@ -412,7 +412,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 
 	//for test. 한 PC에서 단독으로 테스트 할 경우
-	if (false)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
+	if (true)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
 	{
 		CString my_ip = get_my_ip();
 #ifdef _REMOTE_SDK
@@ -2315,6 +2315,10 @@ void CnFTDServerDlg::file_transfer()
 
 	//실행부 강제(방어선 이원화): 버튼/메뉴 UI 게이트는 드래그앤드롭·조작된 요청을 못 막으므로, 실제 전송 시작 지점에서
 	//다시 검사한다. 소스에 보호 항목(드라이브 루트·시스템 폴더 등)이 하나라도 있으면 전송 금지.
+	//20260714 by claude. [진단: 같은 폴더 드롭 오차단] file_transfer 진입 시 실제 값 기록 — 보호 팝업이 어떤 from/to/side/copy 로 오는지 확정용.
+	logWrite(_T("[prot] file_transfer ENTER srcSide=%d dstSide=%d drag_copy=%d from=[%s] to=[%s] list=%d"),
+		m_srcSide, m_dstSide, (int)m_drag_copy, (LPCTSTR)m_transfer_from, (LPCTSTR)m_transfer_to, (int)m_transfer_list.size());
+
 	for (auto& fd : m_transfer_list)
 	{
 		//20260712 by claude. 소스 방어선 — 실제 이동(같은 side + 복사아님)이면 is_movable, 그 외(복사/크로스머신 전송=복사)면
@@ -2325,6 +2329,8 @@ void CnFTDServerDlg::file_transfer()
 			: theApp.m_shell_imagelist.is_copyable_from(m_srcSide, fd.cFileName);
 		if (!src_ok)
 		{
+			//20260714 by claude. [진단: 같은 폴더 드롭 오차단] 소스 검사에서 막힘 — 어떤 파일명(leaf/full?)·is_move 로 걸렸는지 기록.
+			logWrite(_T("[prot] SRC BLOCK is_move=%d side=%d fd.cFileName=[%s]"), (int)is_move, m_srcSide, fd.cFileName);
 			m_messagebox.DoModal(_S(IDS_PROTECTED_FOLDER_FILE));
 			m_transfer_list.clear();
 			return;
@@ -2333,6 +2339,8 @@ void CnFTDServerDlg::file_transfer()
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
 	if (!theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to))
 	{
+		//20260714 by claude. [진단: 같은 폴더 드롭 오차단] 목적지 검사에서 막힘 — 어떤 to/side 로 걸렸는지 기록.
+		logWrite(_T("[prot] DST BLOCK dstSide=%d to=[%s]"), m_dstSide, (LPCTSTR)m_transfer_to);
 		m_messagebox.DoModal(_S(IDS_PROTECTED_FOLDER_FILE));
 		m_transfer_list.clear();
 		return;
