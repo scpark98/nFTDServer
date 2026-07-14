@@ -1595,17 +1595,27 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			pDropTreeCtrl->SelectDropTarget(NULL);
 		}
 
+		//20260714 by claude. 자기 자신/현재 부모로의 '이동' 드롭은 무동작(from==to 또는 parent(from)==to) — 이 경우 아래 트리 갱신을 하면 안 된다
+		//(특히 refresh(소스 부모)가 선택을 소스 부모로 옮김). 단 file_transfer 가 트리 드래그 시 m_transfer_from 을 '부모'로 바꿔버리므로(폴더 레벨 보존),
+		//무동작 판정은 file_transfer '전에' 변형 전 실제 소스 경로로 한다 — 안 그러면 조부모로의 진짜 이동(예: D:\Temp\Temp1 → D:\)이 parent(D:\Temp)==D:\ 로 오판돼 갱신이 스킵된다.
+		CString noop_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
+		CString noop_to   = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
+		bool is_noop_move = (!m_drag_copy && m_srcSide == m_dstSide &&
+			(noop_from.CompareNoCase(noop_to) == 0 || get_parent_dir(noop_from).CompareNoCase(noop_to) == 0));
+
 		file_transfer();
 
-		//20260714 by claude. 자기 자신/현재 부모로의 '이동' 드롭은 file_transfer 가 무동작(from==to 또는 parent(from)==to)으로 끝낸다. 실제 변경이 없으므로
-		//아래 트리 갱신을 하면 안 된다 — 특히 else 분기의 refresh(소스 부모)가 그 자식(선택 중인 드래그 폴더)을 삭제·재삽입하며 선택을 소스 부모(예: D:\)로
-		//옮겨버린다(자기 폴더에 드롭했는데 D: 가 선택되던 버그). from/to 는 file_transfer 에서 실경로로 변환·끝 '\\' 제거돼 있어 그대로 비교 가능.
-		bool is_noop_move = (!m_drag_copy && m_srcSide == m_dstSide &&
-			(m_transfer_from.CompareNoCase(m_transfer_to) == 0 || get_parent_dir(m_transfer_from).CompareNoCase(m_transfer_to) == 0));
+		//20260714 by claude. [진단: 리모트 펼침유지] 블록 A(트리-소스 드롭 핸들러) 진입 확인.
+		logWrite(_T("[expand] blockA(tree-src): srcSide=%d dstSide=%d drag_copy=%d from=[%s] to=[%s] noop=%d"),
+			m_srcSide, m_dstSide, (int)m_drag_copy, (LPCTSTR)m_transfer_from, (LPCTSTR)m_transfer_to, (int)is_noop_move);
 
 		//20260714 by claude. 이동 전 드래그 소스가 펼쳐져 있었는지만 기억한다(로컬·리모트 공통) — 이동 후 대상 폴더 노드를 펼치면 자식은 (로컬=디스크,
 		//리모트=소켓 동기 요청)에서 지연로딩된다. 소스 refresh 가 hDrag 를 무효화하기 전에 여기서 미리 캡처한다.
 		bool src_expanded = (pDragTreeCtrl->GetItemState(pDragTreeCtrl->m_DragItem, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+
+		//20260714 by claude. 이동 폴더명은 드래그 노드 텍스트에서 직접 캡처한다 — file_transfer 가 트리 드래그의 '폴더 레벨 보존'을 위해 m_transfer_from 을
+		//부모로 바꿔놓으므로(예: D:\Temp1 → D:\), get_part(m_transfer_from) 은 빈 문자열이 되어 이동 폴더를 못 찾는다.
+		CString moved_name = pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem);
 
 		//[로컬 이동] refresh 대신 서피컬로 갱신: 소스 노드는 트리에서 제거, 대상 노드 아래에 이동된 폴더 노드를 추가.
 		//PathFileExists(from)==false 로 실제 이동 성공을 확인(from==to 스킵/실패면 트리 안 건드림).
@@ -1620,7 +1630,6 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			{
 				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//대상 자식이 이미 로드됨 → 이동된 폴더 1개만 정렬 위치에 삽입.
 				{
-					CString   moved_name = get_part(m_transfer_from, fn_name);
 					HTREEITEM hExisting  = pDstTree->find_children_item(moved_name, hDstTreeItem);
 					if (hExisting != NULL)
 					{
@@ -1663,7 +1672,7 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			//20260714 by claude. 소스가 펼쳐져 있었으면 대상 위치의 이동된 폴더 노드도 펼친다(펼쳐진 그대로 유지). 자식은 Expand 시 디스크에서 지연로딩.
 			if (src_expanded && pDstTree && hDstTreeItem)
 			{
-				HTREEITEM hMoved = pDstTree->find_children_item(get_part(m_transfer_from, fn_name), hDstTreeItem);
+				HTREEITEM hMoved = pDstTree->find_children_item(moved_name, hDstTreeItem);
 				if (hMoved)
 					pDstTree->Expand(hMoved, TVE_EXPAND);
 			}
@@ -1681,33 +1690,67 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				return 0;
 			}
 
-			//20260713 by claude. 대상 트리 노드에 '확장버튼이 없던(빈)' 경우엔 refresh 후 펼쳐서 결과를 보여준다(원격 tree→tree 이동 시
-			//chevron 만 생기고 안 펼쳐지던 문제). 이미 확장버튼이 있으면 refresh 만(기존 동작 유지, 강제 펼침 안 함). refresh 전에 상태를 캡처한다.
-			bool dst_had_chevron = (pDstTree && hDstTreeItem) ? (pDstTree->ItemHasChildren(hDstTreeItem) != 0) : true;
+			//20260714 by claude. [진단: 리모트 펼침유지] else-if 진입 값 — 어느 조건에서 갈리는지 추적.
+			logWrite(_T("[expand] else-if ENTER: srcSide=%d dstSide=%d drag_copy=%d src_expanded=%d pDstTree=%p hDst=%p"),
+				m_srcSide, m_dstSide, (int)m_drag_copy, (int)src_expanded, pDstTree, hDstTreeItem);
 
 			//20260713 by claude. 이동(move)이면 옮겨진 소스가 부모에서 사라져야 하므로 소스의 '부모'를 refresh(결정적). 예전엔 GetSelectedItem()을
 			//refresh 했는데, 드롭 후 선택 항목이 소스 부모가 아니면(드롭 대상 등이 선택됨) 소스 부모가 갱신 안 돼 옮겨진 src 가 트리에 남던 버그.
 			//복사(copy)는 소스가 그대로라 소스쪽 갱신 불필요.
 			if (!m_drag_copy)
 			{
-				HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(pDragTreeCtrl->m_DragItem);
-				if (hSrcParent)
+				//20260714 by claude. 옮긴 소스 '노드만' 트리에서 제거한다(로컬 서피컬 분기와 동일). 예전엔 refresh(소스 부모)로 부모 서브트리를 통째로
+				//재구성해, 부모나 그 조상이 접히고 펼침을 잃었다(예: Temp1[D:\ 밑] → D:\ 이동 시 refresh(D:\)가 Temp 를 접음; 부모가 무효화돼 ASSERT 도 발생).
+				//DeleteItem 은 소스 노드만 지워 부모·형제·펼침 상태를 모두 보존한다. 소스 삭제로 대상(hDstTreeItem)도 무효화되지 않는다(대상은 소스 하위가 아니므로).
+				HTREEITEM hDrag = pDragTreeCtrl->m_DragItem;
+				HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(hDrag);
+				pDragTreeCtrl->DeleteItem(hDrag);
+				if (hSrcParent && pDragTreeCtrl->GetChildItem(hSrcParent) == NULL)
 				{
-					pDragTreeCtrl->refresh(hSrcParent);
+					TVITEM tv; ZeroMemory(&tv, sizeof(tv));
+					tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hSrcParent;   tv.cChildren = 0;
+					pDragTreeCtrl->SetItem(&tv);
 				}
 			}
+
 			if (pDstTree && hDstTreeItem)
 			{
-				pDstTree->refresh(hDstTreeItem);
-				if (!dst_had_chevron)
+				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//20260714 by claude. 대상 자식 로드됨 → 이동 폴더만 정렬 삽입. refresh(전체 재로드)는 형제(펼쳐둔 Temp)를 접으므로 안 씀(소스=DeleteItem, 대상=insert 대칭).
+					{
+						if (pDstTree->find_children_item(moved_name, hDstTreeItem) == NULL)
+						{
+							WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
+							_tcscpy_s(fd.cFileName, _countof(fd.cFileName), moved_name);
+							pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//has_children=true → chevron, 펼치면 원격 lazy-load.
+						}
+					}
+
+				//20260714 by claude. [진단] refresh 후 대상 자식 목록 — 이동 폴더가 실제로 들어왔는지/이름이 뭔지 확인(find 실패 원인 추적).
 				{
-					pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
+					CString kids; int nk = 0;
+					for (HTREEITEM hc = pDstTree->GetChildItem(hDstTreeItem); hc; hc = pDstTree->GetNextSiblingItem(hc)) { kids += _T("["); kids += pDstTree->GetItemText(hc); kids += _T("]"); nk++; }
+					logWrite(_T("[expand] dst children after refresh: n=%d %s dst_expanded=%d"), nk, (LPCTSTR)kids,
+						(int)((pDstTree->GetItemState(hDstTreeItem, TVIS_EXPANDED) & TVIS_EXPANDED) != 0));
 				}
+
+					//20260714 by claude. 이동 폴더가 들어온 대상엔 확장버튼(cChildren=1)을 보장한다 — 대상이 원래 비어(자식·확장버튼 없음) 있었으면
+					//삽입 분기가 스킵되므로 여기서 chevron 을 붙여야 아래 Expand 가 lazy-load(원격=소켓)를 트리거해 이동 폴더가 보인다.
+					{
+						TVITEM tv; ZeroMemory(&tv, sizeof(tv));
+						tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hDstTreeItem;   tv.cChildren = 1;
+						pDstTree->SetItem(&tv);
+					}
+
+				//20260714 by claude. 대상은 드롭 후 항상 펼쳐 결과(이동된 폴더)를 보여준다(로컬 서피컬 분기와 동일). refresh 가 대상을 접으므로 다시 펼친다.
+				pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
 
 				//20260714 by claude. 이동이고 소스가 펼쳐져 있었으면 대상의 이동 폴더 노드도 펼친다(펼쳐진 그대로 유지, 로컬 분기와 동일).
 				if (!m_drag_copy && src_expanded)
 				{
-					HTREEITEM hMoved = pDstTree->find_children_item(get_part(m_transfer_from, fn_name), hDstTreeItem);
+					HTREEITEM hMoved = pDstTree->find_children_item(moved_name, hDstTreeItem);
+					//20260714 by claude. [진단: 리모트 펼침유지] 이동 폴더 노드를 찾아 Expand 하는 경로 추적.
+					logWrite(_T("[expand] else-if move: src_expanded=%d moved_name=[%s] hDst=%p hMoved=%p"),
+						(int)src_expanded, (LPCTSTR)moved_name, hDstTreeItem, hMoved);
 					if (hMoved)
 						pDstTree->Expand(hMoved, TVE_EXPAND);
 				}
