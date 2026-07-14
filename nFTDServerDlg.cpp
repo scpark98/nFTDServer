@@ -2316,7 +2316,7 @@ void CnFTDServerDlg::file_transfer()
 			: theApp.m_shell_imagelist.is_copyable_from(m_srcSide, fd.cFileName);
 		if (!src_ok)
 		{
-			m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더(및 그 하위)는 시스템 손상을 막기 위해 전송할 수 없습니다."));
+			m_messagebox.DoModal(_S(IDS_PROTECTED_FOLDER_FILE));
 			m_transfer_list.clear();
 			return;
 		}
@@ -2324,7 +2324,7 @@ void CnFTDServerDlg::file_transfer()
 	//목적지: 시스템 폴더 및 시스템(실행 OS) 드라이브 루트로는 수신 금지. 데이터 드라이브 루트(D:\ 등)는 허용.
 	if (!theApp.m_shell_imagelist.is_writable_to(m_dstSide, m_transfer_to))
 	{
-		m_messagebox.DoModal(_T("주요 시스템 폴더나 시스템 드라이브 루트로는 파일을 받을 수 없습니다."));
+		m_messagebox.DoModal(_S(IDS_PROTECTED_FOLDER_FILE));
 		m_transfer_list.clear();
 		return;
 	}
@@ -2747,10 +2747,15 @@ void CnFTDServerDlg::show_list_context_menu(int side, CPoint point)
 {
 	CSCListCtrl& list = (side == SERVER_SIDE) ? m_list_local : m_list_remote;
 
-	//우클릭 위치의 항목(-1 = 빈 영역). 기존 NM_RCLICK 의 iItem 을 HitTest 로 대체.
+	//우클릭 위치의 항목(-1 = 빈 영역). CSCListCtrl::HitTest 는 smooth-aware 로 오버라이드돼 있어 스크롤(m_scroll_y) 반영된 항목이 나온다.
 	CPoint pt = point;
 	list.ScreenToClient(&pt);
 	int item = list.HitTest(pt);
+
+	//A 선택 상태에서 B 를 우클릭하면 명령이 A 가 아닌 B(우클릭 대상)에 적용되도록, 우클릭 항목이 미선택이면 그것만 단일 선택한다.
+	//(이미 선택돼 있으면 다중선택 유지 — 다중 삭제/전송 등. OnRButtonDown 과 동일 정책의 앱측 보강.)
+	if (item >= 0 && !(list.GetItemState(item, LVIS_SELECTED) & LVIS_SELECTED))
+		list.select_item(item, true, true, false);
 
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_LIST_CONTEXT);
@@ -3511,14 +3516,14 @@ void CnFTDServerDlg::update_transfer_buttons()
 
 	m_button_local_to_remote.EnableWindow(src_l && dst_r);
 	m_tooltip.UpdateTipText((src_l && dst_r) ? _T("")
-		: (!dst_r ? _S(NFTD_IDS_SEND) + _S(IDS_TRANSFER_RESTRICTED) : get_transfer_block_reason(SERVER_SIDE)),
+		: (!dst_r ? _S(IDS_PROTECTED_FOLDER_FILE) : get_transfer_block_reason(SERVER_SIDE)),
 		&m_button_local_to_remote);
 
 	bool src_r = is_transfer_enable(CLIENT_SIDE);	//remote→local: 소스=원격
 	bool dst_l = is_dest_writable(CLIENT_SIDE);		//        목적지=로컬 폴더
 	m_button_remote_to_local.EnableWindow(src_r && dst_l);
 	m_tooltip.UpdateTipText((src_r && dst_l) ? _T("")
-		: (!dst_l ? _S(NFTD_IDS_RECV) + _S(IDS_TRANSFER_RESTRICTED) : get_transfer_block_reason(CLIENT_SIDE)),
+		: (!dst_l ? _S(IDS_PROTECTED_FOLDER_FILE) : get_transfer_block_reason(CLIENT_SIDE)),
 		&m_button_remote_to_local);
 }
 
@@ -3531,10 +3536,9 @@ bool CnFTDServerDlg::is_dest_writable(int source_side)
 	return theApp.m_shell_imagelist.is_writable_to(dest_side, dest_path);
 }
 
-//리스트에서 선택한 전송 대상 중 보호(전송 금지) 대상이 있으면 그 사유 문자열을, 없으면 빈 문자열을 리턴한다.
-//선택 항목이 없으면(=전송할 파일 미선택) 버튼이 비활성이어도 "보호 폴더" 사유가 아니므로 빈 문자열을 리턴한다.
-//즉 이 툴팁은 사용자가 실제로 보호 대상을 "선택"했을 때만 안내한다. (트리 현재 폴더 자체는 사유 판정에서 제외 —
-//선택 없이 폴더에 머무는 것만으로 오해를 주는 보호 툴팁을 띄우지 않기 위함.)
+//전송 소스가 보호(전송 금지) 대상이면 그 사유 문자열을, 아니면 빈 문자열을 리턴한다.
+//대상 선정은 is_transfer_enable 과 동일 규칙 — 리스트 선택이 있으면 선택 항목, 없으면 트리 현재 폴더.
+//(예: 데이터 드라이브 루트에 선택 없이 머물면 소스 자체가 보호 대상 → 송신 버튼이 비활성이므로 그 사유를 안내한다.)
 CString CnFTDServerDlg::get_transfer_block_reason(int dwSide)
 {
 	CSCListCtrl* plist = (dwSide == SERVER_SIDE ? &m_list_local : &m_list_remote);
@@ -3542,15 +3546,21 @@ CString CnFTDServerDlg::get_transfer_block_reason(int dwSide)
 	std::deque<int> dq;
 	plist->get_selected_items(&dq);
 
-	if (dq.size() == 0)
-		return _T("");
-
 	//리스트 선택 항목 중 하나라도 보호 대상이면 그 사유를 안내.
 	for (int i = 0; i < dq.size(); i++)
 	{
 		CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, plist->get_path(dq[i]));
 		if (!theApp.m_shell_imagelist.is_copyable_from(dwSide, path))
-			return _S(IDS_PROTECTED_FOLDER_FILE);	//TODO: 다국어 — 이미 리소스 문자열 사용 중
+			return _S(IDS_PROTECTED_FOLDER_FILE);
+	}
+
+	//선택이 없으면 트리 현재 폴더가 소스다. 드라이브 루트/시스템 폴더면 소스로 전송 불가 → 사유 안내.
+	if (dq.size() == 0)
+	{
+		CSCTreeCtrl* ptree = (dwSide == SERVER_SIDE ? &m_tree_local : &m_tree_remote);
+		CString path = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dwSide, ptree->get_path());
+		if (!path.IsEmpty() && !theApp.m_shell_imagelist.is_copyable_from(dwSide, path))
+			return _S(IDS_PROTECTED_FOLDER_FILE);
 	}
 
 	return _T("");
@@ -4217,7 +4227,7 @@ void CnFTDServerDlg::OnTreeContextMenuDelete()
 	//실행부 방어선: 보호 폴더(드라이브 루트·시스템 폴더)는 삭제 금지 — 메뉴 disable 과 이원화(조작된 경로 방지).
 	if (!theApp.m_shell_imagelist.is_movable(side, path))
 	{
-		m_messagebox.DoModal(_T("드라이브 루트와 주요 시스템 폴더는 삭제할 수 없습니다."));
+		m_messagebox.DoModal(_S(IDS_PROTECTED_FOLDER_FILE));
 		return;
 	}
 

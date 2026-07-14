@@ -111,6 +111,7 @@ public:
 
 	blastsock m_sock;
 	void	set_transfer_pause(bool pause = true) { m_transfer_pause = pause; }
+	bool	get_transfer_pause() const { return m_transfer_pause; }	//20260714 by claude. thread_transfer 바깥 루프(파일 간·스킵 구간)에서도 pause 반영하려고 노출.
 	void	set_transfer_stop() { m_transfer_pause = false; m_transfer_stop = true; }
 
 protected :

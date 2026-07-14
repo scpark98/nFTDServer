@@ -1540,7 +1540,7 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		double percent = (double)sent_size * 100.0 / (double)filesize.QuadPart;
 		//20260712 by claude. 전체 진행률(슬라이더 (int)percent=버림)과 일치시키려 파일별 셀도 버림으로.
 		//d2S(percent, false, 0) 는 printf %0.0f 라 반올림(68.79%→69)이라 전체(68)와 1% 어긋났음.
-		parent->m_list.set_text(index, 2, i2S((int)percent));
+		parent->m_list.set_text(index, CnFTDFileTransferDialog::col_status, i2S((int)percent));	//20260714 by claude. No 컬럼 추가로 상태=col3. 하드코딩 2(=크기) 금지.
 		//TRACE(_T("dwBytesRead = %d, sent_size = %u, %d%%\n"), dwBytesRead, sent_size, (int)percent);
 
 		//전체 파일 진행 상태 표시
@@ -1569,7 +1569,8 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	{
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
-		parent->m_static_remain_speed.set_textf(_T("0 Sec / 0 KB/s"));
+		//20260714 by claude. 남은시간/속도는 세션 누적 평균(위 루프에서 갱신)을 유지한다. 예전엔 여기서 "0 Sec / 0 KB/s"로
+		//강제 리셋해, 작은 파일이 t_elapsed<=1 로 순식간에 끝날 때마다 상단 우측이 0/0 으로 깜빡였다(스크린샷의 다량 PNG).
 	}
 
 	return transfer_result_success;
@@ -1914,7 +1915,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 		double percent = (double)(received_size) * 100.0 / (double)src_filesize.QuadPart;
 		//20260712 by claude. 전체 진행률(슬라이더 (int)percent=버림)과 일치시키려 파일별 셀도 버림으로.
 		//d2S(percent, false, 0) 는 printf %0.0f 라 반올림(68.79%→69)이라 전체(68)와 1% 어긋났음.
-		parent->m_list.set_text(index, 2, i2S((int)percent));
+		parent->m_list.set_text(index, CnFTDFileTransferDialog::col_status, i2S((int)percent));	//20260714 by claude. No 컬럼 추가로 상태=col3. 하드코딩 2(=크기) 금지.
 		//TRACE(_T("dwBytesRead = %d, received_size = %u, %.2f%%\n"), dwBytesRead, received_size, percent);
 
 		//전체 파일 진행 상태 표시
@@ -1954,7 +1955,7 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 	{
 		parent->m_static_index_bytes.set_textf(_T("%d / %d (%s / %s)"), index + 1, Progress.total_count,
 			get_size_str(Progress.ulReceivedSize.QuadPart, -1), get_size_str(Progress.ulTotalSize.QuadPart, -1));
-		parent->m_static_remain_speed.set_textf(_T("0 Sec / 0 KB/s"));
+		//20260714 by claude. 남은시간/속도는 세션 누적 평균(위 루프에서 갱신)을 유지 — 0/0 강제 리셋 제거(send_file 과 동일 이유).
 	}
 
 	return transfer_result_success;

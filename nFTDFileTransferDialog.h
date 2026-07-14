@@ -59,6 +59,9 @@ protected:
 	void				thread_transfer();
 	std::thread			m_thread_transfer;
 
+	//20260714 by claude. _DEBUG 빌드 한정: 전송 중 스페이스바로 일시정지/재개 토글(관찰·재현용). Release 에선 미사용.
+	bool				m_transfer_paused_debug = false;
+
 	int					m_srcSide;
 	int					m_dstSide;
 	CnFTDServerManager* m_pServerManager = NULL;
@@ -87,6 +90,11 @@ protected:
 	void				KeepConnection();
 	void				KeepDataConnection();
 
+	//20260714 by claude. 전송 결과 리스트에서 선택한 항목이 이 PC(로컬)에 실제 존재하는 경로를 리턴.
+	//전송창은 local(SERVER_SIDE)↔remote(CLIENT_SIDE) 이므로 송신이면 소스, 수신이면 대상(base 치환) 경로다.
+	//우클릭 메뉴(탐색기로 열기 / 경로 클립보드 복사)에서 사용. 선택 없음/범위 밖이면 빈 문자열.
+	CString				get_selected_item_local_path();
+
 	//LRESULT		on_message_server_socket(WPARAM wParam, LPARAM lParam);
 
 protected:
@@ -113,4 +121,7 @@ public:
 	afx_msg LRESULT on_message_CSCSystemButtons(WPARAM wParam, LPARAM lParam);
 	//전송 완료 요약 문구(m_static_message) 클릭 → 다음 실패 항목으로 순환 스크롤.
 	afx_msg void OnStnClickedStaticMessage();
+	afx_msg void OnMenuTransferOpenFolder();
+	afx_msg void OnMenuTransferCopyPathToClipboard();
+	afx_msg void OnContextMenu(CWnd* /*pWnd*/, CPoint /*point*/);
 };

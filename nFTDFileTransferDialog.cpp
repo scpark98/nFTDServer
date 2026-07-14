@@ -9,6 +9,7 @@
 
 #include <thread>
 #include <algorithm>
+#include <map>			//20260714 by claude. 파일 아이콘 확장자별 캐시(대량 리스트 채우기 가속)
 #include <shobjidl.h>	//20260713 by claude. ITaskbarList3(작업표시줄 진행율)
 
 #include "Common/MemoryDC.h"
@@ -92,6 +93,9 @@ BEGIN_MESSAGE_MAP(CnFTDFileTransferDialog, CSCThemeDlg)
 	//보낸다. 핸들러가 없으면 닫기 버튼이 무반응이므로(메인 dlg 와 동일 패턴) 여기서 처리한다.
 	ON_REGISTERED_MESSAGE(Message_CSCSystemButtons, &CnFTDFileTransferDialog::on_message_CSCSystemButtons)
 	ON_STN_CLICKED(IDC_STATIC_MESSAGE, &CnFTDFileTransferDialog::OnStnClickedStaticMessage)
+	ON_COMMAND(ID_MENU_TRANSFER_OPEN_FOLDER, &CnFTDFileTransferDialog::OnMenuTransferOpenFolder)
+	ON_COMMAND(ID_MENU_TRANSFER_COPY_PATH_TO_CLIPBOARD, &CnFTDFileTransferDialog::OnMenuTransferCopyPathToClipboard)
+	ON_WM_CONTEXTMENU()
 END_MESSAGE_MAP()
 
 
@@ -196,7 +200,7 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 		Wait(500);
 	}
 
-	m_list.save_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
+	m_list.save_column_width(&theApp, _T("CnFTDFileTransferDialog list 3col"));
 
 	CDialogEx::OnCancel();
 }
@@ -282,7 +286,7 @@ void CnFTDFileTransferDialog::init_list()
 	m_list.set_column_data_type(col_status, CSCListCtrl::column_data_type_progress);
 	m_list.show_progress_text();
 
-	m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list"));
+	m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list 3col"));
 
 	m_list.allow_edit(false);
 	m_list.allow_sort(false);
@@ -352,7 +356,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 			if (dq.size() > 0)
 			{
 				m_filelist.insert(m_filelist.begin() + i + 1, dq.begin(), dq.end());
-				i = i + dq.size() + 1;
+				//20260714 by claude. dq(재귀 확장된 하위 전체)는 재확장하지 않도록 건너뛴다. i 를 dq 마지막 항목에 두면
+				//for 의 i++ 가 그 다음(원래의 형제 항목)으로 정확히 이동한다. 예전 '+1' 은 형제 1개를 건너뛰어(폴더 여러 개
+				//동시 전송 시 뒤 폴더가 확장 안 되던 원인) 제거.
+				i = i + dq.size();
 			}
 		}
 	}
@@ -381,6 +388,15 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 	m_progress.SetRange(0, m_filelist.size());
 
+	//20260714 by claude. 대량(수천 항목) 리스트 채우기 가속:
+	// (1) begin/end_bulk_insert — 항목마다 하던 sync_scrollbar·Invalidate·재도색을 억제하고 루프 종료 후 1회만 반영(주 병목).
+	// (2) 폴더 아이콘은 디스크 접근 없는 캐시값(get_folder_icon) 사용 — 기존 "c:\\windows" 조회는 폴더마다 PathFileExists+SHGetFileInfo(디스크) 였다.
+	// (3) 파일 아이콘은 확장자별 캐시 — GetSystemImageListIcon(file) 은 SHGFI_USEFILEATTRIBUTES 라 같은 확장자면 같은 아이콘 → 동종 파일 수천개에서 shell 호출을 확장자 종류 수로 축소.
+	int folder_icon = theApp.m_shell_imagelist.get_folder_icon();
+	std::map<CString, int> ext_icon_cache;
+
+	m_list.begin_bulk_insert();
+
 	//list에 그 내용을 채워준다.
 	for (i = 0; i < m_filelist.size(); i++)
 	{
@@ -390,7 +406,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 		if (is_folder)
 		{
 			size_str.Empty();
-			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(0, _T("c:\\windows"), true);
+			image_index = folder_icon;
 			folder_count++;
 		}
 		else
@@ -401,7 +417,16 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 			size_str = get_size_str(file_size.QuadPart);
 
-			image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(0, m_filelist[i].cFileName, false);
+			CString ext = get_part(m_filelist[i].cFileName, fn_ext);
+			ext.MakeLower();
+			auto it = ext_icon_cache.find(ext);
+			if (it != ext_icon_cache.end())
+				image_index = it->second;
+			else
+			{
+				image_index = theApp.m_shell_imagelist.GetSystemImageListIcon(0, m_filelist[i].cFileName, false);
+				ext_icon_cache[ext] = image_index;
+			}
 			file_count++;
 		}
 
@@ -412,9 +437,15 @@ void CnFTDFileTransferDialog::thread_transfer()
 		folder.Replace(m_transfer_from, _T(""));
 		depth = get_char_count(folder, '\\') - 1;
 
-		//"파일명,100;크기,100;상태,60;"
+		//"파일명,200;크기,100;상태,60". col_filename(0)=아이콘+들여쓰기+파일명, col_filesize(1), col_status(2).
 		m_list.insert_item(i, image_index, duplicate_str(_T(" "), depth) + filename, size_str, _T(""));
+
+		//20260714 by claude. 대량 추가 진행 표시 — 좌상단에 "추가한 인덱스 / 총 파일수". 매 항목 갱신은 비싸므로 128 간격으로 스로틀.
+		if ((i & 0x7F) == 0)
+			m_static_index_bytes.set_textf(_T("%d / %d"), i + 1, (int)m_filelist.size());
 	}
+
+	m_list.end_bulk_insert();
 
 	TRACE(_T("file = %d, folder = %d\n"), file_count, folder_count);
 
@@ -489,6 +520,17 @@ void CnFTDFileTransferDialog::thread_transfer()
 		res = transfer_result_fail;
 
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
+		if (m_thread_transfer_started == false)
+		{
+			m_static_copy.stop_gif();
+			break;
+		}
+
+		//20260714 by claude. 일시정지(취소 확인창 / 디버그 스페이스바)는 send_file/recv_file 의 청크 루프에서만 검사됐다.
+		//already-exists 스킵이 다수인 전송(예: 스킵 252/전송 48)에선 스킵 파일이 청크 루프 전에 return 하므로, 그 구간에
+		//pause 를 걸어도 안 걸렸다(종료버튼 눌러도 안 멈추고 메시지박스만 뜨던 원인). 파일 간에도 여기서 검사해 즉시 반영한다.
+		while (m_pServerManager->m_DataSocket.get_transfer_pause() && m_thread_transfer_started)
+			Wait(200);
 		if (m_thread_transfer_started == false)
 		{
 			m_static_copy.stop_gif();
@@ -810,11 +852,94 @@ void CnFTDFileTransferDialog::OnTimer(UINT_PTR nIDEvent)
 
 BOOL CnFTDFileTransferDialog::PreTranslateMessage(MSG* pMsg)
 {
-	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
-	if (pMsg->message == WM_KEYDOWN)
+#ifdef _DEBUG
+	//디버그 빌드 한정: 전송 중 스페이스바로 일시정지/재개 토글(전송 흐름 관찰·문제 재현용). 리스트로 전파되지 않게 여기서 소비한다.
+	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_SPACE && m_thread_transfer_started && m_pServerManager)
 	{
-		TRACE(_T("CnFTDFileTransferDialog keydown\n"));
+		m_transfer_paused_debug = !m_transfer_paused_debug;
+		m_pServerManager->m_DataSocket.set_transfer_pause(m_transfer_paused_debug);
+		if (m_transfer_paused_debug)
+			m_static_copy.pause_gif(-1);
+		else
+			m_static_copy.play_gif();
+		return TRUE;
 	}
+#endif
 
 	return CDialogEx::PreTranslateMessage(pMsg);
+}
+
+void CnFTDFileTransferDialog::OnContextMenu(CWnd* pWnd, CPoint point)
+{
+	//전송 결과 리스트 위에서 우클릭했을 때만 메뉴를 띄운다.
+	if (pWnd == NULL || pWnd->GetSafeHwnd() != m_list.GetSafeHwnd())
+		return;
+
+	//키보드(Shift+F10)로 호출되면 point=(-1,-1) → 커서 위치로 대체(스크롤 무관, native get_item_rect 회피).
+	if (point.x == -1 && point.y == -1)
+		point = (CPoint)GetMessagePos();
+
+	//우클릭 위치의 항목이 없으면(빈 영역) 메뉴를 띄우지 않는다 — 이 메뉴는 항목 대상 명령만 갖는다.
+	//CSCListCtrl::HitTest 는 smooth-aware 로 오버라이드돼 있어 native 이름 그대로 써도 스크롤(m_scroll_y) 반영된 항목이 나온다.
+	CPoint pt = point;
+	m_list.ScreenToClient(&pt);
+	int item = m_list.HitTest(pt);
+	if (item < 0)
+		return;
+
+	//우클릭한 항목을 선택 상태로 만들어 이후 명령이 그 항목을 대상으로 하게 한다(타 항목 해제, 스크롤은 안 함).
+	m_list.select_item(item, true, true, false);
+
+	CMenu menu;
+	menu.LoadMenu(IDR_MENU_TRANSFER_CONTEXT);
+	CMenu* pMenu = menu.GetSubMenu(0);
+	if (pMenu == NULL)
+		return;
+
+	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
+}
+
+void CnFTDFileTransferDialog::OnMenuTransferOpenFolder()
+{
+	CString path = get_selected_item_local_path();
+	if (path.IsEmpty() || ::GetFileAttributes(path) == INVALID_FILE_ATTRIBUTES)	//전송 실패 등으로 로컬에 없으면 무시.
+		return;
+
+	//탐색기에서 상위 폴더를 열고 해당 항목을 선택 상태로 표시(파일/폴더 공통). "explorer /select," 관용구.
+	CString param;
+	param.Format(_T("/select,\"%s\""), path);
+	ShellExecute(NULL, _T("open"), _T("explorer"), param, NULL, SW_SHOWNORMAL);
+}
+
+void CnFTDFileTransferDialog::OnMenuTransferCopyPathToClipboard()
+{
+	CString path = get_selected_item_local_path();
+	if (path.IsEmpty())
+		return;
+
+	copy_to_clipboard(m_hWnd, path);
+}
+
+CString CnFTDFileTransferDialog::get_selected_item_local_path()
+{
+	std::deque<int> dq;
+	m_list.get_selected_items(&dq);
+	if (dq.size() == 0)
+		return _T("");
+
+	int idx = dq[0];	//리스트 항목 index 는 m_filelist index 와 1:1(빌드 시 삽입 순서, 정렬 없음).
+	if (idx < 0 || idx >= (int)m_filelist.size())
+		return _T("");
+
+	//송신(소스=로컬)이면 소스 실경로. 수신(대상=로컬)이면 대상 실경로 — thread_transfer 의 dst 산출과 동일 규칙.
+	if (m_srcSide == SERVER_SIDE)
+		return m_filelist[idx].cFileName;
+
+	CString path = m_filelist[idx].cFileName;
+	if (is_drive_root(m_transfer_from))
+		path.Replace(m_transfer_from, m_transfer_to + _T("\\"));
+	else
+		path.Replace(m_transfer_from, m_transfer_to);
+	path.Replace(_T("\\\\"), _T("\\"));
+	return path;
 }
