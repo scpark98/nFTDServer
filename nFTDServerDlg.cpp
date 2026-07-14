@@ -1597,10 +1597,20 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 		file_transfer();
 
+		//20260714 by claude. 자기 자신/현재 부모로의 '이동' 드롭은 file_transfer 가 무동작(from==to 또는 parent(from)==to)으로 끝낸다. 실제 변경이 없으므로
+		//아래 트리 갱신을 하면 안 된다 — 특히 else 분기의 refresh(소스 부모)가 그 자식(선택 중인 드래그 폴더)을 삭제·재삽입하며 선택을 소스 부모(예: D:\)로
+		//옮겨버린다(자기 폴더에 드롭했는데 D: 가 선택되던 버그). from/to 는 file_transfer 에서 실경로로 변환·끝 '\\' 제거돼 있어 그대로 비교 가능.
+		bool is_noop_move = (!m_drag_copy && m_srcSide == m_dstSide &&
+			(m_transfer_from.CompareNoCase(m_transfer_to) == 0 || get_parent_dir(m_transfer_from).CompareNoCase(m_transfer_to) == 0));
+
+		//20260714 by claude. 이동 전 드래그 소스가 펼쳐져 있었는지만 기억한다(로컬·리모트 공통) — 이동 후 대상 폴더 노드를 펼치면 자식은 (로컬=디스크,
+		//리모트=소켓 동기 요청)에서 지연로딩된다. 소스 refresh 가 hDrag 를 무효화하기 전에 여기서 미리 캡처한다.
+		bool src_expanded = (pDragTreeCtrl->GetItemState(pDragTreeCtrl->m_DragItem, TVIS_EXPANDED) & TVIS_EXPANDED) != 0;
+
 		//[로컬 이동] refresh 대신 서피컬로 갱신: 소스 노드는 트리에서 제거, 대상 노드 아래에 이동된 폴더 노드를 추가.
 		//PathFileExists(from)==false 로 실제 이동 성공을 확인(from==to 스킵/실패면 트리 안 건드림).
 		//20260704 by claude. 복사(!m_drag_copy)는 소스가 남으므로 이 서피컬(소스 제거) 대상이 아님 → 아래 else 에서 refresh.
-		if (m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !m_drag_copy && !PathFileExists(m_transfer_from))
+		if (!is_noop_move && m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !m_drag_copy && !PathFileExists(m_transfer_from))
 		{
 			HTREEITEM hDrag = pDragTreeCtrl->m_DragItem;
 			HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(hDrag);
@@ -1649,10 +1659,19 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				tv.mask = TVIF_HANDLE | TVIF_CHILDREN;   tv.hItem = hSrcParent;   tv.cChildren = 0;
 				pDragTreeCtrl->SetItem(&tv);
 			}
+
+			//20260714 by claude. 소스가 펼쳐져 있었으면 대상 위치의 이동된 폴더 노드도 펼친다(펼쳐진 그대로 유지). 자식은 Expand 시 디스크에서 지연로딩.
+			if (src_expanded && pDstTree && hDstTreeItem)
+			{
+				HTREEITEM hMoved = pDstTree->find_children_item(get_part(m_transfer_from, fn_name), hDstTreeItem);
+				if (hMoved)
+					pDstTree->Expand(hMoved, TVE_EXPAND);
+			}
 		}
 		//20260704 by claude. 같은 쪽 복사(로컬 FO_COPY) / 리모트 이동·복사(file_command)는 file_transfer 가 파일 작업만 하고
 		//트리는 미갱신 → 소스·대상 트리를 refresh 로 반영(복사는 소스 유지, 이동은 소스에서 사라짐도 반영). cross-side 전송은 file_transfer 가 이미 트리 refresh.
-		else if (m_srcSide == m_dstSide)
+		//20260714 by claude. 단 무동작(is_noop_move) 이면 refresh 생략 — refresh(소스 부모)가 선택을 소스 부모로 옮기는 것 방지.
+		else if (!is_noop_move && m_srcSide == m_dstSide)
 		{
 			//20260713 by claude. 원격→원격 이동/복사가 구버전 클라라 지원되지 않아 스킵된 경우(안내 메시지만 표시), 실제로는 아무것도
 			//이동/복사되지 않았으므로 소스·대상 트리를 refresh/Expand 하면 안 된다(변경이 없는데 대상이 갱신·펼쳐져 성공한 것처럼 오인).
@@ -1683,6 +1702,14 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 				if (!dst_had_chevron)
 				{
 					pDstTree->Expand(hDstTreeItem, TVE_EXPAND);
+				}
+
+				//20260714 by claude. 이동이고 소스가 펼쳐져 있었으면 대상의 이동 폴더 노드도 펼친다(펼쳐진 그대로 유지, 로컬 분기와 동일).
+				if (!m_drag_copy && src_expanded)
+				{
+					HTREEITEM hMoved = pDstTree->find_children_item(get_part(m_transfer_from, fn_name), hDstTreeItem);
+					if (hMoved)
+						pDstTree->Expand(hMoved, TVE_EXPAND);
 				}
 			}
 		}
