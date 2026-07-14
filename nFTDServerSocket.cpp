@@ -1426,7 +1426,8 @@ int CnFTDServerSocket::send_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		while (m_transfer_pause)
 		{
-			Wait(1000);
+			//20260714 by claude. worker 스레드 pause 대기 — Wait()(메시지 펌프 busy-spin, UI 스레드 전용) 대신 순수 sleep_for.
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			//일시정지 할 경우는 t0 시간을 보정해줘야 한다.
 			t0 += 1000;
 			if (Progress.session_start_clock != 0)	//20260710 by claude. 세션 평균속도의 경과시간에서 일시정지 구간 제외.
@@ -1824,7 +1825,8 @@ int CnFTDServerSocket::recv_file(CWnd* parent_dlg, int index, WIN32_FIND_DATA fr
 
 		while (m_transfer_pause)
 		{
-			Wait(1000);
+			//20260714 by claude. worker 스레드 pause 대기 — Wait()(메시지 펌프 busy-spin, UI 스레드 전용) 대신 순수 sleep_for.
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			//일시정지 할 경우는 t0 시간을 보정해줘야 한다.
 			t0 += 1000;
 			if (Progress.session_start_clock != 0)	//20260710 by claude. 세션 평균속도의 경과시간에서 일시정지 구간 제외.

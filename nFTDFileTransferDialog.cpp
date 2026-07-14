@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 
 #include <thread>
+#include <chrono>	//20260714 by claude. std::this_thread::sleep_for(worker 스레드 pause 대기) 용.
 #include <algorithm>
 #include <map>			//20260714 by claude. 파일 아이콘 확장자별 캐시(대량 리스트 채우기 가속)
 #include <shobjidl.h>	//20260713 by claude. ITaskbarList3(작업표시줄 진행율)
@@ -288,6 +289,10 @@ void CnFTDFileTransferDialog::init_list()
 
 	m_list.restore_column_width(&theApp, _T("CnFTDFileTransferDialog list 3col"));
 
+	//20260714 by claude. 창 리사이즈 시 이름 컬럼이 남는 폭을 흡수하도록(크기·상태는 폭 유지). 크기/상태 뒤엔 빈 영역뿐이라 이름이 늘어야 의미가 있다.
+	//실제 폭 재계산은 CSCListCtrl::OnSize 가 m_fixed_width_column 을 보고 자동 수행(리스트는 m_resize 로 창과 함께 리사이즈됨).
+	m_list.set_fixed_width_column(col_filename);
+
 	m_list.allow_edit(false);
 	m_list.allow_sort(false);
 
@@ -533,8 +538,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//20260714 by claude. 일시정지(취소 확인창 / 디버그 스페이스바)는 send_file/recv_file 의 청크 루프에서만 검사됐다.
 		//already-exists 스킵이 다수인 전송(예: 스킵 252/전송 48)에선 스킵 파일이 청크 루프 전에 return 하므로, 그 구간에
 		//pause 를 걸어도 안 걸렸다(종료버튼 눌러도 안 멈추고 메시지박스만 뜨던 원인). 파일 간에도 여기서 검사해 즉시 반영한다.
+		//20260714 by claude. worker 스레드에서는 Wait()(메시지 펌프 busy-spin) 대신 sleep_for 를 쓴다 — Wait()는 UI 스레드 전용
+		//(PeekMessage(NULL)이 그 스레드 소유 창만 대상이고 sleep 없이 CPU 를 스핀). worker 는 순수 sleep 이 정석.
 		while (m_pServerManager->m_DataSocket.get_transfer_pause() && m_thread_transfer_started)
-			Wait(200);
+			std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		if (m_thread_transfer_started == false)
 		{
 			m_static_copy.stop_gif();
