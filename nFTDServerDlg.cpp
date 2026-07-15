@@ -413,7 +413,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 
 	//for test. 한 PC에서 단독으로 테스트 할 경우
-	if (true)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
+	if (false)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
 	{
 		CString my_ip = get_my_ip();
 #ifdef _REMOTE_SDK
