@@ -193,12 +193,12 @@ void CnFTDFileTransferDialog::OnBnClickedCancel()
 		TRACE(_T("파일전송 취소 처리\n"));
 		m_static_copy.stop_gif();
 		m_pServerManager->m_DataSocket.set_transfer_stop();
-		m_thread_transfer_started = false;
 
-		//취소 처리 플래그에 따라 정상적인 취소 절차가 모두 처리된 후에 창이 종료되어야 하므로
-		//여기서 CDialogEx::OnCancel();까지 가서는 안된다. 그냥 리턴한다.
-		//return;
-		Wait(500);
+		//20260715 by claude. '중단 요청'만 켠다. 예전엔 여기서 m_thread_transfer_started = false 로 만들었는데, 그 플래그는
+		//'스레드 생존'을 뜻해서 OnDestroy 의 대기 루프가 '이미 끝났다'로 오인하고 곧장 창을 파괴했다. 그 시점에 스레드는
+		//아직 recv_file 안에 있어(1GB 파일이면 수 분) 파괴된 m_list/m_static_copy 를 건드려 죽었다.
+		//이제 스레드 종료 대기는 아래 CDialogEx::OnCancel() → OnDestroy 의 while(m_thread_transfer_started) 가 실제로 수행한다.
+		m_transfer_cancelled = true;
 	}
 
 	m_list.save_column_width(&theApp, _T("CnFTDFileTransferDialog list 3col"));
@@ -529,7 +529,8 @@ void CnFTDFileTransferDialog::thread_transfer()
 		res = transfer_result_fail;
 
 		//전송중에 취소한 경우 이 플래그를 보고 중지시킨다.
-		if (m_thread_transfer_started == false)
+		//20260715 by claude. 판정 기준을 '스레드 생존'(m_thread_transfer_started)에서 '중단 요청'(m_transfer_cancelled)으로 분리.
+		if (m_transfer_cancelled)
 		{
 			m_static_copy.stop_gif();
 			break;
@@ -540,9 +541,9 @@ void CnFTDFileTransferDialog::thread_transfer()
 		//pause 를 걸어도 안 걸렸다(종료버튼 눌러도 안 멈추고 메시지박스만 뜨던 원인). 파일 간에도 여기서 검사해 즉시 반영한다.
 		//20260714 by claude. worker 스레드에서는 Wait()(메시지 펌프 busy-spin) 대신 sleep_for 를 쓴다 — Wait()는 UI 스레드 전용
 		//(PeekMessage(NULL)이 그 스레드 소유 창만 대상이고 sleep 없이 CPU 를 스핀). worker 는 순수 sleep 이 정석.
-		while (m_pServerManager->m_DataSocket.get_transfer_pause() && m_thread_transfer_started)
+		while (m_pServerManager->m_DataSocket.get_transfer_pause() && !m_transfer_cancelled)
 			std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		if (m_thread_transfer_started == false)
+		if (m_transfer_cancelled)
 		{
 			m_static_copy.stop_gif();
 			break;
@@ -550,7 +551,7 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 		//20260710 by claude. 파일 1000개 초과 전송이 첫 반복에서 즉시 break 되던 버그 제거.
 		//m_filelist.size() 는 루프 내내 상수라, 목록이 1000개를 넘으면 i=0 에서 바로 빠져나가 아무것도 전송 안 됐다
-		//(대량 폴더 전송 시 '목록만 만들고 시작 안 함' 증상의 원인). 취소 방어는 위의 m_thread_transfer_started 검사가 담당한다.
+		//(대량 폴더 전송 시 '목록만 만들고 시작 안 함' 증상의 원인). 취소 방어는 위의 m_transfer_cancelled 검사가 담당한다.
 		//현재 전송중인 파일명 표시
 		m_static_message.set_textf(_T("%s"), m_filelist[i].cFileName);// get_part(m_filelist[i].cFileName, fn_name));
 
@@ -660,8 +661,10 @@ void CnFTDFileTransferDialog::thread_transfer()
 
 			end_time = get_cur_datetime_str(2);
 
-			//전송 중 취소를 누를 경우 간혹 파일전송창이 닫혔음에도 m_list를 접근하는 것을 방지하기 위해.
-			if (!m_thread_transfer_started)
+			//취소됐으면 결과 표시 없이 루프를 빠져나간다.
+			//20260715 by claude. 판정 기준을 '중단 요청'(m_transfer_cancelled)으로 분리. 창 파괴는 OnDestroy 가 이 스레드의
+			//종료를 기다린 뒤에 일어나므로, 여기서 m_static_copy/m_list 를 만지는 것은 이제 안전하다.
+			if (m_transfer_cancelled)
 			{
 				m_static_copy.stop_gif();
 				break;

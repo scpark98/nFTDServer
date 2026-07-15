@@ -55,7 +55,14 @@ protected:
 	CResizeCtrl			m_resize;
 	CSCMessageBox		m_messagebox;
 
+	//20260715 by claude. '스레드 생존' 전용 플래그 — thread_transfer 가 시작할 때 켜고 끝날 때 끈다. 다른 곳에서 끄지 말 것.
+	//OnDestroy 의 while(m_thread_transfer_started) Wait(1000) 이 이 값으로 스레드 종료를 기다린다(m_thread_transfer 는
+	//detach 라 join 으로 기다릴 수단이 없다). 예전엔 OnBnClickedCancel 이 '중단 요청' 뜻으로 이 플래그를 false 로 만들어,
+	//OnDestroy 가 '스레드 이미 끝났다'로 오인해 대기를 건너뛰고 창을 파괴 → 아직 recv_file 중이던 스레드가 파괴된
+	//m_list/m_static_copy 를 건드려 크래시(1GB 파일 수신 중 취소에서 재현).
 	bool				m_thread_transfer_started = false;
+	//20260715 by claude. '중단 요청' 전용 플래그 — 취소(OnBnClickedCancel)가 켜고 thread_transfer 가 읽는다.
+	bool				m_transfer_cancelled = false;
 	void				thread_transfer();
 	std::thread			m_thread_transfer;
 
