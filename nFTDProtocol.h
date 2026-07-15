@@ -67,6 +67,10 @@ enum FILE_COMMAND
 	file_cmd_check_exist,
 	file_cmd_move,					//20260704 by claude. 같은 쪽(리모트→리모트) 드래그 이동 — client 가 SHFileOperation FO_MOVE (src=param0, dst폴더=param1).
 	file_cmd_copy,					//20260704 by claude. Ctrl+드래그 복사 — client 가 SHFileOperation FO_COPY.
+	//20260715 by claude. 리모트 드라이브 볼륨 레이블 변경 — client 가 SetVolumeLabel(param0=root "C:\\", param1=새 볼륨명).
+	//신규 명령이므로 구클라는 미구현 → 반드시 is_client_compatible() 게이팅 대상(안 그러면 서버가 응답 recv 에서 무한대기).
+	//새 명령은 반드시 이 enum 맨 끝에 추가할 것 — 중간에 끼우면 구클라와 명령 번호가 통째로 어긋난다.
+	file_cmd_set_volume_label,
 };
 
 //20260713 by claude. 원격 rename 결과 응답 코드(1바이트 msg.type 로 회신). 성공은 기존 nFTD_OK(0) 그대로 사용.

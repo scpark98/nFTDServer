@@ -1245,41 +1245,80 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
-//20260715 by claude. 드라이브 볼륨 레이블이 바뀌었을 때 앱 전체 표시를 맞춘다. drive_root="D:\", new_label=새 볼륨명,
-//pSender=통지를 보낸 컨트롤(자기 표시는 이미 갱신했으므로 제외). 볼륨 변경은 로컬 전용이다(edit_end 가 m_is_local 일 때만 SetVolumeLabel).
+//20260715 by claude. 리모트 드라이브 볼륨 레이블 변경 — 로컬은 컨트롤이 SetVolumeLabel 을 직접 하지만 리모트는 소켓 명령이라 여기서 수행한다.
+//file_cmd_set_volume_label 은 2026-07-15 신설이라 구버전 agent 는 미구현 → warn_if_client_outdated() 로 안내 후 skip(false).
+//소켓 레벨에도 게이트가 있어(nFTDServerSocket::file_command) 이중으로 막힌다. skip 되면 false 를 돌려 컨트롤이 UI 를 안 바꾸게 한다.
+bool CnFTDServerDlg::request_remote_set_volume_label(CString drive_root, CString new_label)
+{
+	if (warn_if_client_outdated())
+		return false;
+
+	return m_ServerManager.m_socket.file_command(file_cmd_set_volume_label, drive_root, new_label);
+}
+
+//20260715 by claude. 드라이브 볼륨 레이블이 바뀌었을 때 그 쪽(로컬/리모트) 표시를 전부 맞춘다. drive_root="D:\", new_label=새 볼륨명,
+//pSender=통지를 보낸 컨트롤(자기 표시는 이미 갱신했으므로 제외).
 //컨트롤은 자기 것만 갱신하고 형제·pathctrl 은 parent 책임인데 이 핸들러가 아예 없어서, 한쪽에서 바꿔도 다른 쪽이 옛 이름으로 남아 있었다.
 void CnFTDServerDlg::on_drive_volume_changed(CString drive_root, CString new_label, CWnd* pSender)
 {
 	if (drive_root.IsEmpty())
 		return;
 
+	//어느 쪽 컨트롤이 보냈는지로 side 를 정한다 — 로컬/리모트가 각자 트리·리스트·pathctrl·볼륨 캐시를 따로 들고 있다.
+	bool is_remote = (pSender == &m_tree_remote || pSender == &m_list_remote);
+	int side = is_remote ? CLIENT_SIDE : SERVER_SIDE;
+	CSCTreeCtrl* ptree = is_remote ? &m_tree_remote : &m_tree_local;
+	CSCListCtrl* plist = is_remote ? &m_list_remote : &m_list_local;
+	CPathCtrl* ppath = is_remote ? &m_path_remote : &m_path_local;
+
 	//20260715 by claude. [순서 중요] 트리 노드 탐색을 '캐시 갱신 전에' 한다. get_item_by_fullpath 는 노드 텍스트("작업 디스크 (D:)")를
 	//캐시된 볼륨 레이블과 문자열 대조해 실경로로 바꾸는데(ShellImageList::convert_special_folder_to_real_path), 캐시를 먼저 새 이름으로
 	//갱신해 버리면 아직 옛 이름인 노드와 안 맞아 못 찾는다(hDrive=NULL). 리스트 뷰 판정도 같은 이유로 먼저 해둔다.
-	HTREEITEM hDrive = (pSender != &m_tree_local) ? m_tree_local.get_item_by_fullpath(drive_root) : NULL;
-	bool list_needs_refresh = (pSender != &m_list_local &&
-		m_list_local.get_path() == theApp.m_shell_imagelist.m_volume[SERVER_SIDE].get_label(CSIDL_DRIVES));
+	HTREEITEM hDrive = (pSender != ptree) ? ptree->get_item_by_fullpath(drive_root) : NULL;
+	bool list_needs_refresh = (pSender != plist &&
+		plist->get_path() == theApp.m_shell_imagelist.m_volume[side].get_label(CSIDL_DRIVES));
 
-	//캐시된 볼륨 목록을 OS 에서 재조회 — 즐겨찾기 표시명·pathctrl 세그먼트 등 이 캐시를 쓰는 곳이 전부 옛 이름을 들고 있다.
+	//pathctrl 이 그 드라이브를 표시 중인지도 '캐시 갱신 전에' 판정해야 한다 — get_path() 는 옛 레이블로 된
+	//"내 PC\로컬 디스크 (C:)" 를 주는데, 캐시를 먼저 새 이름으로 갱신하면 convert_special_folder_to_real_path 가
+	//대조에 실패해 변환을 못 하고(cur 이 "내 PC\..." 그대로) 드라이브 문자 비교가 어긋난다.
+	CString cur = theApp.m_shell_imagelist.convert_special_folder_to_real_path(side, ppath->get_path());
+	bool path_needs_reset = (cur.GetLength() >= 2 && _totupper(cur[0]) == _totupper(drive_root[0]));
+
+	//20260715 by claude. [진단 임시] 핸들러 진입 시점의 판정값 전부.
+	logWrite(_T("[rename-tree] on_drive_volume_changed: side=%s root=[%s] new=[%s] sender=%s hDrive=%p list_refresh=%d path_get=[%s] cur=[%s] path_reset=%d"),
+		is_remote ? _T("REMOTE") : _T("LOCAL"), (LPCTSTR)drive_root, (LPCTSTR)new_label,
+		(pSender == ptree) ? _T("TREE") : ((pSender == plist) ? _T("LIST") : _T("기타")),
+		hDrive, (int)list_needs_refresh, (LPCTSTR)ppath->get_path(), (LPCTSTR)cur, (int)path_needs_reset);
+
+	//캐시된 볼륨 목록을 재조회 — 즐겨찾기 표시명·pathctrl 세그먼트 등 이 캐시를 쓰는 곳이 전부 옛 이름을 들고 있다.
 	//이 갱신이 없으면 다음 번 드라이브 편집에서 '항목 텍스트(새 이름) vs 캐시(옛 이름)' 불일치로 드라이브 인식 자체가 실패한다
 	//(is_drive=false → 파일 rename 경로로 샘). 즉 한 번 바꾸면 그 세션 내내 드라이브 이름변경이 깨졌다.
-	theApp.m_shell_imagelist.set_drive_list(SERVER_SIDE, NULL);
+	//리모트는 OS 를 직접 못 보므로 agent 에서 드라이브 목록을 다시 받아 채운다(InitServerManager 와 동일 경로).
+	if (is_remote)
+	{
+		std::deque<CDiskDriveInfo> drive_list;
+		m_ServerManager.get_remote_drive_list(&drive_list);
+		theApp.m_shell_imagelist.set_drive_list(CLIENT_SIDE, &drive_list);
+	}
+	else
+	{
+		theApp.m_shell_imagelist.set_drive_list(SERVER_SIDE, NULL);
+	}
 
 	CString disp;
 	disp.Format(_T("%s (%c:)"), (LPCTSTR)new_label, drive_root[0]);
 
 	//트리: 해당 드라이브 노드의 표시만 교체(전체 refresh 는 펼침 상태를 잃는다).
 	if (hDrive)
-		m_tree_local.SetItemText(hDrive, disp);
+		ptree->SetItemText(hDrive, disp);
 
 	//리스트: '내 PC'(드라이브 목록)를 보고 있을 때만 표시 대상이다.
 	if (list_needs_refresh)
-		m_list_local.refresh_list(true, true);
+		plist->refresh_list(true, true);
 
-	//pathctrl: 현재 경로가 그 드라이브면 세그먼트에 볼륨명이 들어가므로 다시 세팅한다.
-	CString cur = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, m_path_local.get_path());
-	if (cur.GetLength() >= 2 && drive_root.GetLength() >= 1 && _totupper(cur[0]) == _totupper(drive_root[0]))
-		m_path_local.set_path(m_list_local.get_path());
+	//pathctrl: 현재 경로가 그 드라이브면 세그먼트 레이블에 볼륨명이 들어가므로 새 캐시로 다시 구성한다.
+	if (path_needs_reset)
+		ppath->refresh_path();
 }
 
 LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
@@ -1293,6 +1332,13 @@ LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 	if (msg->message == CSCListCtrl::message_drive_volume_changed)
 	{
 		on_drive_volume_changed(msg->param0, msg->param1, msg->pThis);
+		return 0;
+	}
+
+	//20260715 by claude. 리모트 드라이브 볼륨 변경 요청 — 결과를 lParam(bool*)으로 돌려준다(원격 rename 과 동일 구조).
+	if (msg->message == CSCListCtrl::message_request_set_volume_label)
+	{
+		*(bool*)lParam = request_remote_set_volume_label(msg->param0, msg->param1);
 		return 0;
 	}
 
@@ -1582,6 +1628,13 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 	if (msg->message == CSCTreeCtrl::message_drive_volume_changed)
 	{
 		on_drive_volume_changed(msg->param0, msg->param1, msg->pThis);
+		return 0;
+	}
+
+	//20260715 by claude. 리모트 드라이브 볼륨 변경 요청 — 결과를 lParam(bool*)으로 돌려준다(원격 rename 과 동일 구조).
+	if (msg->message == CSCTreeCtrl::message_request_set_volume_label)
+	{
+		*(bool*)lParam = request_remote_set_volume_label(msg->param0, msg->param1);
 		return 0;
 	}
 
@@ -2464,8 +2517,22 @@ CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint
 		return _T("");
 
 	//같은 side: 실제 경로로 변환 후 드라이브 비교.
+	//20260715 by claude. [진단 임시] 드래그 중 compute_drag_hint 가 리모트에서만 3~5배 느린(10~16ms) 원인 추적.
+	//이 함수에서 로컬/리모트가 갈리는 곳은 아래 convert 두 번뿐이다. 3ms 이상 걸린 호출만 찍는다(매 mousemove 로그 폭주 방지).
+	LARGE_INTEGER dbg_f, dbg_t0, dbg_t1, dbg_t2;
+	QueryPerformanceFrequency(&dbg_f);
+	QueryPerformanceCounter(&dbg_t0);
 	CString from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(src_side, src_path);
+	QueryPerformanceCounter(&dbg_t1);
 	CString to   = theApp.m_shell_imagelist.convert_special_folder_to_real_path(dst_side, dst_path);
+	QueryPerformanceCounter(&dbg_t2);
+
+	double dbg_from_ms = (double)(dbg_t1.QuadPart - dbg_t0.QuadPart) * 1000.0 / (double)dbg_f.QuadPart;
+	double dbg_to_ms   = (double)(dbg_t2.QuadPart - dbg_t1.QuadPart) * 1000.0 / (double)dbg_f.QuadPart;
+	if (dbg_from_ms > 3.0 || dbg_to_ms > 3.0)
+		logWrite(_T("[drag-perf] convert 느림: src_side=%d [%s]→[%s] %.2fms | dst_side=%d [%s]→[%s] %.2fms"),
+			src_side, (LPCTSTR)src_path, (LPCTSTR)from, dbg_from_ms,
+			dst_side, (LPCTSTR)dst_path, (LPCTSTR)to, dbg_to_ms);
 	if (from.GetLength() < 2 || to.GetLength() < 2)
 		return _T("");
 
