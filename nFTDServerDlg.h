@@ -273,4 +273,6 @@ public:
 	afx_msg void OnListContextMenuPathToClipboard();
 	afx_msg void OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnListFavoriteMenuRefresh();
+	//20260715 by claude. 드라이브 볼륨 레이블 변경 시 형제 컨트롤·pathctrl·볼륨 캐시를 맞춘다. pSender=통지를 보낸 컨트롤(자기 표시는 이미 갱신됨).
+	void on_drive_volume_changed(CString drive_root, CString new_label, CWnd* pSender);
 };

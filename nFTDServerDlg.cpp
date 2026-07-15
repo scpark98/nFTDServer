@@ -1245,9 +1245,56 @@ LRESULT	CnFTDServerDlg::on_message_CPathCtrl(WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+//20260715 by claude. 드라이브 볼륨 레이블이 바뀌었을 때 앱 전체 표시를 맞춘다. drive_root="D:\", new_label=새 볼륨명,
+//pSender=통지를 보낸 컨트롤(자기 표시는 이미 갱신했으므로 제외). 볼륨 변경은 로컬 전용이다(edit_end 가 m_is_local 일 때만 SetVolumeLabel).
+//컨트롤은 자기 것만 갱신하고 형제·pathctrl 은 parent 책임인데 이 핸들러가 아예 없어서, 한쪽에서 바꿔도 다른 쪽이 옛 이름으로 남아 있었다.
+void CnFTDServerDlg::on_drive_volume_changed(CString drive_root, CString new_label, CWnd* pSender)
+{
+	if (drive_root.IsEmpty())
+		return;
+
+	//20260715 by claude. [순서 중요] 트리 노드 탐색을 '캐시 갱신 전에' 한다. get_item_by_fullpath 는 노드 텍스트("작업 디스크 (D:)")를
+	//캐시된 볼륨 레이블과 문자열 대조해 실경로로 바꾸는데(ShellImageList::convert_special_folder_to_real_path), 캐시를 먼저 새 이름으로
+	//갱신해 버리면 아직 옛 이름인 노드와 안 맞아 못 찾는다(hDrive=NULL). 리스트 뷰 판정도 같은 이유로 먼저 해둔다.
+	HTREEITEM hDrive = (pSender != &m_tree_local) ? m_tree_local.get_item_by_fullpath(drive_root) : NULL;
+	bool list_needs_refresh = (pSender != &m_list_local &&
+		m_list_local.get_path() == theApp.m_shell_imagelist.m_volume[SERVER_SIDE].get_label(CSIDL_DRIVES));
+
+	//캐시된 볼륨 목록을 OS 에서 재조회 — 즐겨찾기 표시명·pathctrl 세그먼트 등 이 캐시를 쓰는 곳이 전부 옛 이름을 들고 있다.
+	//이 갱신이 없으면 다음 번 드라이브 편집에서 '항목 텍스트(새 이름) vs 캐시(옛 이름)' 불일치로 드라이브 인식 자체가 실패한다
+	//(is_drive=false → 파일 rename 경로로 샘). 즉 한 번 바꾸면 그 세션 내내 드라이브 이름변경이 깨졌다.
+	theApp.m_shell_imagelist.set_drive_list(SERVER_SIDE, NULL);
+
+	CString disp;
+	disp.Format(_T("%s (%c:)"), (LPCTSTR)new_label, drive_root[0]);
+
+	//트리: 해당 드라이브 노드의 표시만 교체(전체 refresh 는 펼침 상태를 잃는다).
+	if (hDrive)
+		m_tree_local.SetItemText(hDrive, disp);
+
+	//리스트: '내 PC'(드라이브 목록)를 보고 있을 때만 표시 대상이다.
+	if (list_needs_refresh)
+		m_list_local.refresh_list(true, true);
+
+	//pathctrl: 현재 경로가 그 드라이브면 세그먼트에 볼륨명이 들어가므로 다시 세팅한다.
+	CString cur = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, m_path_local.get_path());
+	if (cur.GetLength() >= 2 && drive_root.GetLength() >= 1 && _totupper(cur[0]) == _totupper(drive_root[0]))
+		m_path_local.set_path(m_list_local.get_path());
+}
+
 LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 {
 	CSCListCtrlMessage* msg = (CSCListCtrlMessage*)wParam;
+
+	//20260715 by claude. 드라이브 볼륨 레이블 변경(param0=드라이브 root "D:\", param1=새 볼륨명). 컨트롤은 자기 표시만 갱신하므로
+	//형제 컨트롤(여기선 트리)은 parent 가 맞춰야 한다 — Common 이 이 통지를 보내는데 앱에 핸들러가 없어, 리스트에서 볼륨명을 바꿔도
+	//트리의 "볼륨명 (X:)" 가 옛 이름으로 남아 있었다(폴더 rename 경로는 크기 컬럼이 비어야 타므로 드라이브는 애초에 해당 없음).
+	//드라이브 볼륨 변경은 로컬 전용이다(edit_end 가 m_is_local 일 때만 SetVolumeLabel).
+	if (msg->message == CSCListCtrl::message_drive_volume_changed)
+	{
+		on_drive_volume_changed(msg->param0, msg->param1, msg->pThis);
+		return 0;
+	}
 
 	if (msg->message == CSCListCtrl::message_path_changed)
 	{
@@ -1530,6 +1577,13 @@ LRESULT	CnFTDServerDlg::on_message_CSCListCtrl(WPARAM wParam, LPARAM lParam)
 LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 {
 	CSCTreeCtrlMessage* msg = (CSCTreeCtrlMessage*)wParam;
+
+	//20260715 by claude. 드라이브 볼륨 레이블 변경 — 리스트 쪽 통지(on_message_CSCListCtrl)와 동일하게 형제 컨트롤·pathctrl 을 맞춘다.
+	if (msg->message == CSCTreeCtrl::message_drive_volume_changed)
+	{
+		on_drive_volume_changed(msg->param0, msg->param1, msg->pThis);
+		return 0;
+	}
 
 	//drag_and_drop일 경우는 msg에 src, dst에 대한 모든 정보가 포함되어 있으므로
 	//m_tree0 or m_tree1 어느 컨트롤이냐에 따라 처리할 필요는 없다.
@@ -4163,7 +4217,14 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	int item = m_list_local.get_recent_edit_item();
 	int subitem = m_list_local.get_recent_edit_subitem();
 
-	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
+	//20260715 by claude. [진단 임시] 리스트 편집 종료 → 트리 반영이 안 되는 원인 추적. 여기가 그 출발점이다.
+	//item 범위(아래 early return), 폴더 판정(크기 컬럼이 비어야 폴더), old/new 텍스트, 트리 선택 노드를 한 줄로 본다.
+	logWrite(_T("[rename-tree] LIST edit_end: item=%d sub=%d size=%d size_col=[%s] old=[%s] new=[%s] tree_sel=%p(%s)"),
+		item, subitem, m_list_local.size(),
+		(item >= 0 && item < m_list_local.size()) ? (LPCTSTR)m_list_local.get_text(item, CSCListCtrl::col_filesize) : _T("(범위밖)"),
+		(LPCTSTR)m_list_local.get_edit_old_text(), (LPCTSTR)m_list_local.get_edit_new_text(),
+		m_tree_local.GetSelectedItem(), (LPCTSTR)m_tree_local.GetItemText(m_tree_local.GetSelectedItem()));
+
 	//폴더인 경우의 편집이 완료되면 트리에도 적용시켜줘야 한다.
 	//편집중에 트리의 한 폴더를 클릭하여 편집모드가 종료되면 새로 클릭된 폴더의 파일/폴더목록이 표시될테고
 	//이 때 위에서 구한 item, subItem은 이전 리스트에서 기억된 값이므로 의미가 없어진다.
