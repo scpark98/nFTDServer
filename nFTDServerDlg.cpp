@@ -1600,7 +1600,11 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		//무동작 판정은 file_transfer '전에' 변형 전 실제 소스 경로로 한다 — 안 그러면 조부모로의 진짜 이동(예: D:\Temp\Temp1 → D:\)이 parent(D:\Temp)==D:\ 로 오판돼 갱신이 스킵된다.
 		CString noop_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
 		CString noop_to   = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
-		bool is_noop_move = (!m_drag_copy && m_srcSide == m_dstSide &&
+		//20260715 by claude. 복사 여부는 여기서 직접 판정한다 — m_drag_copy 는 file_transfer() 안(2372)에서만 대입되므로 호출 '전'인 이 시점엔
+		//'직전 드롭'의 값이다. 그대로 쓰면 복사 드롭 직후의 이동 드롭이 무동작인데도 noop=false 로 오판돼(로그: 같은 from/to 인데 직전이 복사면
+		//noop=0, 이동이면 noop=1) 아래 갱신이 돌아 DeleteItem 이 실행됐다(자기 부모에 드롭 시 부모가 접히던 증상). file_transfer 와 동일한 함수·인자로 판정.
+		bool drag_copy_now = is_drag_copy(noop_from, noop_to);
+		bool is_noop_move = (!drag_copy_now && m_srcSide == m_dstSide &&
 			(noop_from.CompareNoCase(noop_to) == 0 || get_parent_dir(noop_from).CompareNoCase(noop_to) == 0));
 
 		file_transfer();
@@ -1617,10 +1621,27 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		//부모로 바꿔놓으므로(예: D:\Temp1 → D:\), get_part(m_transfer_from) 은 빈 문자열이 되어 이동 폴더를 못 찾는다.
 		CString moved_name = pDragTreeCtrl->GetItemText(pDragTreeCtrl->m_DragItem);
 
+		//20260715 by claude. 대상 노드가 '소스 자신이거나 소스의 하위'면 파일 작업이 실제로 일어나지 않는다 — 자기 자신에 드롭은 무동작이고,
+		//자기 하위로의 이동/복사는 SHFileOperation 이 순환이라 거부한다. 그런데도 아래 갱신이 돌면 DeleteItem(hDrag) 가 소스 노드를 지우면서
+		//그 하위인 대상 노드(hDstTreeItem)까지 함께 파괴해, 바로 뒤 hDstTreeItem 사용에서 크래시했다(dangling HTREEITEM → GetItemState VERIFY 실패).
+		//is_noop_move 로도 자기드롭 일부는 걸러지지만 그건 경로 기준 판정이라 자기 '하위' 드롭은 못 거른다 → 노드 조상 체인으로 확실히 막는다.
+		bool dst_in_src = false;
+		if (pDstTree && hDstTreeItem)
+		{
+			for (HTREEITEM h = hDstTreeItem; h != NULL; h = pDstTree->GetParentItem(h))
+			{
+				if (h == pDragTreeCtrl->m_DragItem)
+				{
+					dst_in_src = true;
+					break;
+				}
+			}
+		}
+
 		//[로컬 이동] refresh 대신 서피컬로 갱신: 소스 노드는 트리에서 제거, 대상 노드 아래에 이동된 폴더 노드를 추가.
 		//PathFileExists(from)==false 로 실제 이동 성공을 확인(from==to 스킵/실패면 트리 안 건드림).
 		//20260704 by claude. 복사(!m_drag_copy)는 소스가 남으므로 이 서피컬(소스 제거) 대상이 아님 → 아래 else 에서 refresh.
-		if (!is_noop_move && m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !m_drag_copy && !PathFileExists(m_transfer_from))
+		if (!is_noop_move && !dst_in_src && m_srcSide == SERVER_SIDE && m_dstSide == SERVER_SIDE && !m_drag_copy && !PathFileExists(m_transfer_from))
 		{
 			HTREEITEM hDrag = pDragTreeCtrl->m_DragItem;
 			HTREEITEM hSrcParent = pDragTreeCtrl->GetParentItem(hDrag);
@@ -1680,7 +1701,8 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 		//20260704 by claude. 같은 쪽 복사(로컬 FO_COPY) / 리모트 이동·복사(file_command)는 file_transfer 가 파일 작업만 하고
 		//트리는 미갱신 → 소스·대상 트리를 refresh 로 반영(복사는 소스 유지, 이동은 소스에서 사라짐도 반영). cross-side 전송은 file_transfer 가 이미 트리 refresh.
 		//20260714 by claude. 단 무동작(is_noop_move) 이면 refresh 생략 — refresh(소스 부모)가 선택을 소스 부모로 옮기는 것 방지.
-		else if (!is_noop_move && m_srcSide == m_dstSide)
+		//20260715 by claude. dst_in_src(대상이 소스 자신/하위) 도 파일 작업이 없으므로 갱신 생략 — DeleteItem 이 대상 노드를 파괴해 크래시하던 것 차단.
+		else if (!is_noop_move && !dst_in_src && m_srcSide == m_dstSide)
 		{
 			//20260713 by claude. 원격→원격 이동/복사가 구버전 클라라 지원되지 않아 스킵된 경우(안내 메시지만 표시), 실제로는 아무것도
 			//이동/복사되지 않았으므로 소스·대상 트리를 refresh/Expand 하면 안 된다(변경이 없는데 대상이 갱신·펼쳐져 성공한 것처럼 오인).
