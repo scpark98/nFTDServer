@@ -4188,9 +4188,16 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	//두 개가 됐다. 표시 이름은 마지막 '\' 뒤를 뽑아 멀쩡해 보였지만, 정렬은 이 cFileName 을 StrCmpLogicalW 로 비교하는데 기호가 숫자·문자보다
 	//앞이라 그 항목만 목록 맨 위로 튀었다(루트에서만 재현).
 	auto item_data = (WIN32_FIND_DATA)m_list_local.get_win32_find_data(item);
-	CString folder = get_part(item_data.cFileName, fn_folder);
-	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)concat_path(folder, m_list_local.get_edit_new_text()));
-	m_list_local.set_win32_find_data(item, item_data);
+
+	//20260715 by claude. 드라이브('내 PC' 뷰)는 '볼륨 레이블'만 바뀌고 경로("D:\")는 그대로다 → 경로를 새 이름으로 재조립하면 안 된다.
+	//예전엔 일반 파일과 같게 처리해 "D:\작업 디스크1" 같은 존재하지 않는 경로가 데이터에 박혔고, 이후 display_filelist 가 그 문자열을
+	//get_disk_free_size 에 넘겨 스택 손상 크래시를 냈다.
+	if (!is_drive_root(item_data.cFileName))
+	{
+		CString folder = get_part(item_data.cFileName, fn_folder);
+		_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)concat_path(folder, m_list_local.get_edit_new_text()));
+		m_list_local.set_win32_find_data(item, item_data);
+	}
 
 	rewatch_local();
 }
@@ -4220,10 +4227,15 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 
 	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
 	//20260715 by claude. 경로 결합은 concat_path 로 — 드라이브 루트에서 "%s\\%s" 가 "D:\\이름" 을 만들어 정렬이 튀던 것(로컬과 동일 수정).
+	//드라이브('내 PC' 뷰)는 볼륨 레이블만 바뀌고 경로는 그대로이므로 재조립 자체를 하지 않는다(로컬과 동일).
 	auto item_data = (WIN32_FIND_DATA)m_list_remote.get_win32_find_data(item);
-	CString folder = get_part(item_data.cFileName, fn_folder);
-	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)concat_path(folder, m_list_remote.get_edit_new_text()));
-	m_list_remote.set_win32_find_data(item, item_data);
+
+	if (!is_drive_root(item_data.cFileName))
+	{
+		CString folder = get_part(item_data.cFileName, fn_folder);
+		_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)concat_path(folder, m_list_remote.get_edit_new_text()));
+		m_list_remote.set_win32_find_data(item, item_data);
+	}
 }
 
 //OnActivate / OnActivateApp 제거:
