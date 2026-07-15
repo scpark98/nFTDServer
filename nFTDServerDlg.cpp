@@ -155,6 +155,7 @@ BEGIN_MESSAGE_MAP(CnFTDServerDlg, CSCThemeDlg)
 	ON_COMMAND(ID_TREE_CONTEXT_MENU_PATH_TO_CLIPBOARD, &CnFTDServerDlg::OnTreeContextMenuPathToClipboard)
 	ON_COMMAND(ID_LIST_CONTEXT_MENU_PATH_TO_CLIPBOARD, &CnFTDServerDlg::OnListContextMenuPathToClipboard)
 	ON_NOTIFY(NM_RCLICK, IDC_TREE_LOCAL, &CnFTDServerDlg::OnNMRClickTreeLocal)
+	ON_COMMAND(ID_LIST_FAVORITE_MENU_REFRESH, &CnFTDServerDlg::OnListFavoriteMenuRefresh)
 END_MESSAGE_MAP()
 
 
@@ -1126,6 +1127,12 @@ BOOL CnFTDServerDlg::PreTranslateMessage(MSG* pMsg)
 					file_command_on_list(file_cmd_refresh);
 					return TRUE;
 				}
+				//20260715 by claude. 즐겨찾기 리스트 — 팝업 메뉴에 'F5' 힌트가 있으므로 키도 배선한다(등록 경로 존재 여부 재검사).
+				else if (GetFocus() == &m_list_local_favorite || GetFocus() == &m_list_remote_favorite)
+				{
+					favorite_cmd(favorite_refresh, (GetFocus() == &m_list_remote_favorite));
+					return TRUE;
+				}
 				break;
 			case '1' :
 				if (IsCtrlPressed() && IsShiftPressed())
@@ -1665,9 +1672,13 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 					}
 					else
 					{
+						//20260715 by claude. 확장버튼은 실제 하위폴더가 있을 때만(예전엔 has_children=true 고정이라 하위 없는 폴더에도 chevron).
+						//이 분기는 로컬 이동이므로 옮겨진 위치의 실제 경로를 디스크로 확인한다.
+						CString moved_real = concat_path(theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, pDstTree->get_path(hDstTreeItem)), moved_name);
+
 						WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
 						_tcscpy_s(fd.cFileName, _countof(fd.cFileName), moved_name);
-						pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//오름차순(탐색기식) 정렬 위치에 삽입
+						pDstTree->insert_folder_sorted(hDstTreeItem, &fd, has_sub_folders(moved_real) != FALSE);	//오름차순(탐색기식) 정렬 위치에 삽입
 					}
 				}
 				else												//자식 미로드 → 직접 전체 열거해서 로드(이동 폴더 포함, 정렬됨).
@@ -1716,6 +1727,26 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 			logWrite(_T("[expand] else-if ENTER: srcSide=%d dstSide=%d drag_copy=%d src_expanded=%d pDstTree=%p hDst=%p"),
 				m_srcSide, m_dstSide, (int)m_drag_copy, (int)src_expanded, pDstTree, hDstTreeItem);
 
+			//20260715 by claude. 이동은 '실제로 옮겨졌을 때만' 트리를 갱신한다. 예전엔 성공 여부를 안 보고 무조건 DeleteItem 해서,
+			//이름충돌 대화상자에서 '취소'하거나 잠김/권한으로 실패해도 소스 노드가 사라져 트리가 거짓을 표시했다(파일은 그대로 → F5 하면 복귀).
+			//얄궂게도 성공 확인(PathFileExists)은 위 첫 분기에만 있어, 성공하면 그쪽으로 가고 '실패한 것만' 여기로 떨어져 지워졌다.
+			//판정 기준은 '소스가 없어졌는가' — 로컬은 PathFileExists, 원격은 file_cmd_check_exist(2025-01-17 부터 있던 명령이라 구버전
+			//클라도 구현 → 게이팅 대상 아님. §claude.md 1 참조). 경로는 file_transfer 가 변형하기 '전'의 실제 소스(noop_from)를 쓴다
+			//— 리모트는 file_transfer 가 m_transfer_from 을 리스트 현재 폴더로 덮어쓰기 때문.
+			//복사(m_drag_copy)는 소스가 남는 게 정상이라 이 판정 대상이 아니다.
+			if (!m_drag_copy)
+			{
+				bool src_gone = (m_srcSide == SERVER_SIDE)
+					? (PathFileExists(noop_from) == FALSE)
+					: (m_ServerManager.m_socket.file_command(file_cmd_check_exist, noop_from) == FALSE);
+
+				if (!src_gone)
+				{
+					logWrite(_T("[expand] else-if SKIP(move not done) src still exists=[%s]"), (LPCTSTR)noop_from);
+					return 0;
+				}
+			}
+
 			//20260713 by claude. 이동(move)이면 옮겨진 소스가 부모에서 사라져야 하므로 소스의 '부모'를 refresh(결정적). 예전엔 GetSelectedItem()을
 			//refresh 했는데, 드롭 후 선택 항목이 소스 부모가 아니면(드롭 대상 등이 선택됨) 소스 부모가 갱신 안 돼 옮겨진 src 가 트리에 남던 버그.
 			//복사(copy)는 소스가 그대로라 소스쪽 갱신 불필요.
@@ -1737,15 +1768,51 @@ LRESULT	CnFTDServerDlg::on_message_CSCTreeCtrl(WPARAM wParam, LPARAM lParam)
 
 			if (pDstTree && hDstTreeItem)
 			{
-				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)	//20260714 by claude. 대상 자식 로드됨 → 이동 폴더만 정렬 삽입. refresh(전체 재로드)는 형제(펼쳐둔 Temp)를 접으므로 안 씀(소스=DeleteItem, 대상=insert 대칭).
+				//20260714 by claude. 대상 자식 로드됨 → 새로 생긴 폴더만 정렬 삽입. refresh(전체 재로드)는 형제(펼쳐둔 Temp)를 접으므로 안 씀(소스=DeleteItem, 대상=insert 대칭).
+				//20260715 by claude. 삽입 기준을 '드래그한 폴더명(moved_name)' → '대상의 실제 폴더 목록'으로 교정. 복사는 이름충돌 시
+				//FOF_RENAMEONCOLLISION 으로 "A - 복사본" 처럼 다른 이름이 생기는데, moved_name("A")로 찾으면 기존 A 가 잡혀 삽입이
+				//스킵돼 복사본 노드가 영영 안 보였다(리스트엔 보이는데 트리에만 없음 — 사용자 재현). 실제 목록 기준이면 이동·복사·병합이
+				//모두 맞고, 기존 노드는 건드리지 않으므로 형제의 펼침 상태도 그대로다.
+				if (pDstTree->GetChildItem(hDstTreeItem) != NULL)
+				{
+					CString dst_real = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, pDstTree->get_path(hDstTreeItem));
+					std::deque<WIN32_FIND_DATA> dq;
+
+					if (m_dstSide == SERVER_SIDE)
 					{
-						if (pDstTree->find_children_item(moved_name, hDstTreeItem) == NULL)
-						{
-							WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
-							_tcscpy_s(fd.cFileName, _countof(fd.cFileName), moved_name);
-							pDstTree->insert_folder_sorted(hDstTreeItem, &fd);	//has_children=true → chevron, 펼치면 원격 lazy-load.
-						}
+						find_all_files(dst_real, &dq, _T("*"), true, false);
 					}
+					else
+					{
+						m_ServerManager.get_folderlist(dst_real, &dq, true);	//원격 트리 지연로딩(1235/1835)과 동일 경로.
+					}
+
+					for (auto& fd : dq)
+					{
+						if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+						{
+							continue;
+						}
+
+					//로컬·원격 모두 cFileName 에 fullpath 가 담긴다(원격은 message_request_folder_list 도 get_parent_dir 로 처리) → leaf 로 정규화.
+						CString name = (get_char_count(fd.cFileName, _T('\\')) > 0) ? get_part(fd.cFileName, fn_name) : CString(fd.cFileName);
+						if (name.IsEmpty() || pDstTree->find_children_item(name, hDstTreeItem) != NULL)
+						{
+							continue;
+						}
+
+						//20260715 by claude. 확장버튼은 '실제 하위폴더가 있을 때만'. 예전엔 insert_folder_sorted 가 has_children=true 고정이라
+						//하위가 없는 폴더에도 chevron 이 붙었다(복사본 노드에서 사용자 확인). 로컬은 디스크로 직접 판정하고, 원격은 폴더목록 응답이
+						//nFileSizeLow 에 하위폴더 수를 실어 보내므로(message_request_folder_list 1895 와 동일 규약) 추가 왕복 없이 알 수 있다.
+						bool has_child = (m_dstSide == SERVER_SIDE)
+							? (has_sub_folders(concat_path(dst_real, name)) != FALSE)
+							: (fd.nFileSizeLow > 0);
+
+						WIN32_FIND_DATA nfd; ZeroMemory(&nfd, sizeof(nfd));
+						_tcscpy_s(nfd.cFileName, _countof(nfd.cFileName), name);
+						pDstTree->insert_folder_sorted(hDstTreeItem, &nfd, has_child);
+					}
+				}
 
 				//20260714 by claude. [진단] refresh 후 대상 자식 목록 — 이동 폴더가 실제로 들어왔는지/이름이 뭔지 확인(find 실패 원인 추적).
 				{
@@ -3020,26 +3087,10 @@ void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 
 		init_favorite();
 
-		int i;
-		CString path;
-
-		for (i = 0; i < m_list_local_favorite.size(); i++)
-		{
-			path = m_list_local_favorite.get_text(i, 1);
-			if (!PathFileExists(path))
-				m_list_local_favorite.set_text_color(i, -1, Gdiplus::Color::Firebrick);
-		}
-
-		for (i = 0; i < m_list_remote_favorite.size(); i++)
-		{
-			path = m_list_remote_favorite.get_text(i, 1);
-
-			//remote에 해당 경로가 존재하는지 검사하기 위해 해당 폴더내의 파일/폴더를 검색시켜서
-			//그 결과값으로 판단한다.
-			std::deque<WIN32_FIND_DATA> dq;
-			if (!m_ServerManager.get_folderlist(path, &dq, false))
-				m_list_remote_favorite.set_text_color(i, -1, Gdiplus::Color::Firebrick);
-		}
+		//20260715 by claude. 존재 여부 검사를 favorite_cmd(favorite_refresh) 로 통일 — 예전엔 여기 인라인 루프가 '빨강 칠하기'만 하고
+		//되돌리는 else 가 없어, 한 번 빨강이 되면 그 항목을 클릭하기 전까지 영영 빨강으로 남았다(이 타이머는 1회성이라 재검사도 없었다).
+		favorite_cmd(favorite_refresh, SERVER_SIDE);
+		favorite_cmd(favorite_refresh, CLIENT_SIDE);
 	}
 	else if (nIDEvent == timer_refresh_selection_status)
 	{
@@ -3205,6 +3256,13 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				m_dir_watcher.stop();
 				m_list_local.edit_item(dq[0], CSCListCtrl::col_filename);
 				//여기서는 편집모드로만 들어가고 다시 watching은 편집이 종료된 시점에 재개해야 한다.
+				//20260715 by claude. 단 편집 진입에 실패하면 LVN_ENDLABELEDIT 가 영영 오지 않아, 재개를 그 핸들러에만 맡긴 이 경로는
+				//워처가 정지된 채로 남는다(탐색기의 생성/이름변경/삭제가 반영 안 됨. 다음 폴더 이동·트리 확장의 rewatch_local 전까지).
+				//stop 과 재개가 다른 함수로 갈린 유일한 경로라 여기서만 이 방어가 필요하다(나머지 6곳은 같은 함수 안에 짝으로 있음).
+				if (!m_list_local.is_in_editing())
+				{
+					rewatch_local();
+				}
 				res = true;
 				break;
 			case file_cmd_delete :
@@ -3985,6 +4043,40 @@ int CnFTDServerDlg::favorite_cmd(int cmd, int side, CString fullpath)
 				return i;
 		}
 	}
+	//20260715 by claude. 등록된 즐겨찾기 경로가 지금도 존재하는지 다시 검사해 색을 갱신한다(없으면 Firebrick, 있으면 기본색).
+	//예전엔 시작 시 timer_init_favorites 에서 1회만 검사했고 그마저 '빨강 칠하기'만 있고 되돌리는 코드가 없어, 나중에 그 경로를
+	//만들어도 계속 빨간색으로 남았다(그 항목을 클릭해야만 갱신). 자동 갱신은 앱 조작·탐색기 변경·감시 밖 경로까지 모두 잡아야 해
+	//손댈 곳이 너무 많으므로, 사용자가 팝업 메뉴 또는 F5 로 수동 갱신한다.
+	else if (cmd == favorite_refresh)
+	{
+		//원격 미연결이면 존재 여부를 알 수 없다 — 전부 빨강으로 칠하면 '경로가 사라졌다'는 오해를 부르므로 그대로 둔다(favorite_add 와 동일 방침).
+		if (side == CLIENT_SIDE && !m_ServerManager.is_connected())
+		{
+			return -1;
+		}
+
+		for (i = 0; i < pfavoritelist->size(); i++)
+		{
+			CString path = pfavoritelist->get_text(i, 1);
+
+			//원격은 항목마다 소켓 왕복이라, 폴더 목록까지 받아오는 get_folderlist 대신 존재 여부만 묻는 file_cmd_check_exist 를 쓴다.
+			//(이 명령은 구버전 클라도 모두 구현하고 있어 버전 게이팅 대상이 아니다 — nFTDServerSocket.cpp 참조.)
+			bool is_exist = (side == SERVER_SIDE) ? (PathFileExists(path) != FALSE)
+												  : m_ServerManager.m_socket.file_command(file_cmd_check_exist, path);
+
+			if (is_exist)
+			{
+				pfavoritelist->reset_text_color(i, -1);
+			}
+			else
+			{
+				pfavoritelist->set_text_color(i, -1, Gdiplus::Color::Firebrick);
+			}
+		}
+
+		//색만 바뀌고 항목 구조는 그대로라 재그리기를 유발하는 것이 없다 → 명시적으로 갱신.
+		pfavoritelist->Invalidate();
+	}
 
 	return -1;
 }
@@ -4043,16 +4135,20 @@ void CnFTDServerDlg::show_favorite_context_menu(CSCListCtrl* plist, CPoint point
 	plist->ScreenToClient(&pt);
 	int item = plist->HitTest(pt);
 
-	//이 메뉴는 선택된 항목이 없을 경우 그냥 리턴한다.
-	if (item == -1)
-		return;
-
 	CMenu menu;
 	menu.LoadMenu(IDR_MENU_FAVORITE_CONTEXT);
 
 	CMenu* pMenu = menu.GetSubMenu(0);
 
+	pMenu->ModifyMenu(ID_LIST_FAVORITE_MENU_REFRESH, MF_BYCOMMAND, ID_LIST_FAVORITE_MENU_REFRESH, _S(IDS_REFRESH) + _T("\tF5"));
 	pMenu->ModifyMenu(ID_FAVORITE_CONTEXT_MENU_DELETE, MF_BYCOMMAND, ID_FAVORITE_CONTEXT_MENU_DELETE, _S(IDS_FAVORITE_REMOVE) + _T("(&D)\tDel"));
+
+	//20260715 by claude. 항목 밖(빈 공간) 우클릭에서도 메뉴를 띄운다 — 예전엔 메뉴가 '제거' 하나뿐이라 항목이 없으면 통째로 return 했지만,
+	//'새로고침'은 항목과 무관하게 유효한 명령이라 메뉴 자체가 안 뜨면 쓸 수가 없다. 대신 항목이 없으면 '제거'만 비활성.
+	if (item < 0)
+	{
+		pMenu->EnableMenuItem(ID_FAVORITE_CONTEXT_MENU_DELETE, MF_BYCOMMAND | MF_GRAYED);
+	}
 
 	pMenu->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, point.x, point.y, this);
 }
@@ -4073,7 +4169,12 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	//이 때 위에서 구한 item, subItem은 이전 리스트에서 기억된 값이므로 의미가 없어진다.
 	//우선 인덱스를 검사하여 범위밖이면 그냥 리턴한다.
 	if (item < 0 || item >= m_list_local.size())
+	{
+		//20260715 by claude. 여기서도 감시를 재개해야 한다 — file_cmd_rename 이 stop() 해놓고 재개를 이 핸들러 끝(아래 rewatch_local)에만
+		//맡기므로, 이 early return 으로 빠지면 워처가 정지된 채 남아 탐색기 변경이 반영되지 않는다.
+		rewatch_local();
 		return;
+	}
 
 
 	//만약 리스트에서 폴더의 이름을 변경했다면 트리에서도 동일하게 변경해줘야 한다.
@@ -4083,9 +4184,12 @@ void CnFTDServerDlg::OnLvnEndlabelEditListLocal(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 
 	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
+	//20260715 by claude. 경로 결합은 concat_path 로 — 예전 "%s\\%s" 는 드라이브 루트에서 folder 가 "D:\" 라 "D:\\이름" 처럼 역슬래시가
+	//두 개가 됐다. 표시 이름은 마지막 '\' 뒤를 뽑아 멀쩡해 보였지만, 정렬은 이 cFileName 을 StrCmpLogicalW 로 비교하는데 기호가 숫자·문자보다
+	//앞이라 그 항목만 목록 맨 위로 튀었다(루트에서만 재현).
 	auto item_data = (WIN32_FIND_DATA)m_list_local.get_win32_find_data(item);
 	CString folder = get_part(item_data.cFileName, fn_folder);
-	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s\\%s"), (LPCTSTR)folder, (LPCTSTR)m_list_local.get_edit_new_text());
+	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)concat_path(folder, m_list_local.get_edit_new_text()));
 	m_list_local.set_win32_find_data(item, item_data);
 
 	rewatch_local();
@@ -4115,9 +4219,10 @@ void CnFTDServerDlg::OnLvnEndlabelEditListRemote(NMHDR* pNMHDR, LRESULT* pResult
 	}
 
 	//이름을 변경했다면 m_cur_folder 또는 m_cur_file 목록에서도 이름을 변경시켜줘야 한다.
+	//20260715 by claude. 경로 결합은 concat_path 로 — 드라이브 루트에서 "%s\\%s" 가 "D:\\이름" 을 만들어 정렬이 튀던 것(로컬과 동일 수정).
 	auto item_data = (WIN32_FIND_DATA)m_list_remote.get_win32_find_data(item);
 	CString folder = get_part(item_data.cFileName, fn_folder);
-	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s\\%s"), (LPCTSTR)folder, (LPCTSTR)m_list_remote.get_edit_new_text());
+	_sntprintf_s(item_data.cFileName, _countof(item_data.cFileName), _TRUNCATE, _T("%s"), (LPCTSTR)concat_path(folder, m_list_remote.get_edit_new_text()));
 	m_list_remote.set_win32_find_data(item, item_data);
 }
 
@@ -4198,12 +4303,14 @@ void CnFTDServerDlg::rewatch_local()
 	m_dir_watcher.stop();
 
 	int count = 0;
+	CString watched;	//20260715 by claude. [진단 임시] 감시 대상 목록 — 아래 로그용.
 
 	CString cur = theApp.m_shell_imagelist.convert_special_folder_to_real_path(0, m_list_local.get_path());
 	if (!cur.IsEmpty() && PathIsDirectory(cur))
 	{
 		m_dir_watcher.add(cur, false);
 		count++;
+		watched += _T("[list:") + cur + _T("]");
 	}
 
 	for (HTREEITEM h = m_tree_local.GetFirstVisibleItem(); h != NULL; h = m_tree_local.GetNextVisibleItem(h))
@@ -4215,9 +4322,13 @@ void CnFTDServerDlg::rewatch_local()
 		{
 			m_dir_watcher.add(p, false);	//CSCDirWatcher::add 는 is_watching 으로 중복 skip
 			count++;
+			watched += _T("[tree:") + p + _T("]");
 		}
 	}
 
+	//20260715 by claude. [진단 임시] 지금 무엇을 감시 중인지 — 탐색기 변경이 반영 안 될 때 '통지가 안 온 것'인지 '애초에 감시 대상이
+	//아니었던 것'인지 구분하려면 이 목록이 필요하다. 감시는 (리스트 현재 폴더 + 펼쳐진 트리 폴더)뿐이고 비재귀임에 유의.
+	logWrite(_T("[watch] rewatch_local: count=%d %s"), count, (LPCTSTR)watched);
 }
 
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
@@ -4228,6 +4339,13 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 	//변경된 항목의 '부모 폴더'(=내용이 바뀐 폴더)와 현재 리스트 폴더(둘 다 real path).
 	CString changed_parent = get_part(msg->path0, fn_folder);
 	CString cur_list       = theApp.m_shell_imagelist.convert_special_folder_to_real_path(SERVER_SIDE, m_list_local.get_path());
+
+	//20260715 by claude. [진단 임시] 콜백이 받은 값과 판정 근거 — 리스트 갱신은 changed_parent==cur_list 일 때만, 트리 갱신은
+	//changed_parent 노드가 트리에 '로드돼 있을 때'(get_item_by_fullpath)만 일어난다. 반영이 안 되면 둘 중 어디서 걸렸는지 여기서 갈린다.
+	logWrite(_T("[watch] cb action=%d(%s) path0=[%s] path1=[%s] changed_parent=[%s] cur_list=[%s] list_hit=%d tree_node=%p is_dir=%d"),
+		msg->action, (LPCTSTR)CSCDirWatcher::action_str(msg->action), (LPCTSTR)msg->path0, (LPCTSTR)msg->path1,
+		(LPCTSTR)changed_parent, (LPCTSTR)cur_list, (int)(changed_parent.CompareNoCase(cur_list) == 0),
+		m_tree_local.get_item_by_fullpath(changed_parent), (int)PathIsDirectory(msg->path0));
 
 	//── [리스트] 리스트는 '현재 폴더의 내용'만 표시 → 변경의 부모가 현재 폴더일 때만 갱신(파일/폴더 무관).
 	if (changed_parent.CompareNoCase(cur_list) == 0)
@@ -4273,11 +4391,13 @@ LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 			{
 				if (PathIsDirectory(msg->path0))
 				{
-					if (m_tree_local.GetChildItem(hParentNode) != NULL)	//자식 로드됨 → 정렬 위치에 노드 삽입(확장버튼 자동 표시)
+					if (m_tree_local.GetChildItem(hParentNode) != NULL)	//자식 로드됨 → 정렬 위치에 노드 삽입
 					{
 						WIN32_FIND_DATA fd; ZeroMemory(&fd, sizeof(fd));
 						_tcscpy_s(fd.cFileName, _countof(fd.cFileName), get_part(msg->path0, fn_name));
-						m_tree_local.insert_folder_sorted(hParentNode, &fd);
+						//20260715 by claude. 확장버튼은 실제 하위폴더가 있을 때만(예전엔 has_children=true 고정). 워처는 로컬 전용이라 디스크로 확인.
+						//탐색기로 새로 만든 빈 폴더에 chevron 이 붙던 것 해소. msg->path0 가 그 폴더의 실경로다.
+						m_tree_local.insert_folder_sorted(hParentNode, &fd, has_sub_folders(msg->path0) != FALSE);
 					}
 					else
 					{
@@ -4404,4 +4524,11 @@ void CnFTDServerDlg::OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	// TODO: 여기에 컨트롤 알림 처리기 코드를 추가합니다.
 	*pResult = 0;
+}
+
+void CnFTDServerDlg::OnListFavoriteMenuRefresh()
+{
+	//20260715 by claude. 즐겨찾기 경로 존재 여부 수동 재검사. side 판별은 삭제 메뉴(OnFavoriteContextMenuDelete)와 동일하게 포커스 기준.
+	int dwSide = (GetFocus() == &m_list_remote_favorite);
+	favorite_cmd(favorite_refresh, dwSide);
 }

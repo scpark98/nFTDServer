@@ -127,8 +127,9 @@ public:
 		favorite_delete = 0,
 		favorite_add,
 		favorite_find,
+		favorite_refresh,	//20260715 by claude. 등록된 경로의 존재 여부를 다시 검사해 색을 갱신(수동 새로고침).
 	};
-	//favorite_delete(0), favorite_add, favorite_find
+	//favorite_delete(0), favorite_add, favorite_find, favorite_refresh
 	int					favorite_cmd(int cmd, int side, CString fullpath = _T(""));
 
 	//전송시작 버튼 또는 drag&drop으로 전송을 시작한다.
@@ -271,4 +272,5 @@ public:
 	afx_msg void OnTreeContextMenuPathToClipboard();
 	afx_msg void OnListContextMenuPathToClipboard();
 	afx_msg void OnNMRClickTreeLocal(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnListFavoriteMenuRefresh();
 };
