@@ -413,7 +413,7 @@ BOOL CnFTDServerDlg::OnInitDialog()
 
 
 	//for test. 한 PC에서 단독으로 테스트 할 경우
-	if (false)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
+	if (true)//get_process_running_count(get_exe_directory() + _T("\\FileTransferTest.exe")) == 0)
 	{
 		CString my_ip = get_my_ip();
 #ifdef _REMOTE_SDK
@@ -499,7 +499,6 @@ BOOL CnFTDServerDlg::OnInitDialog()
 void CnFTDServerDlg::init_treectrl()
 {
 	m_tree_local.set_use_drag_and_drop(true);
-	m_tree_local.set_select_on_button_up(true);	//20260712 by claude. 탐색기식 — 드래그하려고 클릭한 폴더가 브라우징되지 않고 기존 선택 유지(UP 에서 선택).
 	m_tree_local.set_as_shell_treectrl(&theApp.m_shell_imagelist, true);	//shell 트리는 내부에서 라인 간격 30px 로 설정.
 	m_tree_local.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//20260705 by claude. 드래그 중 대상에 따른 문구("+ …로 복사")를 계산해 드래그 이미지에 표시. 소스=로컬 트리.
@@ -939,7 +938,6 @@ void CnFTDServerDlg::initialize()
 	m_tree_remote.set_use_own_context_menu(false);
 	m_list_remote.set_use_own_context_menu(false);
 	m_tree_remote.set_use_drag_and_drop(true);
-	m_tree_remote.set_select_on_button_up(true);	//20260712 by claude. 탐색기식 — 드래그하려고 클릭한 폴더가 브라우징되지 않고 기존 선택 유지(UP 에서 선택).
 	m_tree_remote.add_drag_images(IDB_DRAG_SINGLE_FILE, IDB_DRAG_MULTI_FILES);
 	//20260705 by claude. 소스=리모트 트리. 리모트→리모트 같은 드라이브=이동(문구 없음), 다른 드라이브=복사, 로컬↔리모트=전송(문구 없음).
 	m_tree_remote.set_drag_hint_provider([this](CWnd* pDropWnd, CPoint pt) { return compute_drag_hint(&m_tree_remote, pDropWnd, pt); });
@@ -2573,6 +2571,10 @@ CString CnFTDServerDlg::compute_drag_hint(CWnd* pDragWnd, CWnd* pDropWnd, CPoint
 
 void CnFTDServerDlg::file_transfer()
 {
+	//20260716 by claude. 삭제 진행 중이면 전송을 시작하지 않는다 — 삭제가 지우고 있는 리스트를 소스로 읽게 된다.
+	if (m_deleting)
+		return;
+
 	m_transfer_from = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_srcSide, m_transfer_from);
 	m_transfer_to = theApp.m_shell_imagelist.convert_special_folder_to_real_path(m_dstSide, m_transfer_to);
 
@@ -3186,6 +3188,12 @@ void CnFTDServerDlg::OnListContextMenuSelectAll()
 
 void CnFTDServerDlg::OnTimer(UINT_PTR nIDEvent)
 {
+	//20260716 by claude. 삭제 진행 중에는 어떤 타이머도 처리하지 않는다. timer_refresh_selection_status 는 선택이 바뀔 때마다
+	//무장되므로 삭제 루프 도중 발화하는데, 그 핸들러가 refresh_selection_status 로 우리가 지우고 있는 m_list_db 를 읽는다.
+	//KillTimer 를 하지 않고 그냥 빠지므로 삭제가 끝난 뒤 다시 발화해 정상 처리된다(삭제 블록 끝에서도 직접 갱신한다).
+	if (m_deleting)
+		return;
+
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
 	if (nIDEvent == timer_init_remote_controls)
 	{
@@ -3267,8 +3275,22 @@ bool CnFTDServerDlg::warn_if_client_outdated()
 	return true;
 }
 
+void CnFTDServerDlg::pump_toast_only()
+{
+	MSG msg;
+	while (::PeekMessage(&msg, m_toast_popup.GetSafeHwnd(), 0, 0, PM_REMOVE))
+	{
+		::TranslateMessage(&msg);
+		::DispatchMessage(&msg);
+	}
+}
+
 bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param1)
 {
+	//20260716 by claude. 삭제 진행 중 재진입 차단 — SHFileOperation 의 내부 펌프로 이 함수가 다시 불릴 수 있다.
+	if (m_deleting)
+		return false;
+
 	bool res = false;
 	int dwSide = SERVER_SIDE;
 	CSCListCtrl* plist;
@@ -3395,6 +3417,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 
 					int deleted_count = 0;
 
+					m_deleting = true;
 					EnableWindow(FALSE);
 
 					m_toast_popup.load(this, _T("GIF"), IDR_GIF_DELETE);
@@ -3412,11 +3435,18 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 						if (res)
 							deleted_count++;
 
-						Wait(1);
+						//20260716 by claude. 예전엔 Wait(1) — PeekMessage(NULL,...) 이라 앱 전체 큐를 돌려 삭제 도중 타이머·통지가
+						//실행됐다(m_list_db 를 지우는 중에 읽음). 토스트 GIF 를 살리는 데 필요한 건 토스트 창 메시지뿐이다.
+						pump_toast_only();
 					}
 
-					m_toast_popup.ShowWindow(SW_HIDE);
+					//20260716 by claude. 순서 주의 — EnableWindow(TRUE) 가 반드시 팝업 숨기기보다 먼저다.
+					//활성 창(토스트 팝업)을 숨기면 Windows 는 Z-order 상 다음 창에게 활성을 넘기는데, 그 시점에 메인 창이
+					//비활성이면 후보에서 제외돼 뒤에 있던 다른 앱이 활성화된다. EnableWindow(TRUE) 는 활성을 되돌려주지
+					//않으므로 삭제할 때마다 창이 한 단계씩 뒤로 숨었다(뒤에 다른 앱이 있을 때만 재현 — 바탕화면 위에선 안 남).
 					EnableWindow(TRUE);
+					m_toast_popup.ShowWindow(SW_HIDE);
+					m_deleting = false;
 
 					m_tree_local.refresh(m_tree_local.GetSelectedItem());
 
@@ -3511,6 +3541,7 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				{
 					int deleted_count = 0;
 
+					m_deleting = true;
 					EnableWindow(FALSE);
 
 					m_toast_popup.load(this, _T("GIF"), IDR_GIF_DELETE);
@@ -3530,11 +3561,14 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 							deleted_count++;
 						}
 
-						Wait(1);
+						//20260716 by claude. 로컬 삭제 경로와 동일 — 토스트 창 메시지만 펌프한다(기존 Wait(1) 은 앱 전체 큐를 돌렸다).
+						pump_toast_only();
 					}
 
-					m_toast_popup.ShowWindow(SW_HIDE);
+					//20260716 by claude. 순서 주의 — EnableWindow(TRUE) 가 반드시 팝업 숨기기보다 먼저다(로컬 삭제 경로와 동일 이유).
 					EnableWindow(TRUE);
+					m_toast_popup.ShowWindow(SW_HIDE);
+					m_deleting = false;
 
 					m_tree_remote.refresh(m_tree_remote.GetSelectedItem());
 
@@ -3581,6 +3615,10 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 
 bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param1)
 {
+	//20260716 by claude. 삭제 진행 중 재진입 차단 — file_command_on_list 와 동일 이유.
+	if (m_deleting)
+		return false;
+
 	bool res = false;
 	int dwSide = SERVER_SIDE;
 	CSCTreeCtrl* ptree;
@@ -4473,6 +4511,12 @@ void CnFTDServerDlg::rewatch_local()
 
 LRESULT CnFTDServerDlg::on_message_CSCDirWatcher(WPARAM wParam, LPARAM lParam)
 {
+	//20260716 by claude. 삭제 진행 중이면 통지를 버린다 — 삭제 루프가 m_list_db 를 지우는 중에 이 핸들러가 refresh 로
+	//같은 리스트를 재구성하면 루프의 index 가 stale 이 된다. 삭제 결과는 루프가 직접 반영하므로 버려도 손실이 없다.
+	//(로컬 삭제는 m_dir_watcher.stop() 도 하지만, 이미 큐에 들어와 있던 통지는 그 stop 이 못 막는다.)
+	if (m_deleting)
+		return 0;
+
 	//FILE_ACTION_ADDED(1), FILE_ACTION_REMOVED(2), FILE_ACTION_RENAMED_NEW_NAME(4)/NEW_NAME(5)
 	CSCDirWatcherMessage* msg = (CSCDirWatcherMessage*)wParam;
 

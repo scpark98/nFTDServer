@@ -41,6 +41,18 @@ public:
 	CSCShapeDlg			m_toast_popup;
 	CSCMessageBox		m_messagebox;
 
+	//20260716 by claude. 삭제 진행 중 재진입 가드. 삭제 루프는 리스트 항목을 하나씩 지우는데(LVS_OWNERDATA 라 m_list_db 가
+	//곧 데이터), 그 사이 다른 핸들러가 끼어들어 같은 리스트를 읽거나 지우면 stale index 로 크래시한다. 끼어들 수 있는 이유는
+	//루프가 메시지 펌프를 거치기 때문 — 로컬은 SHFileOperation 이 자기 내부에서 앱 전체 큐를 펌프한다(우리가 통제 못 함).
+	//삭제 중 발화 가능한 핸들러(OnTimer / on_message_CSCDirWatcher / file_command_on_* / file_transfer)가 이 값을 보고 즉시 빠진다.
+	bool				m_deleting = false;
+
+	//20260716 by claude. 삭제 루프 전용 메시지 펌프 — m_toast_popup 창으로 가는 메시지만 디스패치한다.
+	//토스트의 GIF 는 애니메이션 스레드가 그 창에 WM_APP_UI_INVOKE 를 post 해서 그리므로 펌프가 없으면 멈춘 그림이 된다.
+	//반면 Wait() 는 PeekMessage(NULL,...) 이라 앱 전체 큐를 돌려, 메인 창의 입력·타이머·통지까지 삭제 도중에 실행시켰다.
+	//대상 창을 한정하면 GIF 는 살아 있고 메인 창 메시지는 큐에 남아 삭제가 끝난 뒤 처리된다.
+	void				pump_toast_only();
+
 	//20260713 by claude. 원격 신규기능(이동/복사 등) 실행 전 클라 버전 확인. 클라(nFTDClient)가 서버보다 낮으면 안내 메시지 후 true 반환(=액션 스킵).
 	//서버가 접속 시 받은 버전으로 스스로 판단하므로, 실제 액션 실패와 구분해 "Agent 업데이트 안내"를 띄울 수 있다.
 	bool				warn_if_client_outdated();
