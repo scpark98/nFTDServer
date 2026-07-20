@@ -3589,12 +3589,15 @@ bool CnFTDServerDlg::file_command_on_list(int cmd, CString param0, CString param
 				else
 					res = true;
 
+				//AnySupport라면 속성창이 원격에 표시된다는 문구를 표시할 이유가 없다.
+#ifndef _ANYSUPPORT
 				if (res)// && !viewer_is_running)
 				{
 					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 					m_toast_popup.CenterWindow(this);
 					m_toast_popup.fade_in(10, 2000, true);
 				}
+#endif
 			}
 			break;
 			case file_cmd_favorite:
@@ -3728,15 +3731,15 @@ bool CnFTDServerDlg::file_command_on_tree(int cmd, CString param0, CString param
 				dq_fullpath.push_back(param0);
 				bool res = m_ServerManager.m_socket.file_command(file_cmd_property, 0, 0, &dq_fullpath);
 
+				//AnySupport라면 속성창이 원격에 표시된다는 문구를 표시할 이유가 없다.
+#ifndef _ANYSUPPORT
 				if (res)// && !viewer_is_running)
 				{
 					m_toast_popup.set_text(_S(IDS_SHOW_ON_REMOTE));
 					m_toast_popup.CenterWindow(this);
 					m_toast_popup.fade_in(10, 2000, true);
 				}
-				else
-				{
-				}
+#endif
 				/*
 				std::deque<CString> dq_fullpath;
 				m_list_remote.get_selected_items(&dq_fullpath, true);

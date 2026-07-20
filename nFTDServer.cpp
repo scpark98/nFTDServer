@@ -104,7 +104,7 @@ BOOL CnFTDServerApp::InitInstance()
 	m_color_theme = CSCColorTheme::color_theme_linkmemine;
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\Koino\\Log\\FileTransfer"), get_exe_file_title());
 #elif defined(_ANYSUPPORT)
-	m_color_theme = CSCColorTheme::color_theme_anysupprt;
+	m_color_theme = CSCColorTheme::color_theme_anysupport;
 	gLog.set(get_known_folder(CSIDL_COMMON_DOCUMENTS) + _T("\\Koino\\Log\\FileTransfer"), get_exe_file_title());
 #else
 	m_color_theme = CSCColorTheme::color_theme_linkmemine;
